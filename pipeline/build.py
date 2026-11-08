@@ -155,16 +155,27 @@ def week_games(games: pd.DataFrame, week: int) -> list[dict]:
     return out
 
 
+# Matchup factor basis: a defense's *typical* game (median) vs the league's typical game.
+# Averages get dragged by blowouts -- e.g. a team that allowed 224 and 246 rushing yards in
+# two lopsided losses looks like a sieve on average but is league-average in a normal game.
+# Pass TDs (0/1/2/3 per game) are too coarse for a median, so they keep the mean.
+MEAN_BASIS = {"passing_tds"}
+
+
 def defense_factors(stats: pd.DataFrame) -> dict[tuple[str, str, str], float]:
-    """(team, position_group, stat) -> multiplier vs league average allowed."""
+    """(team, position_group, stat) -> multiplier vs league typical allowed."""
     factors: dict[tuple[str, str, str], float] = {}
     pos_groups = {"QB": ["QB"], "RB": ["RB"], "WR": ["WR"], "TE": ["TE"]}
     for _, (col, _label, _pos, _disc) in MARKETS.items():
         for grp, positions in pos_groups.items():
             sub = stats[stats.position.isin(positions)]
             per_game = sub.groupby(["opponent_team", "game_id"])[col].sum().reset_index()
-            by_team = per_game.groupby("opponent_team")[col].mean()
-            league = by_team.mean()
+            if col in MEAN_BASIS:
+                by_team = per_game.groupby("opponent_team")[col].mean()
+                league = by_team.mean()
+            else:
+                by_team = per_game.groupby("opponent_team")[col].median()
+                league = per_game[col].median()
             if not league or math.isnan(league):
                 continue
             for team, val in by_team.items():
@@ -525,6 +536,7 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
             "median": r1(statistics.median(values)),
             "hit_l5": rate(5), "hit_l10": rate(10), "hit_season": rate(len(hits)),
             "def_factor": round(factor, 2),
+            "def_basis": "mean" if col in MEAN_BASIS else "median",
             "games": glog_ctx,
             "vol_label": VOLUME_LABEL[VOLUME[col]],
             "defense": def_key,

@@ -387,7 +387,7 @@ function defenseDive(p){
     !cnt || p.label === 'Receptions' ? `<li><b>Efficiency:</b> ${perVol(d.per_vol)} ${perVolName} vs league ${perVol(d.lg_per_vol)}; faces ${fmt(d.vol_avg)} ${vl} per game (league ${fmt(d.lg_vol_avg)}).</li>` : '',
     `<li><b>Last 3 games:</b> ${fmt(d.l3)} per game (${games.slice(-3).map(g => `${g.vs} ${fmt(g.val)}`).join(', ')}).</li>`,
     matchup,
-    `<li><b>What the model used:</b> the average-based ${Math.round(p.def_factor * 100)}% of league, half-weighted and capped, so it moved the projection ${p.def_factor >= 1 ? 'up' : 'down'} ${Math.round(Math.abs(Math.max(-0.2, Math.min(0.2, p.def_factor - 1))) * 50)}%.${skew && medRatio != null ? ` On the median the matchup looks closer to ${medRatio}% — treat the boost with caution.` : ''}</li>`,
+    `<li><b>What the model used:</b> ${p.def_basis === 'mean' ? 'average' : 'typical-game (median)'} allowed = ${Math.round(p.def_factor * 100)}% of league, half-weighted and capped at ±20%, so it moved the projection ${p.def_factor >= 1 ? 'up' : 'down'} ${Math.round(Math.abs(Math.max(-0.2, Math.min(0.2, p.def_factor - 1))) * 50)}%.${skew && p.def_basis !== 'mean' ? ' Because it uses the median, the blowouts above don’t inflate it.' : ''}</li>`,
   ].join('');
   const rows = [...games].reverse().map(g => `<tr><td>${g.wk}</td><td>${g.vs}</td><td class="num">${fmt(g.val)}</td>` +
     `<td class="num">${g.vol ?? '—'}</td><td style="text-align:left">${g.top ? `${g.top} <span style="color:var(--ink3)">${fmt(g.top_val)}${g.top_vol != null ? '/' + g.top_vol : ''}</span>` : '—'}</td>` +
@@ -440,7 +440,7 @@ function openDetail(p){
       <div class="tile"><span class="k">L5 avg</span><div class="v">${p.avg_l5}</div></div>
       <div class="tile"><span class="k">L10 avg</span><div class="v">${p.avg_l10}</div></div>
       <div class="tile"><span class="k">Season</span><div class="v">${p.avg_season}</div><div class="meta">median ${p.median}</div></div>
-      <div class="tile"><span class="k">${p.opp} D vs ${p.pos}</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league avg allowed</div></div>
+      <div class="tile"><span class="k">${p.opp} D vs ${p.pos}</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league ${p.def_basis === 'mean' ? 'avg' : 'typical game'} allowed${p.def_factor > 1.2 || p.def_factor < 0.8 ? ' · model caps at ±20%' : ''}</div></div>
       ${p.snaps ? `<div class="tile"><span class="k">Snap % L5</span><div class="v" style="font-size:15px">${p.snaps.join(' · ')}</div></div>` : ''}
     </div>
     <table class="log"><tr><th>Wk</th><th>Opp</th><th>${p.label}</th>${p.vol_label && p.label !== 'Rush Att' ? `<th>${p.vol_label}</th>` : ''}<th>Snap%</th><th>Score</th><th>vs line</th></tr>

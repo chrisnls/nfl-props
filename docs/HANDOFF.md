@@ -9,7 +9,7 @@ A personal NFL player-prop board. It costs nothing to run: nflverse stats, The-O
 
 For each player × market that has a line this week:
 
-1. **Projection.** A recency-weighted average of the game log: `0.45·L5 + 0.30·L10 + 0.25·season`. That is multiplied by a **defense factor**: how much the opponent allows to that position for that stat, relative to league average. The factor is half-weighted and clamped to ±20%, so the projection moves by at most ±10%.
+1. **Projection.** A recency-weighted average of the game log: `0.45·L5 + 0.30·L10 + 0.25·season`. That is multiplied by a **defense factor**: how much the opponent allows to that position for that stat in a *typical game* (median), relative to the league's typical game. Pass TDs use averages instead. The factor is half-weighted and clamped to ±20%, so the projection moves by at most ±10%.
 2. **σ.** The player's game-to-game standard deviation, with a floor (counts: max(1.2, 35% of avg); yards: max(8, 35% of avg)), then inflated 15% for small samples and model error.
 3. **P(over).** A normal curve from projection and σ, with a half-point continuity correction on count markets (TDs, attempts, receptions).
 4. **Consensus line.** The median line across books (DK, FD, MGM, CZR, ESPN, Fanatics).
@@ -53,11 +53,12 @@ A full-slate pull of 6 markets costs **~85 credits**. Three pulls a week is ~260
 - **Detail panel:** "Why the last 2 games went over/under" and "<team> defense vs <position>" sections; the game log table gained volume, snap % and score columns.
 - **Credit-free runs:** `--lines cached` plus the workflow input (default cached), the credit guard, and the header now says when the lines were pulled and whether they were reused.
 
+- **Median-based matchup factor** (approved follow-up). The defense factor now uses the median game allowed vs the league median game; pass TDs keep the mean. Before, two blowouts made CAR look like 124% of league vs RBs; on medians it's 98%, so Dobbins' rush-yds projection went from 41.5 to 37.4. Across week 9, 111 of 485 projections moved more than 5% and the top of the board barely changed. Props now carry `def_basis`.
+
 ## Open ideas
 
 - **Results / CLV tracker.** Store each build's lines and model probabilities, grade them against box scores, and track closing-line value week over week. This is the only way to know whether the model has an edge.
 - **Usage-trend weighting.** Weight by target share, carry share and snap % trends, not just raw output.
-- **Median-based matchup factor.** The defense factor uses the per-game average, which a couple of blowouts can skew (CAR vs RBs: 124% of league on the average, 98% on the median). Consider a median-based or trimmed-mean factor.
 - **Pace and game-total adjustments.** Scale volume by the implied team total and the spread (already in the schedule data).
 - **Teammate-out redistribution.** When a starter is Out, redistribute their volume to teammates. This is the proper fix for what the role-change flag currently only detects.
 - **NBA / MLB / NHL modules.** The same pipeline shape with sport-specific markets, stat sources and projection rules.
