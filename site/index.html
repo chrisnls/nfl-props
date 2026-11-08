@@ -135,6 +135,7 @@ table.log td:first-child,table.log th:first-child{text-align:left}
         <option value="under">Sort: under edge</option>
         <option value="player">Sort: player</option>
       </select>
+      <select id="sideSel" title="Only show props where the model leans this way"><option value="">Overs &amp; unders</option><option value="Over">Overs only</option><option value="Under">Unders only</option></select>
       <select id="minGames"><option value="3">3+ games</option><option value="5" selected>5+ games</option><option value="7">7+ games</option></select>
       <input type="search" id="q" placeholder="Search player or team">
     </div>
@@ -174,7 +175,9 @@ const kickoffText = s => { const t = kickoffDate(s);
   return t.toLocaleDateString([], {weekday:'short', month:'numeric', day:'numeric'}) + ' · ' + t.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); };
 let KICK = {};
 
-let DATA, props = [], state = {markets:new Set(), game:'', sort:'edge', min:5, q:'', sel:null};
+let DATA, props = [], state = {markets:new Set(), game:'', sort:'edge', min:5, q:'', sel:null, side:''};
+// remember the over/under choice between visits
+try { state.side = localStorage.getItem('side') || ''; } catch (e) {}
 let slip = JSON.parse(localStorage.getItem('slip') || '[]');
 
 async function load(){
@@ -201,6 +204,8 @@ async function load(){
   }
   gs.onchange = e => { state.game = e.target.value; render(); };
   $('#sortSel').onchange = e => { state.sort = e.target.value; render(); };
+  $('#sideSel').value = state.side;
+  $('#sideSel').onchange = e => { state.side = e.target.value; try { localStorage.setItem('side', state.side); } catch (err) {} render(); };
   $('#minGames').onchange = e => { state.min = +e.target.value; render(); };
   $('#q').oninput = e => { state.q = e.target.value.toLowerCase(); render(); };
   render(); renderSlip();
@@ -221,7 +226,7 @@ function bestSide(p){
 }
 
 function render(){
-  let list = props.filter(p => state.markets.has(p.market) && (!state.game || p.game === state.game) && p.games.length >= state.min &&
+  let list = props.filter(p => state.markets.has(p.market) && (!state.side || bestSide(p).side === state.side) && (!state.game || p.game === state.game) && p.games.length >= state.min &&
     (!state.q || (p.player + ' ' + p.team + ' ' + p.opp).toLowerCase().includes(state.q)));
   const key = {
     edge: p => -Math.abs(esd(p)), ev: p => -(bestSide(p).ev ?? -9), hit: p => -(p.hit_l5 ?? 0),
