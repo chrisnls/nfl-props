@@ -43,7 +43,8 @@ cd site && python -m http.server 8000            # open http://localhost:8000
 
 - **Projection** = 0.45·L5 avg + 0.30·L10 avg + 0.25·season avg, then nudged (half-weight, clamped ±20%) by how the opponent's defense has done vs that position this season.
 - **σ** = the player's game-to-game standard deviation with a floor, inflated 15% for model error. **P(over)** is a normal-curve estimate from projection and σ (with a half-point continuity correction on count markets).
-- **Edge** = projection − consensus line (median across books). **EV** uses the best available price at that line, after stripping the vig from the book's implied probability for comparison.
+- **Edge** = projection − consensus line (median across books). The board shows it raw and in σ units (edge ÷ σ); the default sort is by |σ-edge|, so a 15-yard edge on a volatile receiver doesn't outrank a 2-catch edge on a steady one.
+- **Role change** — a line ≥2 historical σ from the player's season average (or ≥1.5σ and outside every game in the log) gets a *Role ↑/↓* tag and is demoted to a separate section at the bottom of the board. Books only move that far on news (starter out, depth-chart change) the game log can't see yet, so those "edges" are usually the model being stale. Thresholds: `ROLE_Z` / `ROLE_Z_OUTSIDE` in `build.py`. **EV** uses the best available price at that line, after stripping the vig from the book's implied probability for comparison.
 - **Hit rates** are the share of games this season where the player cleared the *current* line.
 - The **parlay slip** multiplies leg probabilities as if independent. Same-game legs are correlated; the slip warns when you do that.
 
@@ -57,4 +58,5 @@ pipeline/requirements.txt
 site/index.html          the app (no build step, no framework)
 site/data/props.json     generated; committed by the workflow
 .github/workflows/build.yml
+docs/HANDOFF.md          project handoff: model, schedule, change log, open ideas
 ```

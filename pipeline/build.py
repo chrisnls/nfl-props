@@ -52,6 +52,13 @@ MARKETS = {
     "player_reception_yds": ("receiving_yards", "Rec Yds", {"WR", "TE", "RB"}, False),
     "player_receptions": ("receptions", "Receptions", {"WR", "TE", "RB"}, True),
 }
+# Role-change flag: a line far from the player's own history usually means the book
+# is pricing a new role (starter hurt, depth-chart move) that the game log can't see.
+# Those "edges" are mostly the model being stale, so they get flagged and sorted
+# below everything else. Flag when the line is ROLE_Z historical σ from the season
+# average, or ROLE_Z_OUTSIDE σ and beyond every game in the log.
+ROLE_Z = 2.0
+ROLE_Z_OUTSIDE = 1.5
 BOOKS = ["draftkings", "fanduel", "betmgm", "caesars", "espnbet", "fanatics"]
 
 TEAM_NAMES = {
@@ -254,6 +261,19 @@ def project(values: list[float], factor: float, discrete: bool) -> tuple[float, 
     return proj, max(sd, floor) * 1.15   # inflate: small samples, model error
 
 
+def role_change(values: list[float], line: float, discrete: bool) -> dict | None:
+    """Flag a line that sits far outside the player's own game-to-game history."""
+    season = statistics.fmean(values)
+    raw_sd = statistics.pstdev(values)
+    floor = max(1.0, 0.25 * season) if discrete else max(6.0, 0.25 * season)
+    z = (line - season) / max(raw_sd, floor)
+    outside = line > max(values) or line < min(values)
+    if abs(z) < ROLE_Z and not (outside and abs(z) >= ROLE_Z_OUTSIDE):
+        return None
+    return {"dir": "up" if z > 0 else "down", "z": round(z, 1),
+            "lo": min(values), "hi": max(values)}
+
+
 def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
     hist = stats[stats.week < week].copy()
     this_week = games[games.week == week]
@@ -321,6 +341,7 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
         ev_over = (p_over * (cons["over"] / 100 if cons["over"] > 0 else 100 / -cons["over"]) - (1 - p_over)) if cons["over"] is not None else None
         ev_under = ((1 - p_over) * (cons["under"] / 100 if cons["under"] > 0 else 100 / -cons["under"]) - p_over) if cons["under"] is not None else None
 
+        role = role_change(values, line, discrete)
         hits = [v > line for v in values]
         def rate(n):
             sub = hits[-n:]
@@ -344,6 +365,8 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
             "proj": r1(proj),
             "sd": r1(sd),
             "edge": r1(proj - line),
+            "edge_sd": round((proj - line) / sd, 2),
+            "role_change": role,
             "p_over": round(p_over, 3),
             "fair_over": round(fair_over, 3) if fair_over else None,
             "ev_over": round(ev_over, 3) if ev_over is not None else None,
@@ -367,7 +390,7 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
         })
     if unmatched:
         log(f"unmatched players from odds feed: {sorted(unmatched)[:20]}{' ...' if len(unmatched) > 20 else ''}")
-    props.sort(key=lambda p: -abs(p["edge"] / p["sd"]))
+    props.sort(key=lambda p: (p["role_change"] is not None, -abs(p["edge_sd"])))
     return props
 
 
