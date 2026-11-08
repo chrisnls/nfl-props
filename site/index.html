@@ -54,6 +54,11 @@ header{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 85%,
 .sig{color:var(--ink3);font-size:12px}
 .str{display:block;font-family:var(--font);font-size:12px;font-weight:600;margin-top:1px}
 .str.thin{color:var(--ink3);font-weight:400}
+.why{font-size:13px;color:var(--ink2);margin-top:6px}
+.why ul{margin:0;padding-left:18px}
+.why li{margin:5px 0}
+.why b{color:var(--ink)}
+.why .verdict{margin:6px 0 8px;padding:10px 12px;border-radius:10px;background:var(--gold-dim);border:1px solid rgba(217,178,92,.35);color:var(--ink)}
 .note{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);color:var(--ink2);font-size:13px}
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .k{color:var(--ink3);font-size:11px;text-transform:uppercase;letter-spacing:.05em;display:block}
@@ -185,7 +190,8 @@ async function load(){
   DATA = await r.json();
   props = DATA.props;
   const gen = new Date(DATA.generated);
-  $('#meta').textContent = `Week ${DATA.week} · stats thru wk ${DATA.stats_through_week} · lines ${gen.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}` +
+  $('#meta').textContent = `Week ${DATA.week} · stats thru wk ${DATA.stats_through_week} · lines ${new Date(DATA.lines_fetched || DATA.generated).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}` +
+    (DATA.mode === 'cached' ? ` (reused · stats updated ${gen.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})})` : '') +
     (DATA.usage && DATA.usage.remaining ? ` · ${DATA.usage.remaining} API credits left` : '');
   if (DATA.mode === 'sample') $('#banner').innerHTML = `<div class="banner"><b>Sample lines.</b> No Odds API key is configured, so each line is set at the player's recent average. Projections and hit rates are real; edges are not.</div>`;
   const mk = $('#marketChips');
@@ -217,7 +223,10 @@ const esd = p => p.edge_sd ?? p.edge / p.sd;
 const strength = p => { const a = Math.abs(esd(p)); return a >= 1 ? 'Strong' : a >= 0.6 ? 'Solid' : a >= 0.3 ? 'Lean' : 'Thin'; };
 const gapText = p => p.edge === 0 ? 'right on the line' : `${Math.abs(p.edge)} ${p.edge > 0 ? 'over' : 'under'} the line`;
 const strTip = p => `Projection is ${gapText(p)}. That gap is ${Math.abs(esd(p)).toFixed(1)}× this player's normal game-to-game swing (σ ${p.sd}). Strong ≥ 1×, Solid ≥ 0.6×, Lean ≥ 0.3×, Thin below that.`;
-const roleTag = p => p.role_change ? `<span class="tag role" title="Line is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average — likely a role change the game log can't see">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>` : '';
+const roleWhy = r => r.why === 'usage'
+  ? `Snap share went from ${r.snap_prior}% to ${r.snap_recent}% over the last 2 games — the season-long game log the model uses hasn't caught up`
+  : `Line is ${Math.abs(r.z)}σ ${r.dir === 'up' ? 'above' : 'below'} the player's season average — likely a role change the game log can't see`;
+const roleTag = p => p.role_change ? `<span class="tag role" title="${roleWhy(p.role_change)}">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>` : '';
 
 function bestSide(p){
   // which side the model likes, and that side's EV
@@ -240,7 +249,7 @@ function render(){
   // cap the main board at 300, but always show the (few) demoted role-change props under a divider
   const main = list.filter(p => !demote(p)).slice(0, 300), sunk = list.filter(demote);
   for (const p of [...main, ...sunk]) {
-    if (p === sunk[0]) { const h = document.createElement('div'); h.className = 'sec'; h.textContent = `Possible role change · ${sunk.length} demoted — line far outside the player's history`; board.appendChild(h); }
+    if (p === sunk[0]) { const h = document.createElement('div'); h.className = 'sec'; h.textContent = `Possible role change · ${sunk.length} demoted — line far outside the player's history, or playing time just shifted`; board.appendChild(h); }
     const bs = bestSide(p);
     const inj = p.injury && p.injury.status ? `<span class="tag ${p.injury.status === 'Questionable' ? 'q' : 'inj'}">${p.injury.status[0]} · ${p.injury.injury || ''}</span>` : '';
     const el = document.createElement('div'); el.className = 'row' + (p.role_change ? ' demoted' : '') + (state.sel === p.id ? ' sel' : ''); el.setAttribute('role','button'); el.tabIndex = 0;
@@ -259,6 +268,133 @@ function render(){
     el.onkeydown = e => { if (e.key === 'Enter') openDetail(p); };
     board.appendChild(el);
   }
+}
+
+// ---- analysis: why recent games landed where they did, and a deep look at the defense
+const fmt = x => x == null || isNaN(x) ? '—' : (+x).toFixed(1).replace(/\.0$/, '');
+const ord = n => n + (['th','st','nd','rd'][(n % 100 - 20) % 10] || ['th','st','nd','rd'][n % 100] || 'th');
+const GRP = {QB:'QBs', RB:'RBs', WR:'WRs', TE:'TEs'};
+const KIND = m => /rush/.test(m) ? 'rush' : /pass/.test(m) ? 'pass' : 'rec';
+// efficiency = stat per unit of volume; skip where the stat *is* the volume (carries) or too sparse (pass TDs)
+const EFF = {player_rush_yds:['yards per carry', 1], player_reception_yds:['yards per target', 1],
+             player_pass_yds:['yards per attempt', 1], player_receptions:['catch rate', 100]};
+const VOLNAME = {car:'Carries', tgt:'Targets', att:'Pass attempts'};
+const sumOf = (a, f) => a.reduce((s, g) => s + (f(g) ?? 0), 0);
+const avgOf = (a, f) => { const v = a.map(f).filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+const pctChg = (a, b) => b ? Math.round(100 * (a - b) / b) : null;
+const scoreTxt = (us, them) => us == null || them == null ? '' : `${us > them ? 'won' : us < them ? 'lost' : 'tied'} ${Math.max(us, them)}–${Math.min(us, them)}`;
+
+function whyRecent(p){
+  const G = p.games;
+  if (G.length < 4) return '';
+  const rec = G.slice(-2), base = G.slice(0, -2);
+  const under = rec.filter(g => g.val < p.line).length, over = rec.length - under;
+  const title = under === 2 ? 'Why the last 2 games went under' : over === 2 ? 'Why the last 2 games went over' : 'Last 2 games, explained';
+  const dir = under === 2 ? -1 : over === 2 ? 1 : 0;
+  const bVol = avgOf(base, g => g.vol), rVol = avgOf(rec, g => g.vol);
+  const bSnap = avgOf(base, g => g.snap), rSnap = avgOf(rec, g => g.snap);
+  const eff = EFF[p.market];
+  const effOf = a => { const v = sumOf(a, g => g.vol); return v ? eff[1] * sumOf(a, g => g.val) / v : null; };
+  const bEff = eff ? effOf(base) : null, rEff = eff ? effOf(rec) : null;
+  const vn = VOLNAME[p.vol_label] || 'Volume';
+  const pts = [];
+
+  // per-game result line
+  pts.push(rec.map(g => `Wk ${g.wk} ${g.home ? 'vs' : '@'} ${g.opp}: <b>${fmt(g.val)}</b> (${g.val >= p.line ? '+' : ''}${fmt(g.val - p.line)} vs ${p.line})` +
+    (g.vol != null ? ` on ${g.vol} ${p.vol_label}` : '') + (g.snap != null ? `, ${g.snap}% of snaps` : '')).join('<br>'));
+
+  // volume
+  let volLog = 0, effLog = 0;
+  if (bVol && rVol != null) {
+    const c = pctChg(rVol, bVol);
+    volLog = rVol > 0 ? Math.log(rVol / bVol) : -2;
+    if (c != null) pts.push(`<b>${vn}:</b> ${fmt(rVol)} per game in the last 2, vs ${fmt(bVol)} before (${c > 0 ? '+' : ''}${c}%).`);
+  }
+  if (bSnap != null && rSnap != null) {
+    const d = Math.round(rSnap - bSnap);
+    pts.push(`<b>Snap share:</b> ${Math.round(rSnap)}% in the last 2, vs ${Math.round(bSnap)}% before${Math.abs(d) >= 10 ? ` — a ${d > 0 ? 'big jump' : 'big drop'} in playing time` : ''}.`);
+  }
+  if (eff && bEff && rEff != null) {
+    const c = pctChg(rEff, bEff);
+    effLog = rEff > 0 ? Math.log(rEff / bEff) : -2;
+    const u = eff[1] === 100 ? '%' : '';
+    pts.push(`<b>${eff[0][0].toUpperCase() + eff[0].slice(1)}:</b> ${fmt(rEff)}${u} in the last 2, vs ${fmt(bEff)}${u} before (${c > 0 ? '+' : ''}${c}%).`);
+  }
+  // teammate taking (or ceding) work
+  const takers = rec.filter(g => g.mate && g.vol != null && g.mate.vol > g.vol);
+  if (takers.length) {
+    const nm = takers[takers.length - 1].mate.name;
+    const before = avgOf(base, g => g.mate && g.mate.name === nm ? g.mate.vol : 0);
+    pts.push(`<b>${nm}</b> out-${p.vol_label === 'car' ? 'carried' : p.vol_label === 'tgt' ? 'targeted' : 'threw'} him: ` +
+      takers.map(g => `${g.mate.vol}–${g.vol}${g.mate.snap != null ? ` (${g.mate.snap}% snaps)` : ''}`).join(', ') +
+      ` after averaging ${fmt(before)} ${p.vol_label} in the earlier games.`);
+  }
+  // game script
+  const kind = KIND(p.market);
+  const margins = rec.map(g => g.pts != null && g.opp_pts != null ? g.pts - g.opp_pts : null);
+  if (margins.every(m => m != null)) {
+    const sc = rec.map(g => scoreTxt(g.pts, g.opp_pts)).join(', ');
+    const bigWin = margins.filter(m => m >= 14).length, bigLoss = margins.filter(m => m <= -14).length;
+    let note;
+    if (kind === 'rush') note = bigLoss ? `Trailing big pushes teams to pass, which cuts carries.` :
+      margins.every(m => m > 0) ? `Leading usually means <i>more</i> running, so game script doesn't explain ${dir < 0 ? 'the misses' : 'it'}.` : `Close games — no strong game-script effect.`;
+    else note = bigWin ? `A comfortable lead usually means less passing late.` :
+      bigLoss ? `Playing from behind usually means more passing.` : `Close games — no strong game-script effect.`;
+    pts.push(`<b>Game script:</b> ${p.team} ${sc}. ${note}`);
+  }
+  // verdict
+  let verdict = '';
+  if (dir !== 0 && (volLog || effLog)) {
+    const byVol = Math.abs(volLog) >= Math.abs(effLog);
+    const word = dir < 0 ? 'down' : 'up';
+    verdict = byVol
+      ? `<b>Mostly a volume story</b> — his workload went ${word}${takers.length && dir < 0 ? ' as ' + takers[takers.length - 1].mate.name + ' took over' : ''}. Volume changes tend to stick (they come from the coaches), and the model still averages in his earlier games, so it probably ${dir < 0 ? 'overrates' : 'underrates'} him right now.`
+      : `<b>Mostly an efficiency story</b> — his workload was normal but he did ${dir < 0 ? 'less' : 'more'} with it. Per-play efficiency bounces around a lot from game to game, so this is more likely to be noise than a lasting change.`;
+  }
+  return `<div class="sec">${title}</div><div class="why">${verdict ? `<p class="verdict">${verdict}</p>` : ''}<ul>${pts.map(t => `<li>${t}</li>`).join('')}</ul></div>`;
+}
+
+function defenseDive(p){
+  const d = DATA.defense && DATA.defense[p.defense];
+  if (!d) return '';
+  const grp = GRP[d.grp] || d.grp, vl = d.vol_label, cnt = /Receptions|TDs|Att/.test(p.label);
+  const perVol = x => x == null ? '—' : vl === 'tgt' && p.label === 'Receptions' ? Math.round(x * 100) + '%' : fmt(x);
+  const perVolName = p.label === 'Receptions' ? 'catch rate allowed' : `per ${{car:'carry', tgt:'target', att:'attempt'}[vl]}`;
+  const games = d.games;
+  // outliers: games well above their typical game
+  const big = games.filter(g => g.val >= 1.5 * d.median && g.val > d.lg_avg && games.length >= 4);
+  const rest = games.filter(g => !big.includes(g));
+  const restAvg = avgOf(rest, g => g.val), restVol = sumOf(rest, g => g.vol);
+  const restPer = restVol ? sumOf(rest, g => g.val) / restVol : null;
+  const skew = big.length && d.avg > 1.2 * d.median;
+  const g0 = DATA.games.find(g => g.id === p.game);
+  let matchup = '';
+  if (g0 && g0.spread != null) {
+    const homeFav = g0.spread > 0, fav = g0.spread === 0 ? null : homeFav ? g0.home : g0.away;
+    const ours = fav === p.team;
+    const kind = KIND(p.market);
+    const effect = !fav ? '' : kind === 'rush' ? (ours ? 'Favorites tend to run more — a mild plus for rushing volume.' : 'Underdogs tend to fall behind and pass more — a mild minus for rushing volume.')
+      : (ours ? 'Favorites tend to pass a bit less late in games.' : 'Underdogs tend to pass more to catch up — a mild plus for passing volume.');
+    matchup = `<li><b>This game:</b> ${fav ? `${fav} favored by ${Math.abs(g0.spread)}` : 'pick’em'}, total ${g0.total}. ${effect}</li>`;
+  }
+  const medRatio = d.lg_median ? Math.round(100 * d.median / d.lg_median) : null;
+  const notes = [
+    `<li><b>Season:</b> allows the <b>${ord(d.rank)}-most</b> ${p.label.toLowerCase()} to ${grp} of ${d.n_teams} teams — ${fmt(d.avg)} per game vs a league average of ${fmt(d.lg_avg)}.</li>`,
+    skew ? `<li><b>But the average is skewed.</b> ${big.map(g => `Wk ${g.wk} vs ${g.vs}: ${fmt(g.val)}${g.vol != null ? ` on ${g.vol} ${vl}` : ''}${g.def_pts != null ? ` (${d.team} ${scoreTxt(g.def_pts, g.off_pts)})` : ''}`).join('; ')}. ` +
+      `In their other ${rest.length} games they allowed <b>${fmt(restAvg)}</b> per game${restPer != null && !cnt ? ` at ${fmt(restPer)} ${perVolName}` : ''}. ` +
+      `${big.some(g => g.def_pts != null && g.def_pts < g.off_pts - 13) && KIND(p.market) === 'rush' ? 'Teams with a big lead run the ball to burn clock, which inflates rushing allowed.' : ''}</li>` : '',
+    `<li><b>Typical game (median):</b> ${fmt(d.median)} vs league ${fmt(d.lg_median)}${medRatio != null ? ` — ${medRatio}% of league` : ''}.</li>`,
+    !cnt || p.label === 'Receptions' ? `<li><b>Efficiency:</b> ${perVol(d.per_vol)} ${perVolName} vs league ${perVol(d.lg_per_vol)}; faces ${fmt(d.vol_avg)} ${vl} per game (league ${fmt(d.lg_vol_avg)}).</li>` : '',
+    `<li><b>Last 3 games:</b> ${fmt(d.l3)} per game (${games.slice(-3).map(g => `${g.vs} ${fmt(g.val)}`).join(', ')}).</li>`,
+    matchup,
+    `<li><b>What the model used:</b> the average-based ${Math.round(p.def_factor * 100)}% of league, half-weighted and capped, so it moved the projection ${p.def_factor >= 1 ? 'up' : 'down'} ${Math.round(Math.abs(Math.max(-0.2, Math.min(0.2, p.def_factor - 1))) * 50)}%.${skew && medRatio != null ? ` On the median the matchup looks closer to ${medRatio}% — treat the boost with caution.` : ''}</li>`,
+  ].join('');
+  const rows = [...games].reverse().map(g => `<tr><td>${g.wk}</td><td>${g.vs}</td><td class="num">${fmt(g.val)}</td>` +
+    `<td class="num">${g.vol ?? '—'}</td><td style="text-align:left">${g.top ? `${g.top} <span style="color:var(--ink3)">${fmt(g.top_val)}${g.top_vol != null ? '/' + g.top_vol : ''}</span>` : '—'}</td>` +
+    `<td style="text-align:left" class="${g.def_pts > g.off_pts ? 'pos' : g.def_pts < g.off_pts ? 'neg' : ''}">${g.def_pts != null ? `${g.def_pts > g.off_pts ? 'W' : g.def_pts < g.off_pts ? 'L' : 'T'} ${g.def_pts}–${g.off_pts}` : ''}</td></tr>`).join('');
+  return `<div class="sec">${d.team} defense vs ${grp} · ${p.label}</div>
+    <div class="why"><ul>${notes}</ul></div>
+    <table class="log"><tr><th>Wk</th><th>Opp</th><th>${grp}</th><th>${vl}</th><th style="text-align:left">Top ${d.grp}</th><th style="text-align:left">${d.team} result</th></tr>${rows}</table>`;
 }
 
 function openDetail(p){
@@ -281,7 +417,8 @@ function openDetail(p){
     <button class="close" id="close" aria-label="close">×</button>
     <div class="who">${p.headshot ? `<img src="${p.headshot}" alt="" style="width:56px;height:56px">` : ''}
       <div><h2>${p.player}</h2><div class="sub">${p.pos} · ${p.team} ${p.home ? 'vs' : '@'} ${p.opp}${KICK[p.game] ? ` · ${kickoffText(KICK[p.game])}` : ''} · ${p.label} ${roleTag(p)} ${inj}</div></div></div>
-    ${p.role_change ? `<div class="note"><b>Possible role change.</b> The line (${p.line}) is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average of ${p.avg_season} (range ${p.role_change.lo}–${p.role_change.hi}). Books usually move this far only on news — a starter out, a depth-chart change — that the game log doesn't reflect yet, so the edge here is likely the model being stale. Demoted to the bottom of the board.</div>` : ''}
+    ${p.role_change && p.role_change.why === 'usage' ? `<div class="note"><b>Possible role change.</b> His snap share went from ${p.role_change.snap_prior}% to ${p.role_change.snap_recent}% over the last 2 games, but the model still projects off his whole season, so it leans ${p.edge > 0 ? 'over' : 'under'} while his playing time points the other way. Demoted to the bottom of the board — see the breakdown below.</div>` : ''}
+    ${p.role_change && p.role_change.why !== 'usage' ? `<div class="note"><b>Possible role change.</b> The line (${p.line}) is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average of ${p.avg_season} (range ${p.role_change.lo}–${p.role_change.hi}). Books usually move this far only on news — a starter out, a depth-chart change — that the game log doesn't reflect yet, so the edge here is likely the model being stale. Demoted to the bottom of the board.</div>` : ''}
     <div class="grid">
       <div class="tile"><span class="k">Line</span><div class="v">${p.line}</div><div class="meta">${p.books.length > 1 ? p.books.length + ' books' : (BOOK[p.books[0]] || '')}${p.line_spread ? ' · ±' + p.line_spread : ''}</div></div>
       <div class="tile"><span class="k">Projection</span><div class="v">${p.proj}</div><div class="meta">σ ${p.sd}</div></div>
@@ -306,9 +443,11 @@ function openDetail(p){
       <div class="tile"><span class="k">${p.opp} D vs ${p.pos}</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league avg allowed</div></div>
       ${p.snaps ? `<div class="tile"><span class="k">Snap % L5</span><div class="v" style="font-size:15px">${p.snaps.join(' · ')}</div></div>` : ''}
     </div>
-    <table class="log"><tr><th>Wk</th><th>Opp</th><th>${p.label}</th><th>vs line</th></tr>
-      ${[...games].reverse().map(g => `<tr><td>${g.wk}</td><td>${g.home ? 'vs' : '@'} ${g.opp}</td><td class="num">${g.val}</td><td class="num ${g.val > p.line ? 'pos' : 'neg'}">${g.val > p.line ? '+' : ''}${(g.val - p.line).toFixed(1)}</td></tr>`).join('')}
+    <table class="log"><tr><th>Wk</th><th>Opp</th><th>${p.label}</th>${p.vol_label && p.label !== 'Rush Att' ? `<th>${p.vol_label}</th>` : ''}<th>Snap%</th><th>Score</th><th>vs line</th></tr>
+      ${[...games].reverse().map(g => `<tr><td>${g.wk}</td><td>${g.home ? 'vs' : '@'} ${g.opp}</td><td class="num">${g.val}</td>${p.vol_label && p.label !== 'Rush Att' ? `<td class="num">${g.vol ?? '—'}</td>` : ''}<td class="num">${g.snap ?? '—'}</td><td>${g.pts != null ? `${g.pts > g.opp_pts ? 'W' : g.pts < g.opp_pts ? 'L' : 'T'} ${g.pts}–${g.opp_pts}` : ''}</td><td class="num ${g.val > p.line ? 'pos' : 'neg'}">${g.val > p.line ? '+' : ''}${(g.val - p.line).toFixed(1)}</td></tr>`).join('')}
     </table>
+    ${whyRecent(p)}
+    ${defenseDive(p)}
     ${p.team_injuries.length ? `<div class="sec">${p.team} injury report</div><ul class="list">${p.team_injuries.map(i => `<li><span><b>${i.name}</b> ${i.pos}</span><span>${i.status}${i.injury ? ' · ' + i.injury : ''}</span></li>`).join('')}</ul>` : ''}
     ${p.opp_injuries.length ? `<div class="sec">${p.opp} out / doubtful</div><ul class="list">${p.opp_injuries.map(i => `<li><span><b>${i.name}</b> ${i.pos}</span><span>${i.status}${i.injury ? ' · ' + i.injury : ''}</span></li>`).join('')}</ul>` : ''}
   `;

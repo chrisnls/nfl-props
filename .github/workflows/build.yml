@@ -1,12 +1,18 @@
 name: Build props
 on:
   workflow_dispatch:
+    inputs:
+      lines:
+        description: "Prop lines: cached = reuse this week's last pull (FREE), live = new pull (~6 credits per game, ~85 for a full slate), sample = fake lines"
+        type: choice
+        options: [cached, live, sample]
+        default: cached
   schedule:
     # Times are UTC. Central = UTC-6 (CST). Lines refreshed:
     - cron: "0 15 * * 4"   # Thu 9am CT  (TNF + early week lines)
     - cron: "0 14 * * 6"   # Sat 8am CT  (injury reports in)
     - cron: "0 13 * * 0"   # Sun 7am CT  (final lines + Sunday stats from Thu game)
-    - cron: "0 15 * * 2"   # Tue 9am CT  (stats-only refresh after MNF; no odds credits used)
+    - cron: "0 15 * * 2"   # Tue 9am CT  (stats-only refresh after MNF; reuses cached lines, no credits)
 permissions:
   contents: write
   pages: write
@@ -25,17 +31,23 @@ jobs:
       - name: Build data
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          LINES_INPUT: ${{ inputs.lines }}
         run: |
-          # Tuesday run: stats only, keep last week's lines out of the credit budget
-          if [ "$(date -u +%u)" = "2" ] && [ "${{ github.event_name }}" = "schedule" ]; then
-            python pipeline/build.py --sample
+          # Manual runs default to cached lines (free). Scheduled: Tue = cached, Thu/Sat/Sun = live.
+          # A live pull is skipped automatically (falls back to cached) if credits can't cover the slate.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MODE="${LINES_INPUT:-cached}"
+          elif [ "$(date -u +%u)" = "2" ]; then
+            MODE=cached
           else
-            python pipeline/build.py
+            MODE=live
           fi
+          echo "lines mode: $MODE"
+          python pipeline/build.py --lines "$MODE"
       - name: Commit data
         run: |
           git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"
-          git add site/data/props.json
+          git add site/data/props.json pipeline/lines_cache.json
           git diff --cached --quiet || git commit -m "data: week $(python -c "import json;print(json.load(open('site/data/props.json'))['week'])") $(date -u +%F)"
           git pull --rebase origin main || true
           git push || echo "push skipped"

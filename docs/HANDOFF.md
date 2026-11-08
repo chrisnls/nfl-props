@@ -28,9 +28,9 @@ For each player × market that has a line this week:
 | Thu 9am | lines + stats (TNF and early-week lines) |
 | Sat 8am | lines + stats (after injury reports) |
 | Sun 7am | lines + stats (final Sunday lines) |
-| Tue 9am | stats only, sample lines, **no credits** |
+| Tue 9am | stats only, cached lines, **no credits** |
 
-A full-slate pull of 6 markets costs **~85 credits**. Three pulls a week is ~260/month, well inside the **500/month** free tier. The site header shows credits remaining after each build. If the Odds API fails, the build falls back to sample lines so the site stays up, and the site shows a banner. You can also start a run by hand: Actions → Build props → Run workflow.
+A full-slate pull of 6 markets costs **~85 credits**. Three pulls a week is ~260/month, well inside the **500/month** free tier. The site header shows credits remaining after each build. **Free updates:** Actions → Build props → Run workflow → lines = **cached** (the default) re-runs everything against this week's last pull, using **0 credits**. Each live pull is saved to `pipeline/lines_cache.json` for this purpose. **Credit guard:** a live pull first checks credits remaining (the events list call is free); if they can't cover the slate, it uses cached lines instead of half-pulling. If the Odds API fails or there's no cache for the week, the build falls back to sample lines so the site stays up, and the site shows a banner.
 
 `ODDS_API_KEY` is stored as a repo secret and never appears in code or output.
 
@@ -46,10 +46,18 @@ A full-slate pull of 6 markets costs **~85 credits**. Three pulls a week is ~260
 - README "How the numbers work" updated.
 - Follow-up: replaced the `(−1.6 · −1.1σ)` notation on the board with plain language: "1.6 under the line" + **Strong / Solid / Lean / Thin** label (tooltip has the details). Detail drawer says "Strong · 1.1× normal swing".
 
+### Follow-up: role shifts, "why" analysis, free updates
+
+- **Role-change flag, snap-share trigger.** Also flags a prop when snap share moved ≥20 points (and ≥40%) over the last 2 games *and* that contradicts the model's lean, i.e. |edge ÷ σ| ≥ 0.3. Prompted by J.K. Dobbins, week 9: his snaps fell from 44% to 22% as rookie Jonah Coleman took over, the book's line dropped to 24.5, and the model still said 41.5 (over). The line-based rule missed him because rushing yards are noisy. Week 9 result: 31 flags (7 line, 24 snap share).
+- **Pipeline:** each game in a player's log now carries volume (car/tgt/att), team share, snap %, the final score and the teammate with the most volume. A new top-level `defense` map in `props.json` holds opponent profiles: rank, average, median, league comparisons, per-carry/target, last 3, and game-by-game with the top player and score.
+- **Detail panel:** "Why the last 2 games went over/under" and "<team> defense vs <position>" sections; the game log table gained volume, snap % and score columns.
+- **Credit-free runs:** `--lines cached` plus the workflow input (default cached), the credit guard, and the header now says when the lines were pulled and whether they were reused.
+
 ## Open ideas
 
 - **Results / CLV tracker.** Store each build's lines and model probabilities, grade them against box scores, and track closing-line value week over week. This is the only way to know whether the model has an edge.
 - **Usage-trend weighting.** Weight by target share, carry share and snap % trends, not just raw output.
+- **Median-based matchup factor.** The defense factor uses the per-game average, which a couple of blowouts can skew (CAR vs RBs: 124% of league on the average, 98% on the median). Consider a median-based or trimmed-mean factor.
 - **Pace and game-total adjustments.** Scale volume by the implied team total and the spread (already in the schedule data).
 - **Teammate-out redistribution.** When a starter is Out, redistribute their volume to teammates. This is the proper fix for what the role-change flag currently only detects.
 - **NBA / MLB / NHL modules.** The same pipeline shape with sport-specific markets, stat sources and projection rules.

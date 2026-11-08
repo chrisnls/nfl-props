@@ -59,6 +59,19 @@ MARKETS = {
 # average, or ROLE_Z_OUTSIDE σ and beyond every game in the log.
 ROLE_Z = 2.0
 ROLE_Z_OUTSIDE = 1.5
+# ...or when the player's snap share in the last 2 games moved this much vs before
+# (both absolute points and relative change must clear the bar) AND the move contradicts
+# the model's lean (snaps down but model says over, or up and model says under) -- i.e.
+# the book has priced the new role and the season-long game log hasn't caught up.
+ROLE_SNAP_PTS = 20
+ROLE_SNAP_REL = 0.40
+ROLE_SNAP_MIN_EDGE = 0.3   # |edge ÷ σ|; below this the lean is too weak to matter
+
+# Volume stat behind each market, for the "why" breakdown (volume x efficiency).
+VOLUME = {"passing_yards": "attempts", "passing_tds": "attempts", "rushing_yards": "carries",
+          "carries": "carries", "receiving_yards": "targets", "receptions": "targets"}
+VOLUME_LABEL = {"attempts": "att", "carries": "car", "targets": "tgt"}
+LINES_CACHE = ROOT / "pipeline" / "lines_cache.json"   # committed by the workflow; not published
 BOOKS = ["draftkings", "fanduel", "betmgm", "caesars", "espnbet", "fanatics"]
 
 TEAM_NAMES = {
@@ -159,7 +172,91 @@ def defense_factors(stats: pd.DataFrame) -> dict[tuple[str, str, str], float]:
     return factors
 
 
+def defense_profiler(hist: pd.DataFrame, scores: dict):
+    """Return profile(team, grp, col): how a defense has done vs one position group on
+    one stat, game by game, with league context. Memoized; only built for this week's matchups."""
+    league_cache: dict = {}
+    memo: dict = {}
+
+    def per_game(grp, col):
+        if (grp, col) not in league_cache:
+            vcol = VOLUME[col]
+            sub = hist[hist.position == grp]
+            pg = sub.groupby(["opponent_team", "game_id"]).agg(
+                val=(col, "sum"), vol=(vcol, "sum"), week=("week", "first"), off=("team", "first")).reset_index()
+            league_cache[(grp, col)] = pg
+        return league_cache[(grp, col)]
+
+    def profile(team, grp, col):
+        key = f"{team}|{grp}|{col}"
+        if key in memo:
+            return key
+        pg = per_game(grp, col)
+        by_team = pg.groupby("opponent_team").val.mean().sort_values(ascending=False)
+        if team not in by_team.index:
+            return None
+        mine = pg[pg.opponent_team == team].sort_values("week")
+        sub = hist[(hist.position == grp) & (hist.opponent_team == team)]
+        games_out = []
+        for r in mine.itertuples():
+            g = sub[sub.game_id == r.game_id]
+            top = g.loc[g[col].idxmax()] if len(g) else None
+            sc = scores.get(r.game_id)
+            d_pts = o_pts = None
+            if sc:
+                home, away, hs, as_ = sc
+                d_pts, o_pts = (hs, as_) if home == team else (as_, hs)
+            games_out.append({
+                "wk": int(r.week), "vs": r.off, "val": r1(r.val), "vol": int(r.vol) if not pd.isna(r.vol) else None,
+                "top": top.player_display_name if top is not None else None,
+                "top_val": r1(top[col]) if top is not None else None,
+                "top_vol": int(top[VOLUME[col]]) if top is not None and not pd.isna(top[VOLUME[col]]) else None,
+                "def_pts": d_pts, "off_pts": o_pts,
+            })
+        vals = [g["val"] for g in games_out]
+        vol_sum = mine.vol.sum()
+        lg_vol = pg.vol.sum()
+        memo[key] = {
+            "team": team, "grp": grp, "col": col, "vol_label": VOLUME_LABEL[VOLUME[col]],
+            "rank": int(list(by_team.index).index(team)) + 1, "n_teams": int(len(by_team)),
+            "avg": r1(statistics.fmean(vals)), "median": r1(statistics.median(vals)),
+            "l3": r1(statistics.fmean(vals[-3:])),
+            "lg_avg": r1(by_team.mean()), "lg_median": r1(pg.val.median()),
+            "per_vol": round(float(mine.val.sum() / vol_sum), 2) if vol_sum else None,
+            "lg_per_vol": round(float(pg.val.sum() / lg_vol), 2) if lg_vol else None,
+            "vol_avg": r1(mine.vol.mean()), "lg_vol_avg": r1(pg.groupby("opponent_team").vol.mean().mean()),
+            "games": games_out,
+        }
+        return key
+
+    return profile, memo
+
+
 # ----------------------------------------------------------------------------- odds
+class CreditsLow(Exception):
+    pass
+
+
+def save_lines_cache(lines: dict, week: int, usage: dict) -> None:
+    LINES_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    LINES_CACHE.write_text(json.dumps({
+        "season": SEASON, "week": week, "usage": usage,
+        "fetched": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
+        "lines": [{"player": k[0], "market": k[1], "books": v} for k, v in lines.items()],
+    }, separators=(",", ":")))
+
+
+def load_lines_cache(week: int) -> tuple[dict, dict, str] | None:
+    """Last live pull's lines, if they're for this week. No API call, no credits."""
+    if not LINES_CACHE.exists():
+        return None
+    c = json.loads(LINES_CACHE.read_text())
+    if c.get("season") != SEASON or c.get("week") != week:
+        log(f"cached lines are for week {c.get('week')}, not {week}")
+        return None
+    return {(x["player"], x["market"]): x["books"] for x in c["lines"]}, c.get("usage", {}), c["fetched"]
+
+
 def fetch_odds(week_game_list: list[dict], api_key: str) -> tuple[dict, dict]:
     """Return ({(norm_player, market): [line dicts]}, usage_info)."""
     session = requests.Session()
@@ -168,6 +265,13 @@ def fetch_odds(week_game_list: list[dict], api_key: str) -> tuple[dict, dict]:
     usage = {"remaining": events.headers.get("x-requests-remaining"),
              "used": events.headers.get("x-requests-used")}
     want = {(g["away"], g["home"]) for g in week_game_list if not g["played"]}
+    # /events is free; each event's odds call costs len(MARKETS) credits (1 region).
+    # Don't start a pull we can't finish -- a half-pulled slate is worse than cached lines.
+    needed = len(MARKETS) * sum(1 for ev in events.json()
+                                if (TEAM_NAMES.get(ev["away_team"]), TEAM_NAMES.get(ev["home_team"])) in want)
+    remaining = int(usage["remaining"]) if str(usage.get("remaining") or "").isdigit() else None
+    if remaining is not None and remaining < needed:
+        raise CreditsLow(f"{remaining} credits left, full pull needs ~{needed}")
     lines: dict[tuple[str, str], list] = {}
     matched_events = 0
     for ev in events.json():
@@ -261,17 +365,26 @@ def project(values: list[float], factor: float, discrete: bool) -> tuple[float, 
     return proj, max(sd, floor) * 1.15   # inflate: small samples, model error
 
 
-def role_change(values: list[float], line: float, discrete: bool) -> dict | None:
-    """Flag a line that sits far outside the player's own game-to-game history."""
+def role_change(values: list[float], line: float, discrete: bool,
+                snaps: list[float | None] | None = None, edge_sd: float = 0.0) -> dict | None:
+    """Flag a prop whose game log probably no longer describes the player's role:
+    the line sits far outside their history, or their snap share just shifted sharply."""
     season = statistics.fmean(values)
     raw_sd = statistics.pstdev(values)
     floor = max(1.0, 0.25 * season) if discrete else max(6.0, 0.25 * season)
     z = (line - season) / max(raw_sd, floor)
     outside = line > max(values) or line < min(values)
-    if abs(z) < ROLE_Z and not (outside and abs(z) >= ROLE_Z_OUTSIDE):
-        return None
-    return {"dir": "up" if z > 0 else "down", "z": round(z, 1),
-            "lo": min(values), "hi": max(values)}
+    base = {"z": round(z, 1), "lo": min(values), "hi": max(values)}
+    if abs(z) >= ROLE_Z or (outside and abs(z) >= ROLE_Z_OUTSIDE):
+        return {"why": "line", "dir": "up" if z > 0 else "down", **base}
+    snaps = [x for x in (snaps or []) if x is not None]
+    if len(snaps) >= 4:
+        recent, prior = statistics.fmean(snaps[-2:]), statistics.fmean(snaps[:-2])
+        contradicts = (recent < prior) == (edge_sd > 0) and abs(edge_sd) >= ROLE_SNAP_MIN_EDGE
+        if prior and contradicts and abs(recent - prior) >= ROLE_SNAP_PTS and abs(recent - prior) / prior >= ROLE_SNAP_REL:
+            return {"why": "usage", "dir": "up" if recent > prior else "down",
+                    "snap_prior": round(prior), "snap_recent": round(recent), **base}
+    return None
 
 
 def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
@@ -302,10 +415,42 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
                 {"name": r.full_name, "pos": r.position, "status": r.report_status, "injury": clean(r.report_primary_injury)})
 
     snap_pct = {}
+    snap_by_week: dict[tuple[str, int], float] = {}
     if len(snaps):
         s = snaps[snaps.week < week].sort_values("week")
         for name, grp in s.groupby("player"):
             snap_pct[norm_name(name)] = [r1(v * 100) for v in grp.offense_pct.tail(5)]
+        for r in s.itertuples():
+            if not pd.isna(r.offense_pct):
+                snap_by_week[(norm_name(r.player), int(r.week))] = round(float(r.offense_pct) * 100)
+
+    # game-by-game context for the "why" breakdown
+    scores = {g.game_id: (g.home_team, g.away_team, None if pd.isna(g.home_score) else int(g.home_score),
+                          None if pd.isna(g.away_score) else int(g.away_score)) for g in games.itertuples()}
+    team_vol = {vc: hist.groupby(["team", "week"])[vc].sum() for vc in set(VOLUME.values())}
+    profile, defense = defense_profiler(hist, scores)
+
+    def game_context(r, pname, pid, pos, col):
+        vc = VOLUME[col]
+        vol = getattr(r, vc)
+        vol = None if pd.isna(vol) else int(vol)
+        tot = team_vol[vc].get((r.team, r.week))
+        home, away, hs, as_ = scores.get(r.game_id, (None, None, None, None))
+        pts, opp_pts = (hs, as_) if home == r.team else (as_, hs)
+        mates = hist[(hist.team == r.team) & (hist.week == r.week) & (hist.position == pos) & (hist.player_id != pid)]
+        mate = None
+        if len(mates):
+            m = mates.loc[mates[vc].fillna(0).idxmax()]
+            if not pd.isna(m[vc]) and m[vc] > 0:
+                mate = {"name": m.player_display_name, "vol": int(m[vc]),
+                        "snap": snap_by_week.get((norm_name(m.player_display_name), int(r.week)))}
+        return {
+            "wk": int(r.week), "opp": r.opponent_team, "home": r.team == r.game_id.split("_")[3],
+            "val": float(getattr(r, col)) if not pd.isna(getattr(r, col)) else 0.0,
+            "vol": vol, "share": round(100 * vol / tot) if vol is not None and tot else None,
+            "snap": snap_by_week.get((pname, int(r.week))),
+            "pts": pts, "opp_pts": opp_pts, "mate": mate,
+        }
 
     props: list[dict] = []
     unmatched = set()
@@ -341,7 +486,10 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
         ev_over = (p_over * (cons["over"] / 100 if cons["over"] > 0 else 100 / -cons["over"]) - (1 - p_over)) if cons["over"] is not None else None
         ev_under = ((1 - p_over) * (cons["under"] / 100 if cons["under"] > 0 else 100 / -cons["under"]) - p_over) if cons["under"] is not None else None
 
-        role = role_change(values, line, discrete)
+        glog_ctx = [game_context(r, pname, pid, pos, col) for r in glog.itertuples()]
+        role = role_change(values, line, discrete, [g["snap"] for g in glog_ctx], (proj - line) / sd)
+        grp = pos if pos in ("QB", "RB", "WR", "TE") else "WR"
+        def_key = profile(opp, grp, col)
         hits = [v > line for v in values]
         def rate(n):
             sub = hits[-n:]
@@ -377,11 +525,9 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
             "median": r1(statistics.median(values)),
             "hit_l5": rate(5), "hit_l10": rate(10), "hit_season": rate(len(hits)),
             "def_factor": round(factor, 2),
-            "games": [
-                {"wk": int(r.week), "opp": r.opponent_team, "home": r.team == r.game_id.split("_")[3],
-                 "val": float(getattr(r, col)) if not pd.isna(getattr(r, col)) else 0.0}
-                for r in glog.itertuples()
-            ],
+            "games": glog_ctx,
+            "vol_label": VOLUME_LABEL[VOLUME[col]],
+            "defense": def_key,
             "snaps": snap_pct.get(pname),
             "injury": inj_by_player.get(pname),
             "team_injuries": team_injuries.get(team, []),
@@ -391,14 +537,17 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
     if unmatched:
         log(f"unmatched players from odds feed: {sorted(unmatched)[:20]}{' ...' if len(unmatched) > 20 else ''}")
     props.sort(key=lambda p: (p["role_change"] is not None, -abs(p["edge_sd"])))
-    return props
+    return props, defense
 
 
 # ----------------------------------------------------------------------------- main
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--week", type=int)
-    ap.add_argument("--sample", action="store_true", help="skip Odds API, synthesize lines")
+    ap.add_argument("--lines", choices=["live", "cached", "sample"], default="live",
+                    help="live: pull from the Odds API (~6 credits/game); cached: reuse the last live "
+                         "pull for this week (free); sample: synthesize lines at recent averages (free)")
+    ap.add_argument("--sample", action="store_true", help="same as --lines sample")
     args = ap.parse_args()
 
     frames = load_frames()
@@ -410,26 +559,44 @@ def main() -> None:
     api_key = os.environ.get("ODDS_API_KEY", "").strip()
     teams_this_week = {g["home"] for g in wg} | {g["away"] for g in wg}
     players_in_week = set(stats[stats.team.isin(teams_this_week)].player_id)
-    if args.sample or not api_key:
-        log("no ODDS_API_KEY -> sample lines")
-        lines, usage, mode = sample_odds(stats, week, players_in_week), {}, "sample"
-    else:
+    want = "sample" if args.sample else args.lines
+    lines, usage, usage_err, lines_fetched = None, {}, {}, None
+    if want == "live" and not api_key:
+        log("no ODDS_API_KEY -> trying cached lines")
+        want = "cached"
+    if want == "live":
         try:
-            lines, usage, mode = *fetch_odds(wg, api_key), "live"
-        except Exception as e:  # bad key, quota, outage -> keep the site alive
-            log(f"ODDS API FAILED ({e}); falling back to sample lines")
-            lines, usage, mode = sample_odds(stats, week, players_in_week), {"error": str(e)[:200]}, "sample"
+            lines, usage = fetch_odds(wg, api_key)
+            lines_fetched = dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
+            save_lines_cache(lines, week, usage)
+            mode = "live"
+        except Exception as e:  # bad key, out of credits, outage -> keep the site alive
+            log(f"ODDS API: {e}; falling back to cached lines")
+            usage_err = {"error": str(e)[:200]}
+            want = "cached"
+    if want == "cached":
+        cached = load_lines_cache(week)
+        if cached:
+            lines, usage, lines_fetched = cached
+            usage = {**usage, **usage_err}
+            mode = "cached"
+            log(f"using cached lines from {lines_fetched} (no credits used)")
+    if lines is None:
+        log("using sample lines")
+        lines, usage, mode = sample_odds(stats, week, players_in_week), usage_err, "sample"
 
-    props = build_props(stats, games, frames["injuries"], frames["snaps"], week, lines)
+    props, defense = build_props(stats, games, frames["injuries"], frames["snaps"], week, lines)
     OUT.mkdir(parents=True, exist_ok=True)
     payload = {
         "season": SEASON, "week": week, "mode": mode,
         "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
+        "lines_fetched": lines_fetched,
         "stats_through_week": int(stats.week.max()),
         "usage": usage,
         "markets": {k: v[1] for k, v in MARKETS.items()},
         "games": wg,
         "props": props,
+        "defense": defense,
     }
     (OUT / "props.json").write_text(json.dumps(payload, separators=(",", ":")))
     log(f"wrote {len(props)} props -> {OUT / 'props.json'}")
