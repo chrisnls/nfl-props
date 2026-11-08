@@ -52,6 +52,8 @@ header{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 85%,
 .tag.role{background:rgba(125,122,114,.2);color:var(--ink2)}
 .row.demoted{opacity:.55}
 .sig{color:var(--ink3);font-size:12px}
+.str{display:block;font-family:var(--font);font-size:12px;font-weight:600;margin-top:1px}
+.str.thin{color:var(--ink3);font-weight:400}
 .note{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);color:var(--ink2);font-size:13px}
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .k{color:var(--ink3);font-size:11px;text-transform:uppercase;letter-spacing:.05em;display:block}
@@ -138,7 +140,7 @@ table.log td:first-child,table.log th:first-child{text-align:left}
     </div>
   </header>
 
-  <div class="hdr"><span>Player · Market</span><span>Line</span><span>Proj / Edge · σ</span><span>Model vs Book</span><span>Hit L5 · L10 · Szn</span><span></span></div>
+  <div class="hdr"><span>Player · Market</span><span>Line</span><span title="Model's projection, how far it is from the line, and how strong that gap is given how much this player normally varies game to game">Model says</span><span>Model vs Book</span><span>Hit L5 · L10 · Szn</span><span></span></div>
   <div class="board" id="board"></div>
 </div>
 
@@ -193,7 +195,11 @@ async function load(){
 }
 
 const esd = p => p.edge_sd ?? p.edge / p.sd;
-const sgn = (x, d) => (x > 0 ? '+' : '') + x.toFixed(d);
+// Plain-English strength of the edge: the gap vs the line, measured against the player's
+// normal game-to-game swing (σ). ~1 swing = strong; under a third of a swing = noise.
+const strength = p => { const a = Math.abs(esd(p)); return a >= 1 ? 'Strong' : a >= 0.6 ? 'Solid' : a >= 0.3 ? 'Lean' : 'Thin'; };
+const gapText = p => p.edge === 0 ? 'right on the line' : `${Math.abs(p.edge)} ${p.edge > 0 ? 'over' : 'under'} the line`;
+const strTip = p => `Projection is ${gapText(p)}. That gap is ${Math.abs(esd(p)).toFixed(1)}× this player's normal game-to-game swing (σ ${p.sd}). Strong ≥ 1×, Solid ≥ 0.6×, Lean ≥ 0.3×, Thin below that.`;
 const roleTag = p => p.role_change ? `<span class="tag role" title="Line is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average — likely a role change the game log can't see">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>` : '';
 
 function bestSide(p){
@@ -226,7 +232,8 @@ function render(){
         <div style="min-width:0"><div class="n">${p.player} <span style="color:var(--ink3);font-weight:400">· ${p.label}</span></div>
         <div class="s">${p.pos} ${p.team} ${p.home ? 'vs' : '@'} ${p.opp} ${roleTag(p)} ${inj}</div></div></div>
       <div class="num"><span class="k">Line</span>${p.line}</div>
-      <div class="num"><span class="k">Proj</span>${p.proj} <span style="white-space:nowrap"><span class="${p.edge >= 0 ? 'pos' : 'neg'}">(${p.edge > 0 ? '+' : ''}${p.edge}</span><span class="sig"> · ${sgn(esd(p), 1)}σ</span><span class="${p.edge >= 0 ? 'pos' : 'neg'}">)</span></span></div>
+      <div class="num" title="${strTip(p)}"><span class="k">Proj</span>${p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
+        <span class="str ${strength(p) === 'Thin' ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}">${strength(p)} ${strength(p) === 'Thin' ? 'edge' : p.edge >= 0 ? 'over' : 'under'}</span></div>
       <div><span class="k">${bs.side} ${fmtOdds(bs.price)} ${bs.book ? BOOK[bs.book] || bs.book : ''}</span>
         <span class="num side ${bs.ev > 0 ? 'pos' : ''}">${pct(bs.p)}</span> <span class="num" style="color:var(--ink3);font-size:12px">vs ${pct(bs.side === 'Over' ? p.fair_over : 1 - p.fair_over)}</span></div>
       <div class="hits">${[['L5', p.hit_l5], ['L10', p.hit_l10], ['Szn', p.hit_season]].map(([l, v]) => `<span><b><i style="width:${v ?? 0}%"></i></b>${v == null ? '—' : v + '%'}</span>`).join('')}</div>
@@ -261,7 +268,7 @@ function openDetail(p){
     <div class="grid">
       <div class="tile"><span class="k">Line</span><div class="v">${p.line}</div><div class="meta">${p.books.length > 1 ? p.books.length + ' books' : (BOOK[p.books[0]] || '')}${p.line_spread ? ' · ±' + p.line_spread : ''}</div></div>
       <div class="tile"><span class="k">Projection</span><div class="v">${p.proj}</div><div class="meta">σ ${p.sd}</div></div>
-      <div class="tile"><span class="k">Edge</span><div class="v ${p.edge >= 0 ? 'pos' : 'neg'}">${p.edge > 0 ? '+' : ''}${p.edge}</div><div class="meta">${sgn(esd(p), 2)}σ</div></div>
+      <div class="tile"><span class="k">Edge</span><div class="v ${p.edge >= 0 ? 'pos' : 'neg'}">${p.edge > 0 ? '+' : ''}${p.edge}</div><div class="meta" title="${strTip(p)}">${strength(p)} · ${Math.abs(esd(p)).toFixed(1)}× normal swing</div></div>
       <div class="tile"><span class="k">P(over)</span><div class="v">${pct(p.p_over)}</div><div class="meta">book ${pct(p.fair_over)}</div></div>
       <div class="tile"><span class="k">Over</span><div class="v">${fmtOdds(p.over)}</div><div class="meta">${BOOK[p.over_book] || ''} · EV ${p.ev_over == null ? '—' : (p.ev_over * 100).toFixed(1) + '%'}</div></div>
       <div class="tile"><span class="k">Under</span><div class="v">${fmtOdds(p.under)}</div><div class="meta">${BOOK[p.under_book] || ''} · EV ${p.ev_under == null ? '—' : (p.ev_under * 100).toFixed(1) + '%'}</div></div>

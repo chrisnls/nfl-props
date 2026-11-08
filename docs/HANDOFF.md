@@ -14,7 +14,7 @@ For each player × market that has a line this week:
 3. **P(over).** A normal curve from projection and σ, with a half-point continuity correction on count markets (TDs, attempts, receptions).
 4. **Consensus line.** The median line across books (DK, FD, MGM, CZR, ESPN, Fanatics).
 5. **EV.** Taken at the **best available price** at the consensus line. The board also shows the book's no-vig implied probability next to the model's for comparison.
-6. **Edge.** `projection − line`, shown raw and in σ units (`edge ÷ σ`). The board sorts by |σ-edge| by default.
+6. **Edge.** `projection − line`. The board shows it in plain words ("1.6 under the line") plus a strength label from `edge ÷ σ`, the gap measured against the player's normal game-to-game swing: Strong ≥ 1×, Solid ≥ 0.6×, Lean ≥ 0.3×, Thin below. Hover shows the exact ratio. The board sorts by that ratio by default.
 7. **Role-change flag.** If the line is ≥2 historical σ from the season average, or ≥1.5σ and outside every game in the log, the prop gets a *Role ↑/↓* tag and drops to a separate section at the bottom of the board.
 8. **Hit rates.** The share of L5 / L10 / season games that cleared the *current* line.
 9. **Parlay slip.** Multiplies leg probabilities as if they were independent, and warns when legs share a game.
@@ -44,6 +44,7 @@ A full-slate pull of 6 markets costs **~85 credits**. Three pulls a week is ~260
   - get an explanation note in the detail drawer.
 - Tested against the week-9 live data: 5 of 472 props flagged. Devin Singletary rush att 15.5 vs 4.5 avg, and his rush yds; Alvin Kamara rush att and rush yds; Breece Hall rush att 10.5 vs 17 avg. Before this change Singletary's rush-attempts prop was #1 on the board.
 - README "How the numbers work" updated.
+- Follow-up: replaced the `(−1.6 · −1.1σ)` notation on the board with plain language: "1.6 under the line" + **Strong / Solid / Lean / Thin** label (tooltip has the details). Detail drawer says "Strong · 1.1× normal swing".
 
 ## Open ideas
 
