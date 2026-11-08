@@ -162,6 +162,18 @@ const pct = p => p == null ? '—' : Math.round(p * 100) + '%';
 const dec = o => o > 0 ? 1 + o / 100 : 1 + 100 / -o;
 const BOOK = {draftkings:'DK',fanduel:'FD',betmgm:'MGM',caesars:'CZR',espnbet:'ESPN',fanatics:'FAN',sample:'sample'};
 
+// nflverse kickoff times are US Eastern wall-clock ("2026-11-08T13:00"); convert to a real
+// instant so it displays in the viewer's own time zone.
+function kickoffDate(s){
+  const guess = new Date(s + ':00Z');
+  const asNY = new Date(guess.toLocaleString('en-US', {timeZone:'America/New_York'}));
+  const asUTC = new Date(guess.toLocaleString('en-US', {timeZone:'UTC'}));
+  return new Date(guess.getTime() + (asUTC - asNY));
+}
+const kickoffText = s => { const t = kickoffDate(s);
+  return t.toLocaleDateString([], {weekday:'short', month:'numeric', day:'numeric'}) + ' · ' + t.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); };
+let KICK = {};
+
 let DATA, props = [], state = {markets:new Set(), game:'', sort:'edge', min:5, q:'', sel:null};
 let slip = JSON.parse(localStorage.getItem('slip') || '[]');
 
@@ -180,11 +192,11 @@ async function load(){
     b.onclick = () => { b.classList.toggle('on'); b.classList.contains('on') ? state.markets.add(k) : state.markets.delete(k); render(); };
     mk.appendChild(b);
   }
+  KICK = Object.fromEntries(DATA.games.map(g => [g.id, g.kickoff]));
   const gs = $('#gameSel');
   for (const g of DATA.games.filter(g => !g.played)) {
     const o = document.createElement('option'); o.value = g.id;
-    const t = new Date(g.kickoff);
-    o.textContent = `${g.away} @ ${g.home} · ${t.toLocaleString([], {weekday:'short',hour:'numeric',minute:'2-digit'})}`;
+    o.textContent = `${g.away} @ ${g.home} · ${kickoffText(g.kickoff)}`;
     gs.appendChild(o);
   }
   gs.onchange = e => { state.game = e.target.value; render(); };
@@ -230,7 +242,7 @@ function render(){
     el.innerHTML = `
       <div class="who">${p.headshot ? `<img src="${p.headshot}" alt="" loading="lazy">` : '<span style="width:40px"></span>'}
         <div style="min-width:0"><div class="n">${p.player} <span style="color:var(--ink3);font-weight:400">· ${p.label}</span></div>
-        <div class="s">${p.pos} ${p.team} ${p.home ? 'vs' : '@'} ${p.opp} ${roleTag(p)} ${inj}</div></div></div>
+        <div class="s">${p.pos} ${p.team} ${p.home ? 'vs' : '@'} ${p.opp}${KICK[p.game] ? ` · ${kickoffText(KICK[p.game])}` : ''} ${roleTag(p)} ${inj}</div></div></div>
       <div class="num"><span class="k">Line</span>${p.line}</div>
       <div class="num" title="${strTip(p)}"><span class="k">Proj</span>${p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
         <span class="str ${strength(p) === 'Thin' ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}">${strength(p)} ${strength(p) === 'Thin' ? 'edge' : p.edge >= 0 ? 'over' : 'under'}</span></div>
@@ -263,7 +275,7 @@ function openDetail(p){
   d.innerHTML = `
     <button class="close" id="close" aria-label="close">×</button>
     <div class="who">${p.headshot ? `<img src="${p.headshot}" alt="" style="width:56px;height:56px">` : ''}
-      <div><h2>${p.player}</h2><div class="sub">${p.pos} · ${p.team} ${p.home ? 'vs' : '@'} ${p.opp} · ${p.label} ${roleTag(p)} ${inj}</div></div></div>
+      <div><h2>${p.player}</h2><div class="sub">${p.pos} · ${p.team} ${p.home ? 'vs' : '@'} ${p.opp}${KICK[p.game] ? ` · ${kickoffText(KICK[p.game])}` : ''} · ${p.label} ${roleTag(p)} ${inj}</div></div></div>
     ${p.role_change ? `<div class="note"><b>Possible role change.</b> The line (${p.line}) is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average of ${p.avg_season} (range ${p.role_change.lo}–${p.role_change.hi}). Books usually move this far only on news — a starter out, a depth-chart change — that the game log doesn't reflect yet, so the edge here is likely the model being stale. Demoted to the bottom of the board.</div>` : ''}
     <div class="grid">
       <div class="tile"><span class="k">Line</span><div class="v">${p.line}</div><div class="meta">${p.books.length > 1 ? p.books.length + ' books' : (BOOK[p.books[0]] || '')}${p.line_spread ? ' · ±' + p.line_spread : ''}</div></div>
