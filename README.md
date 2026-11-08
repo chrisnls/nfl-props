@@ -21,10 +21,10 @@ Each build pulls stats + lines, computes projections, hit rates, probabilities a
    gh repo create nfl-props --private --source . --push     # or create on github.com and push
    ```
 3. **Add the key as a secret** — repo → Settings → Secrets and variables → Actions → New repository secret → name `ODDS_API_KEY`.
-4. **Turn on Pages** — repo → Settings → Pages → Source: **GitHub Actions**.
+4. **Make the repo public** — GitHub Pages is only free on public repos. (The workflow enables Pages on its own.)
 5. **Run it once** — Actions tab → "Build props" → Run workflow. In about a minute the site is live at `https://<your-user>.github.io/nfl-props/`.
 
-The repo can stay private; the Pages site is still reachable at that URL by anyone who has it (GitHub only restricts Pages visibility on Enterprise). Keep the URL to yourself — it's unguessable enough for personal use.
+Nothing secret lives in the repo — the Odds API key is a GitHub secret and never appears in code or output.
 
 ## Schedule and credit budget
 

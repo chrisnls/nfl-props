@@ -391,7 +391,11 @@ def main() -> None:
         log("no ODDS_API_KEY -> sample lines")
         lines, usage, mode = sample_odds(stats, week, players_in_week), {}, "sample"
     else:
-        lines, usage, mode = *fetch_odds(wg, api_key), "live"
+        try:
+            lines, usage, mode = *fetch_odds(wg, api_key), "live"
+        except Exception as e:  # bad key, quota, outage -> keep the site alive
+            log(f"ODDS API FAILED ({e}); falling back to sample lines")
+            lines, usage, mode = sample_odds(stats, week, players_in_week), {"error": str(e)[:200]}, "sample"
 
     props = build_props(stats, games, frames["injuries"], frames["snaps"], week, lines)
     OUT.mkdir(parents=True, exist_ok=True)
