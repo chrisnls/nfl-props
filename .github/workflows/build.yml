@@ -28,6 +28,12 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r pipeline/requirements.txt
+      - name: Grade results and parlays
+        # Free (no odds calls). Scores every finished week's snapshot and the saved-parlay sheet.
+        # Runs on every build so a week is graded as soon as nflverse has its stats.
+        env:
+          PARLAY_SHEET_CSV_URL: ${{ secrets.PARLAY_SHEET_CSV_URL || vars.PARLAY_SHEET_CSV_URL }}
+        run: python pipeline/build.py --grade
       - name: Build data
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
@@ -47,7 +53,7 @@ jobs:
       - name: Commit data
         run: |
           git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"
-          git add site/data/props.json pipeline/lines_cache.json
+          git add site/data/props.json site/data/results.json site/data/parlays.json site/data/history pipeline/lines_cache.json
           git diff --cached --quiet || git commit -m "data: week $(python -c "import json;print(json.load(open('site/data/props.json'))['week'])") $(date -u +%F)"
           git pull --rebase origin main || true
           git push || echo "push skipped"

@@ -111,6 +111,33 @@ table.log td:first-child,table.log th:first-child{text-align:left}
 .sum b{color:var(--ink);font-family:var(--mono)}
 .corr{color:var(--warn);font-size:12px;margin-top:6px}
 
+/* tabs + results/parlays views */
+.tabs{display:flex;gap:4px;margin-top:12px;border-bottom:1px solid var(--line)}
+.tab{padding:8px 14px;color:var(--ink3);font-weight:600;font-size:14px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--ink2)}
+.tab.on{color:var(--gold2);border-bottom-color:var(--gold)}
+[hidden]{display:none !important}
+.view{margin-top:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin:10px 0}
+.panel h3{margin:0 0 6px;font-size:16px}
+.muted{color:var(--ink3)} .small{font-size:12px}
+.nc{text-transform:none}
+code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
+.view table.log td:first-child{color:var(--ink)}
+.calchart{width:100%;max-width:640px;height:auto;display:block}
+.badge{display:inline-block;min-width:22px;padding:1px 7px;border-radius:6px;font-size:12px;font-weight:700;text-align:center;margin-right:6px}
+.badge.won{background:rgba(111,207,151,.15);color:var(--good)}
+.badge.lost{background:rgba(232,113,111,.15);color:var(--bad)}
+.badge.push{background:var(--panel2);color:var(--ink2)}
+.badge.pending{background:var(--gold-dim);color:var(--gold2)}
+.pcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;margin:8px 0}
+.phead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;padding-bottom:6px;border-bottom:1px solid var(--line);font-size:13px}
+.pleg{display:flex;gap:6px;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.pleg:last-child{border-bottom:0}
+.pleg .pl{flex:1;min-width:0}
+.chip.gold{border-color:var(--gold);color:#1a1405;background:var(--gold);font-weight:600}
+.chip:disabled{opacity:.7;cursor:default}
+
 @media (max-width:760px){
   header{position:static}
   .hdr{display:none}
@@ -129,7 +156,8 @@ table.log td:first-child,table.log th:first-child{text-align:left}
       <div class="meta" id="meta">loading…</div>
     </div>
     <div id="banner"></div>
-    <div class="filters">
+    <nav class="tabs" role="tablist"><button class="tab on" data-tab="board">Board</button><button class="tab" data-tab="results">Results</button><button class="tab" data-tab="parlays">Parlays</button></nav>
+    <div class="filters" data-view="board">
       <div class="chips" id="marketChips"></div>
       <select id="gameSel"><option value="">All games</option></select>
       <select id="sortSel">
@@ -146,8 +174,10 @@ table.log td:first-child,table.log th:first-child{text-align:left}
     </div>
   </header>
 
-  <div class="hdr"><span>Player · Market</span><span>Line</span><span title="Model's projection, how far it is from the line, and how strong that gap is given how much this player normally varies game to game">Model says</span><span>Model vs Book</span><span>Hit L5 · L10 · Szn</span><span></span></div>
-  <div class="board" id="board"></div>
+  <div class="hdr" data-view="board"><span>Player · Market</span><span>Line</span><span title="Model's projection, how far it is from the line, and how strong that gap is given how much this player normally varies game to game">Model says</span><span>Model vs Book</span><span>Hit L5 · L10 · Szn</span><span></span></div>
+  <div class="board" id="board" data-view="board"></div>
+  <div class="view" id="resultsView" data-view="results" hidden></div>
+  <div class="view" id="parlaysView" data-view="parlays" hidden></div>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -162,6 +192,9 @@ table.log td:first-child,table.log th:first-child{text-align:left}
 </div>
 
 <script>
+// Google Apps Script web-app URL for saving parlays (see README → Saved parlays). Empty = saving off.
+const PARLAY_WEBHOOK_URL = '';
+
 const $ = s => document.querySelector(s);
 const fmtOdds = o => o == null ? '—' : (o > 0 ? '+' + o : '' + o);
 const pct = p => p == null ? '—' : Math.round(p * 100) + '%';
@@ -215,6 +248,7 @@ async function load(){
   $('#minGames').onchange = e => { state.min = +e.target.value; render(); };
   $('#q').oninput = e => { state.q = e.target.value.toLowerCase(); render(); };
   render(); renderSlip();
+  showTab(location.hash.slice(1));
 }
 
 const esd = p => p.edge_sd ?? p.edge / p.sd;
@@ -468,7 +502,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(
 // ---- parlay slip
 function addLeg(p, side){
   slip = slip.filter(l => l.id !== p.id);
-  slip.push({id: p.id, player: p.player, label: p.label, line: p.line, side, game: p.game, team: p.team,
+  slip.push({id: p.id, player: p.player, label: p.label, market: p.market, line: p.line, side, game: p.game, team: p.team,
     price: side === 'Over' ? p.over : p.under, prob: side === 'Over' ? p.p_over : 1 - p.p_over});
   saveSlip(); $('#slip').classList.add('open');
 }
@@ -486,13 +520,193 @@ function renderSlip(){
   const ev = prob * (d - 1) - (1 - prob);
   const american = d >= 2 ? '+' + Math.round((d - 1) * 100) : '' + Math.round(-100 / (d - 1));
   $('#slipOdds').textContent = legsWithPrice.length === slip.length ? american : '';
-  $('#slipSum').innerHTML = `<span>Book odds <b>${american}</b></span><span>Model prob <b>${pct(prob)}</b></span><span>Fair odds <b>${fair >= 2 ? '+' + Math.round((fair - 1) * 100) : Math.round(-100 / (fair - 1))}</b></span><span>EV <b class="${ev > 0 ? 'pos' : 'neg'}">${(ev * 100).toFixed(1)}%</b></span><span>$10 pays <b>$${(10 * d).toFixed(2)}</b></span><button class="chip" id="clear">clear</button>`;
+  $('#slipSum').innerHTML = `<span>Book odds <b>${american}</b></span><span>Model prob <b>${pct(prob)}</b></span><span>Fair odds <b>${fair >= 2 ? '+' + Math.round((fair - 1) * 100) : Math.round(-100 / (fair - 1))}</b></span><span>EV <b class="${ev > 0 ? 'pos' : 'neg'}">${(ev * 100).toFixed(1)}%</b></span><span>$10 pays <b>$${(10 * d).toFixed(2)}</b></span><button class="chip" id="clear">clear</button><button class="chip gold" id="saveParlay">${savedSig === slipSig() ? 'Saved ✓' : 'Save parlay'}</button>`;
   $('#clear').onclick = () => { slip = []; saveSlip(); };
+  $('#saveParlay').disabled = savedSig === slipSig();
+  $('#saveParlay').onclick = e => { e.stopPropagation(); saveParlay(e.currentTarget); };
   const games = {}; slip.forEach(l => (games[l.game] = games[l.game] || []).push(l));
   const sg = Object.values(games).filter(g => g.length > 1);
   $('#corr').textContent = sg.length ? `⚠ ${sg.map(g => g.length).join('+')} legs share a game — the model prob treats legs as independent; same-game legs are correlated and books price that in.` : '';
 }
 $('#slipBar').onclick = () => $('#slip').classList.toggle('open');
+
+// ---- tabs: Board / Results / Parlays
+const TABS = ['board', 'results', 'parlays'];
+let RESULTS = null, PARLAYS = null;
+async function getJSON(path){
+  try { const r = await fetch(path + '?v=' + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; }
+}
+function showTab(t){
+  if (!TABS.includes(t)) t = 'board';
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('[data-view]').forEach(el => el.hidden = el.dataset.view !== t);
+  if (location.hash.slice(1) !== t) history.replaceState(null, '', t === 'board' ? location.pathname : '#' + t);
+  if (t === 'results') loadResults();
+  if (t === 'parlays') loadParlays();
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+
+const recTxt = r => r && r.n ? `${r.w}–${r.l}${r.p ? '–' + r.p : ''}` : '—';
+const unitsTxt = u => u == null ? '—' : (u > 0 ? '+' : '') + (+u).toFixed(2) + 'u';
+const signCls = x => x > 0 ? 'pos' : x < 0 ? 'neg' : '';
+const recRow = (name, r) => `<tr><td>${name}</td><td class="num">${recTxt(r)}</td><td class="num">${r && r.hit_pct != null ? r.hit_pct + '%' : '—'}</td>
+  <td class="num ${signCls(r && r.units)}">${r && r.n ? unitsTxt(r.units) : '—'}</td><td class="num ${signCls(r && r.roi)}">${r && r.roi != null ? (r.roi > 0 ? '+' : '') + r.roi + '%' : '—'}</td>
+  <td class="num">${r && r.brier != null ? r.brier.toFixed(3) : '—'}</td><td class="num">${r ? r.n : 0}</td></tr>`;
+const recHead = first => `<tr><th>${first}</th><th>Record</th><th>Hit</th><th>Units</th><th>ROI</th><th title="Mean squared error of P(over). 0 = perfect, 0.25 = coin flip. Lower is better.">Brier</th><th>Props</th></tr>`;
+
+async function loadResults(){
+  const el = $('#resultsView');
+  if (!RESULTS) { el.innerHTML = '<div class="empty">Loading results…</div>'; RESULTS = await getJSON('data/results.json') || {}; }
+  el.innerHTML = renderResults(RESULTS);
+  wireCalibration();
+}
+
+function renderResults(R){
+  const pend = (R.pending_weeks || []).map(w => 'week ' + w).join(', ');
+  if (!R.graded_weeks) return `<div class="panel"><h3>No graded weeks yet</h3>
+    <p class="muted">Every live build saves its props (pre-game lines only) to <code>data/history/</code>. After a week's games are final and nflverse has the stats, the next build grades them here: record and ROI at -110, edge buckets, calibration and Brier score, plus suggested model corrections.</p>
+    ${pend ? `<p>Waiting on: <b>${pend}</b> — it grades automatically on the next build after the last game's stats land (usually the Tuesday run).</p>` : '<p>No snapshots saved yet — the next live build will create one.</p>'}</div>`;
+  const o = R.overall || {};
+  const fv = R.flagged_vs_unflagged || {};
+  const corrRows = Object.entries(R.corrections || {}).map(([m, c]) => `<tr><td>${(DATA && DATA.markets[m]) || m}</td><td class="num">${c.n}</td>
+    <td class="num">${c.bias != null ? (c.bias > 0 ? '+' : '') + c.bias : '—'}</td>
+    <td class="num">${c.proj_mult != null ? '×' + c.proj_mult.toFixed(3) : '—'}</td>
+    <td class="num">${c.sd_mult != null ? '×' + c.sd_mult.toFixed(3) : '—'}</td>
+    <td style="text-align:left">${c.proj_mult == null ? `<span class="muted">${c.note || 'not enough data'}</span>` : R.corrections_active ? '<span class="badge won">✓ applied</span>' : '<span class="badge pending">suggested</span>'}</td></tr>`).join('');
+  return `
+    <div class="grid">
+      <div class="tile"><span class="k">Record (model's side)</span><div class="v">${recTxt(o)}</div><div class="meta">${o.hit_pct != null ? o.hit_pct + '% hit · 52.4% breaks even at -110' : ''}</div></div>
+      <div class="tile"><span class="k">Units at -110</span><div class="v ${signCls(o.units)}">${unitsTxt(o.units)}</div><div class="meta">ROI ${o.roi != null ? (o.roi > 0 ? '+' : '') + o.roi + '%' : '—'} · 1u per prop</div></div>
+      <div class="tile"><span class="k">Brier score</span><div class="v">${o.brier != null ? o.brier.toFixed(3) : '—'}</div><div class="meta">0.250 = coin flip · lower is better</div></div>
+      <div class="tile"><span class="k">Graded</span><div class="v">${R.graded_weeks} wk${R.graded_weeks === 1 ? '' : 's'}</div><div class="meta">${o.n} props${pend ? ' · pending ' + pend : ''}</div></div>
+    </div>
+    <p class="muted small">${R.note || ''}</p>
+
+    <div class="sec">By market</div>
+    <table class="log">${recHead('Market')}${Object.entries(R.by_market || {}).map(([m, r]) => recRow(m, r)).join('')}</table>
+
+    <div class="sec">By edge strength <span class="nc">(|edge ÷ σ|)</span></div>
+    <table class="log">${recHead('Edge')}${(R.by_edge || []).map(b => recRow(b.bucket, b)).join('')}</table>
+    <p class="muted small">If the model is any good, the stronger buckets should hit more often.</p>
+
+    <div class="sec">Role-change flagged vs not</div>
+    <table class="log">${recHead('Group')}${recRow('Unflagged (the board)', fv.unflagged)}${recRow('Flagged — all', fv.flagged)}${recRow('· line far from history', fv.flagged_line)}${recRow('· snap-share shift', fv.flagged_usage)}</table>
+    <p class="muted small">Flagged props are demoted on the board. If their record is worse, the flag is doing its job.</p>
+
+    <div class="sec">Calibration — when the model says X%, does it happen X% of the time?</div>
+    ${calibrationChart(R.calibration || [])}
+    <table class="log"><tr><th>Model P(over)</th><th>Predicted</th><th>Actual over rate</th><th>Props</th></tr>
+      ${(R.calibration || []).filter(c => c.n).map(c => `<tr><td>${c.bucket}</td><td class="num">${pct(c.predicted)}</td><td class="num">${pct(c.actual)}</td><td class="num">${c.n}</td></tr>`).join('')}</table>
+
+    <div class="sec">Suggested model corrections</div>
+    <div class="why"><ul>
+      <li><b>Projection ×</b> scales every projection in that market (total actual ÷ total projected). Below 1 means the model has been projecting too high.</li>
+      <li><b>σ ×</b> widens or narrows the spread. Above 1 means real outcomes vary more than the model thinks, so its probabilities are too confident.</li>
+      <li>${R.corrections_active ? `<b>Active:</b> ${R.graded_weeks} graded weeks, so these are applied automatically to the board.` : `<b>Not applied yet</b> — they switch on automatically after ${R.corrections_min_weeks || 4} graded weeks (${R.graded_weeks}/${R.corrections_min_weeks || 4}). Measured on unflagged props, against the uncorrected model.`}</li>
+    </ul></div>
+    <table class="log"><tr><th>Market</th><th>Props</th><th>Avg miss</th><th>Projection ×</th><th><span class="nc">σ</span> ×</th><th style="text-align:left">Status</th></tr>${corrRows}</table>
+
+    ${(R.by_week || []).length ? `<div class="sec">By week</div><table class="log">${recHead('Week')}${R.by_week.map(w => recRow('Week ' + w.week, w)).join('')}</table>` : ''}
+    <p class="muted small">Updated ${R.updated ? new Date(R.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}</p>`;
+}
+
+// predicted vs actual, one dot per P(over) decile, with the perfect-calibration diagonal
+function calibrationChart(cal){
+  const pts = cal.filter(c => c.n && c.predicted != null);
+  if (!pts.length) return '';
+  const W = 520, H = 300, L = 66, R_ = 22, T = 12, B = 40;
+  const x = v => L + v * (W - L - R_), y = v => T + (1 - v) * (H - T - B);
+  const ticks = [0, 0.25, 0.5, 0.75, 1];
+  const grid = ticks.map(t => `<line x1="${L}" x2="${W - R_}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/>
+    <text x="${L - 8}" y="${y(t) + 4}" text-anchor="end" font-size="11" fill="var(--ink3)">${t * 100}%</text>
+    <text x="${x(t)}" y="${H - B + 18}" text-anchor="middle" font-size="11" fill="var(--ink3)">${t * 100}%</text>`).join('');
+  const path = pts.map((c, i) => `${i ? 'L' : 'M'}${x(c.predicted).toFixed(1)},${y(c.actual).toFixed(1)}`).join(' ');
+  const dots = pts.map((c, i) => `<g class="cal-pt" data-i="${cal.indexOf(c)}">
+      <circle cx="${x(c.predicted)}" cy="${y(c.actual)}" r="14" fill="transparent"/>
+      <circle cx="${x(c.predicted)}" cy="${y(c.actual)}" r="5" fill="var(--gold)" stroke="var(--panel)" stroke-width="2"/></g>`).join('');
+  return `<div class="panel chart-panel"><svg class="calchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Calibration: predicted over probability vs actual over rate by decile">
+      ${grid}
+      <line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="var(--ink3)" stroke-dasharray="4 4"/>
+      <text x="${x(0.98)}" y="${y(0.6)}" text-anchor="end" font-size="11" fill="var(--ink3)">dashed = perfect calibration</text>
+      <path d="${path}" fill="none" stroke="var(--gold)" stroke-width="2" opacity=".55"/>
+      ${dots}
+      <text x="${(L + W - R_) / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--ink2)">Model's P(over)</text>
+      <text transform="translate(12 ${(T + H - B) / 2}) rotate(-90)" text-anchor="middle" font-size="11" fill="var(--ink2)">Actual over rate</text>
+    </svg>
+    <div class="muted small">Dots above the dashed line: overs hit more often than predicted. Below it: less often. Buckets with few props are noisy.</div></div>`;
+}
+function wireCalibration(){
+  const tip = $('#tip'), cal = (RESULTS && RESULTS.calibration) || [];
+  document.querySelectorAll('.cal-pt').forEach(g => {
+    const c = cal[+g.dataset.i];
+    g.onmousemove = e => { tip.style.display = 'block'; tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY - 30) + 'px';
+      tip.textContent = `P(over) ${c.bucket}: predicted ${pct(c.predicted)}, actual ${pct(c.actual)} · ${c.n} props`; };
+    g.onmouseleave = () => tip.style.display = 'none';
+  });
+}
+
+async function loadParlays(){
+  const el = $('#parlaysView');
+  if (!PARLAYS) { el.innerHTML = '<div class="empty">Loading parlays…</div>'; PARLAYS = await getJSON('data/parlays.json') || {}; }
+  el.innerHTML = renderParlays(PARLAYS);
+}
+const LEG_ICON = {hit: ['✓', 'won', 'hit'], miss: ['✗', 'lost', 'miss'], push: ['=', 'push', 'push'], void: ['∅', 'push', 'void (DNP)'], pending: ['…', 'pending', 'pending'], unknown: ['?', 'pending', 'unknown']};
+const ST_ICON = {won: '✓ Won', lost: '✗ Lost', push: '= Push', pending: '… Pending'};
+function renderParlays(P){
+  const setup = !PARLAY_WEBHOOK_URL || !P.configured;
+  const help = setup ? `<div class="panel"><h3>Set up saved parlays</h3><p class="muted">Saving needs a Google Sheet with a small Apps Script web app; grading needs that sheet published as CSV. See <b>README → Saved parlays</b>.</p>
+    <ul class="muted small"><li>Site → sheet: ${PARLAY_WEBHOOK_URL ? '✓ <code>PARLAY_WEBHOOK_URL</code> is set' : '✗ <code>PARLAY_WEBHOOK_URL</code> in <code>site/index.html</code> is empty'}</li>
+    <li>Sheet → grading: ${P.configured ? '✓ <code>PARLAY_SHEET_CSV_URL</code> is set' : '✗ <code>PARLAY_SHEET_CSV_URL</code> repo secret/variable is not set'}</li></ul></div>` : '';
+  const ps = P.parlays || [], s = P.summary || {};
+  if (!ps.length) return help + `<div class="empty">No saved parlays yet. Build a slip on the board and press <b>Save parlay</b>.</div>`;
+  const settled = s.w + s.l + s.p;
+  return help + `
+    <div class="grid">
+      <div class="tile"><span class="k">Record</span><div class="v">${s.w}–${s.l}${s.p ? '–' + s.p : ''}</div><div class="meta">${s.pending ? s.pending + ' pending' : 'all settled'}</div></div>
+      <div class="tile"><span class="k">Units</span><div class="v ${signCls(s.units)}">${unitsTxt(s.units)}</div><div class="meta">1u per parlay at saved odds</div></div>
+      <div class="tile"><span class="k">ROI</span><div class="v ${signCls(s.units)}">${settled ? ((s.units / settled) * 100 > 0 ? '+' : '') + ((s.units / settled) * 100).toFixed(1) + '%' : '—'}</div><div class="meta">${settled} settled</div></div>
+    </div>
+    ${ps.map(p => `<div class="pcard">
+      <div class="phead"><span><span class="badge ${p.status}">${ST_ICON[p.status] || p.status}</span>
+        <b>${p.legs.length}-leg</b> · wk ${p.week ?? '?'} · ${p.created ? new Date(p.created).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : ''}</span>
+        <span class="num">${p.book_odds != null ? fmtOdds(Math.round(p.book_odds)) : '—'} · model ${pct(p.model_prob)} · <b class="${signCls(p.units)}">${p.units != null ? unitsTxt(p.units) : '—'}</b></span></div>
+      ${p.legs.map(l => { const [ic, cls, word] = LEG_ICON[l.status] || LEG_ICON.unknown;
+        return `<div class="pleg"><span class="badge ${cls}" title="${word}">${ic}</span>
+          <span class="pl">${l.player} <b>${l.side} ${l.line}</b> ${(DATA && DATA.markets[l.market]) || l.market}</span>
+          <span class="num muted">${l.actual != null ? 'actual ' + l.actual : word}${l.price != null ? ' · ' + fmtOdds(l.price) : ''}</span></div>`; }).join('')}
+    </div>`).join('')}
+    <p class="muted small">Pushes and DNPs drop out of a parlay and it's repaid at the remaining legs' saved prices. Updated ${P.updated ? new Date(P.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}.</p>`;
+}
+
+// ---- save the current slip to the Parlays sheet
+async function saveParlay(btn){
+  if (!PARLAY_WEBHOOK_URL) { alert('Saving parlays is not set up yet: put your Google Apps Script web-app URL in PARLAY_WEBHOOK_URL in site/index.html (see README → Saved parlays).'); return; }
+  const legs = slip.map(l => ({prop_id: l.id, player: l.player, market: l.market || l.id.split(':')[1], line: l.line,
+    side: l.side, price: l.price ?? null, model_prob: l.prob != null ? +l.prob.toFixed(4) : null}));
+  const priced = slip.every(l => l.price != null);
+  const d = slip.reduce((a, l) => a * (l.price != null ? dec(l.price) : 1), 1);
+  const payload = {created: new Date().toISOString(), week: DATA.week, legs,
+    book_odds: priced ? Math.round(d >= 2 ? (d - 1) * 100 : -100 / (d - 1)) : null,
+    model_prob: +slip.reduce((a, l) => a * l.prob, 1).toFixed(4)};
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    // text/plain keeps this a "simple" request (no CORS preflight, which Apps Script can't answer)
+    const r = await fetch(PARLAY_WEBHOOK_URL, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(payload)});
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'not saved');
+    btn.textContent = `Saved ✓ ${j.id}`;
+    savedSig = slipSig();
+    PARLAYS = null;
+  } catch (e) {
+    // don't auto-retry: the row may have been written even if we couldn't read the reply
+    btn.textContent = 'Not confirmed';
+    btn.disabled = false;
+    alert(`Couldn't confirm the save (${e.message}). Check the Parlays sheet before trying again so you don't save it twice.`);
+  }
+}
+let savedSig = null;
+const slipSig = () => slip.map(l => l.id + l.side + l.line).join('|');
 
 load().catch(e => { $('#meta').textContent = 'Could not load data/props.json — run the pipeline first.'; console.error(e); });
 </script>

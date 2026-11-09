@@ -41,6 +41,7 @@ pip install -r pipeline/requirements.txt
 ODDS_API_KEY=xxx python pipeline/build.py        # live lines (saves pipeline/lines_cache.json)
 python pipeline/build.py --lines cached          # reuse this week's last pull, no credits
 python pipeline/build.py --lines sample          # no key: lines set at recent averages
+python pipeline/build.py --grade                 # grade finished weeks + saved parlays (no odds calls)
 cd site && python -m http.server 8000            # open http://localhost:8000
 ```
 
@@ -57,13 +58,42 @@ cd site && python -m http.server 8000            # open http://localhost:8000
 
 This is a v1 model — deliberately simple and transparent. Good next steps: usage/target-share trend weighting, pace and game-total adjustments, teammate-out redistribution, and a results tracker to grade the model's closing-line value week over week.
 
+## Grading loop (Results tab)
+
+1. **Snapshots.** Every *live* build merges its props into `site/data/history/week_NN.json`: line, prices, projection, σ, P(over), edge, role-change flag and game. Only props whose game hasn't kicked off when the lines were pulled are kept, so in-game lines are never graded. A later pre-game pull replaces an earlier one, and live pulls skip games that have already started.
+2. **Grading.** `build.py --grade` runs at the start of every workflow run (it's free). Once every game in a snapshot's week is final *and* has nflverse stat lines, it grades each prop: actual stat, then over/under/push. Players who didn't play are voided. It writes `site/data/results.json` with:
+   - record and ROI of the model's side (the side the projection leans), 1u flat at -110, overall and by market;
+   - record by edge strength (|edge ÷ σ| < 0.5, 0.5–1, > 1);
+   - calibration by P(over) decile (predicted vs actual over rate) and Brier score per market;
+   - role-flagged vs unflagged props graded separately. The main tables use unflagged props, which is what the board ranks.
+3. **Corrections.** For each market with 30+ graded unflagged props, it suggests a **projection ×** (total actual ÷ total projected, clamped 0.85–1.15) and a **σ ×** (RMS of the standardized misses, clamped 0.7–1.5). Both are measured against the *uncorrected* model, so they never compound. They are only reported until **4 graded weeks** exist; after that the build applies them automatically, and the Results tab shows them as applied.
+
+## Saved parlays (Parlays tab)
+
+The slip's **Save parlay** button posts the slip to a Google Sheet; every build grades it from the sheet's published CSV.
+
+1. Create a Google Sheet (any name). **Extensions → Apps Script**, replace the code with [`docs/parlay-sheet.gs`](docs/parlay-sheet.gs), and save.
+2. **Deploy → New deployment →** type **Web app**; *Execute as:* **Me**; *Who has access:* **Anyone**. Authorize it, then copy the **Web app URL** (ends in `/exec`). Opening that URL in a browser should show `{"ok":true,...}`. The script creates the **Parlays** tab with the header row on first use.
+3. In `site/index.html`, set `const PARLAY_WEBHOOK_URL = 'https://script.google.com/macros/s/…/exec';` and push.
+4. In the sheet: **File → Share → Publish to web →** pick the **Parlays** sheet and **Comma-separated values (.csv)** → Publish, then copy the URL.
+5. In the repo: **Settings → Secrets and variables → Actions →** add `PARLAY_SHEET_CSV_URL` with that URL, as a secret or a variable.
+
+Columns: `id, created, week, legs_json, book_odds, model_prob, status`. `status` stays `open` in the sheet; graded results live in `site/data/parlays.json`. Legs grade as hit/miss/push, or void if the player didn't play. A push or void leg drops out and the parlay is paid on the remaining legs at their saved prices. Units are 1u per parlay at the saved odds.
+
+The web-app URL sits in public page source, so anyone who finds it could add rows. The script only accepts the expected fields (max 20 legs), and you can redeploy to get a new URL at any time.
+
 ## Layout
 
 ```
-pipeline/build.py        data pull + model → site/data/props.json
+pipeline/build.py        data pull + model → site/data/props.json (+ history snapshot on live builds)
+pipeline/grade.py        --grade: results.json + parlays.json
 pipeline/requirements.txt
 site/index.html          the app (no build step, no framework)
 site/data/props.json     generated; committed by the workflow
+site/data/history/       week_NN.json snapshots of live builds (graded later)
+site/data/results.json   model record, calibration, corrections
+site/data/parlays.json   saved parlays, graded
+docs/parlay-sheet.gs     Google Apps Script web app for saving parlays
 .github/workflows/build.yml
 docs/HANDOFF.md          project handoff: model, schedule, change log, open ideas
 ```

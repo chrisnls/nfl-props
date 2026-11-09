@@ -25,6 +25,7 @@ import statistics
 import sys
 import time
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
@@ -72,6 +73,10 @@ VOLUME = {"passing_yards": "attempts", "passing_tds": "attempts", "rushing_yards
           "carries": "carries", "receiving_yards": "targets", "receptions": "targets"}
 VOLUME_LABEL = {"attempts": "att", "carries": "car", "targets": "tgt"}
 LINES_CACHE = ROOT / "pipeline" / "lines_cache.json"   # committed by the workflow; not published
+HISTORY = OUT / "history"          # week_NN.json: every live build's props, for grading
+RESULTS = OUT / "results.json"     # written by --grade
+CORRECTIONS_MIN_WEEKS = 4          # auto-apply suggested corrections only after this many graded weeks
+ET = ZoneInfo("America/New_York")
 BOOKS = ["draftkings", "fanduel", "betmgm", "caesars", "espnbet", "fanatics"]
 
 TEAM_NAMES = {
@@ -160,6 +165,11 @@ def week_games(games: pd.DataFrame, week: int) -> list[dict]:
 # two lopsided losses looks like a sieve on average but is league-average in a normal game.
 # Pass TDs (0/1/2/3 per game) are too coarse for a median, so they keep the mean.
 MEAN_BASIS = {"passing_tds"}
+
+
+def kickoff_utc(kickoff: str) -> dt.datetime:
+    """nflverse 'YYYY-MM-DDTHH:MM' is US Eastern wall-clock."""
+    return dt.datetime.fromisoformat(kickoff).replace(tzinfo=ET).astimezone(dt.timezone.utc)
 
 
 def defense_factors(stats: pd.DataFrame) -> dict[tuple[str, str, str], float]:
@@ -275,11 +285,15 @@ def fetch_odds(week_game_list: list[dict], api_key: str) -> tuple[dict, dict]:
     events.raise_for_status()
     usage = {"remaining": events.headers.get("x-requests-remaining"),
              "used": events.headers.get("x-requests-used")}
-    want = {(g["away"], g["home"]) for g in week_game_list if not g["played"]}
+    now = dt.datetime.now(dt.timezone.utc)
+    started = {ev["id"] for ev in events.json()
+               if dt.datetime.fromisoformat(ev["commence_time"].replace("Z", "+00:00")) <= now}
+    want = {(g["away"], g["home"]) for g in week_game_list
+            if not g["played"] and kickoff_utc(g["kickoff"]) > now}
     # /events is free; each event's odds call costs len(MARKETS) credits (1 region).
     # Don't start a pull we can't finish -- a half-pulled slate is worse than cached lines.
-    needed = len(MARKETS) * sum(1 for ev in events.json()
-                                if (TEAM_NAMES.get(ev["away_team"]), TEAM_NAMES.get(ev["home_team"])) in want)
+    needed = len(MARKETS) * sum(1 for ev in events.json() if ev["id"] not in started and
+                                (TEAM_NAMES.get(ev["away_team"]), TEAM_NAMES.get(ev["home_team"])) in want)
     remaining = int(usage["remaining"]) if str(usage.get("remaining") or "").isdigit() else None
     if remaining is not None and remaining < needed:
         raise CreditsLow(f"{remaining} credits left, full pull needs ~{needed}")
@@ -287,7 +301,7 @@ def fetch_odds(week_game_list: list[dict], api_key: str) -> tuple[dict, dict]:
     matched_events = 0
     for ev in events.json():
         pair = (TEAM_NAMES.get(ev["away_team"]), TEAM_NAMES.get(ev["home_team"]))
-        if pair not in want:
+        if pair not in want or ev["id"] in started:
             continue
         matched_events += 1
         r = session.get(
@@ -398,7 +412,7 @@ def role_change(values: list[float], line: float, discrete: bool,
     return None
 
 
-def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
+def build_props(stats, games, injuries, snaps, week, lines, corrections=None) -> list[dict]:
     hist = stats[stats.week < week].copy()
     this_week = games[games.week == week]
     team_game = {}
@@ -487,6 +501,10 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
         values = [float(v) for v in glog[col].fillna(0)]
         factor = factors.get((opp, pos if pos in ("QB", "RB", "WR", "TE") else "WR", col), 1.0)
         proj, sd = project(values, factor, discrete)
+        proj_raw, sd_raw = proj, sd
+        corr = (corrections or {}).get(market)
+        if corr:   # learned from graded weeks (see grade.py); only active after CORRECTIONS_MIN_WEEKS
+            proj, sd = proj * corr["proj_mult"], sd * corr["sd_mult"]
 
         z_line = (line + (0.5 if discrete else 0)) - proj   # continuity for counts
         p_over = 1 - norm_cdf(z_line / sd)
@@ -524,6 +542,7 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
             "proj": r1(proj),
             "sd": r1(sd),
             "edge": r1(proj - line),
+            "proj_raw": r1(proj_raw), "sd_raw": r1(sd_raw),
             "edge_sd": round((proj - line) / sd, 2),
             "role_change": role,
             "p_over": round(p_over, 3),
@@ -553,6 +572,53 @@ def build_props(stats, games, injuries, snaps, week, lines) -> list[dict]:
 
 
 # ----------------------------------------------------------------------------- main
+# ----------------------------------------------------------------------------- history
+SNAP_FIELDS = ["id", "pid", "player", "pos", "team", "opp", "game", "market", "label", "line",
+               "over", "over_book", "under", "under_book", "proj", "sd", "proj_raw", "sd_raw",
+               "p_over", "edge", "edge_sd"]
+
+
+def write_snapshot(props: list[dict], wg: list[dict], week: int, fetched: str) -> Path:
+    """Merge this live build into site/data/history/week_NN.json for grading.
+
+    Only props whose game kicks off *after* the lines were pulled are kept, so in-game
+    lines never get graded. Props are merged by id: a newer pre-game pull replaces an
+    older one, and props from earlier pulls (e.g. Thursday's game) are kept."""
+    HISTORY.mkdir(parents=True, exist_ok=True)
+    path = HISTORY / f"week_{week:02d}.json"
+    snap = json.loads(path.read_text()) if path.exists() else {"season": SEASON, "week": week, "props": []}
+    t = dt.datetime.fromisoformat(fetched)
+    kick = {g["id"]: kickoff_utc(g["kickoff"]) for g in wg}
+    by_id = {p["id"]: p for p in snap["props"]}
+    added = 0
+    for p in props:
+        if p["game"] not in kick or kick[p["game"]] <= t:
+            continue
+        row = {k: p.get(k) for k in SNAP_FIELDS}
+        row["role_change"] = (p["role_change"] or {}).get("why")   # None | "line" | "usage"
+        row["fetched"] = fetched
+        by_id[p["id"]] = row
+        added += 1
+    snap["props"] = sorted(by_id.values(), key=lambda r: r["id"])
+    snap["updated"] = fetched
+    path.write_text(json.dumps(snap, separators=(",", ":")))
+    log(f"snapshot: {added} pre-game props -> {path.name} ({len(snap['props'])} total)")
+    return path
+
+
+def load_corrections() -> tuple[dict, dict]:
+    """Per-market corrections from results.json, active only after CORRECTIONS_MIN_WEEKS graded weeks."""
+    if not RESULTS.exists():
+        return {}, {"active": False, "graded_weeks": 0}
+    r = json.loads(RESULTS.read_text())
+    weeks = r.get("graded_weeks", 0)
+    corr = {m: c for m, c in (r.get("corrections") or {}).items() if c and c.get("proj_mult")}
+    if weeks < CORRECTIONS_MIN_WEEKS or not corr:
+        return {}, {"active": False, "graded_weeks": weeks}
+    log(f"applying corrections from {weeks} graded weeks: {corr}")
+    return corr, {"active": True, "graded_weeks": weeks, "by_market": corr}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--week", type=int)
@@ -560,9 +626,16 @@ def main() -> None:
                     help="live: pull from the Odds API (~6 credits/game); cached: reuse the last live "
                          "pull for this week (free); sample: synthesize lines at recent averages (free)")
     ap.add_argument("--sample", action="store_true", help="same as --lines sample")
+    ap.add_argument("--grade", action="store_true",
+                    help="grade completed history snapshots and saved parlays, write results.json "
+                         "and parlays.json, then exit (no odds calls)")
     args = ap.parse_args()
 
     frames = load_frames()
+    if args.grade:
+        import grade
+        grade.run(frames)
+        return
     stats, games = frames["stats"], frames["games"]
     week = current_week(games, args.week)
     wg = week_games(games, week)
@@ -597,7 +670,8 @@ def main() -> None:
         log("using sample lines")
         lines, usage, mode = sample_odds(stats, week, players_in_week), usage_err, "sample"
 
-    props, defense = build_props(stats, games, frames["injuries"], frames["snaps"], week, lines)
+    corrections, corr_info = load_corrections()
+    props, defense = build_props(stats, games, frames["injuries"], frames["snaps"], week, lines, corrections)
     OUT.mkdir(parents=True, exist_ok=True)
     payload = {
         "season": SEASON, "week": week, "mode": mode,
@@ -609,9 +683,12 @@ def main() -> None:
         "games": wg,
         "props": props,
         "defense": defense,
+        "corrections": corr_info,
     }
     (OUT / "props.json").write_text(json.dumps(payload, separators=(",", ":")))
     log(f"wrote {len(props)} props -> {OUT / 'props.json'}")
+    if mode == "live":
+        write_snapshot(props, wg, week, lines_fetched)
 
 
 if __name__ == "__main__":

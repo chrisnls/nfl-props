@@ -55,9 +55,17 @@ A full-slate pull of 6 markets costs **~85 credits**. Three pulls a week is ~260
 
 - **Median-based matchup factor** (approved follow-up). The defense factor now uses the median game allowed vs the league median game; pass TDs keep the mean. Before, two blowouts made CAR look like 124% of league vs RBs; on medians it's 98%, so Dobbins' rush-yds projection went from 41.5 to 37.4. Across week 9, 111 of 485 projections moved more than 5% and the top of the board barely changed. Props now carry `def_basis`.
 
+## Grading loop and saved parlays (2026-11-09)
+
+- **Snapshots:** every live build merges its pre-game props into `site/data/history/week_NN.json`. In-game lines are excluded, and live pulls now skip games that have already started. Week 9 was backfilled with the current model: the 11:08 CT pull for the noon games and the 12:16 CT pull for the later games, 454 props. (That 12:16 pull ran after the noon kickoffs, so those games' lines were in-game and are excluded.)
+- **`build.py --grade` → `pipeline/grade.py`:** runs on every workflow run (free). A week grades once all its games are final *and* in nflverse stats. `results.json` has the record/ROI of the model's side at -110 by market, edge buckets, P(over) calibration deciles, Brier per market, flagged vs unflagged, by week, and suggested per-market corrections (projection ×, σ ×, from 30+ unflagged props, measured against the raw model). Corrections apply automatically from **4 graded weeks** (`CORRECTIONS_MIN_WEEKS`); the board's payload records whether they're active.
+- **Saved parlays:** a slip **Save parlay** button POSTs to `PARLAY_WEBHOOK_URL` (Apps Script web app, `docs/parlay-sheet.gs`) → "Parlays" sheet. The grader reads the sheet's published CSV (`PARLAY_SHEET_CSV_URL` repo secret/variable), grades each leg (hit/miss/push/void/pending), and writes `parlays.json` with record and units at the saved odds. Setup: README → Saved parlays.
+- **UI:** Board / Results / Parlays tabs (deep-linkable as `#results`, `#parlays`). Results has record tiles, tables, a calibration chart with a diagonal reference line, and the corrections table. Parlays shows each slip with per-leg results.
+- **Odds credits:** a live pull at 12:16 CT on 11/8 used 78 credits, so **2 remain** until the monthly reset. Until then the scheduled live runs fall back to cached lines, or to sample lines once the week changes.
+
 ## Open ideas
 
-- **Results / CLV tracker.** Store each build's lines and model probabilities, grade them against box scores, and track closing-line value week over week. This is the only way to know whether the model has an edge.
+- **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.
 - **Usage-trend weighting.** Weight by target share, carry share and snap % trends, not just raw output.
 - **Pace and game-total adjustments.** Scale volume by the implied team total and the spread (already in the schedule data).
 - **Teammate-out redistribution.** When a starter is Out, redistribute their volume to teammates. This is the proper fix for what the role-change flag currently only detects.

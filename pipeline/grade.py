@@ -1,0 +1,275 @@
+"""
+Grading loop: score saved props and parlays against what actually happened.
+
+Run via `python pipeline/build.py --grade` (the workflow does this before every build).
+
+Reads
+  site/data/history/week_NN.json   snapshots written by every live build (pre-game lines only)
+  PARLAY_SHEET_CSV_URL             optional: the "Parlays" Google Sheet, published to the web as CSV
+
+Writes
+  site/data/results.json   model record, ROI, edge buckets, calibration, Brier, corrections
+  site/data/parlays.json   saved parlays graded leg by leg
+"""
+from __future__ import annotations
+
+import datetime as dt
+import io
+import json
+import math
+import os
+import statistics
+
+import pandas as pd
+import requests
+
+from build import (CORRECTIONS_MIN_WEEKS, HISTORY, MARKETS, OUT, RESULTS, SEASON, log)
+
+PARLAYS = OUT / "parlays.json"
+JUICE_WIN = 100 / 110            # profit per 1u staked at -110
+EDGE_BUCKETS = [("<0.5σ", 0, 0.5), ("0.5–1σ", 0.5, 1.0), (">1σ", 1.0, math.inf)]
+# corrections: need this many graded (unflagged) props in a market before suggesting one
+CORR_MIN_N = 30
+PROJ_MULT_RANGE = (0.85, 1.15)
+SD_MULT_RANGE = (0.7, 1.5)
+
+
+def now_iso() -> str:
+    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
+
+
+def clamp(x, lo, hi):
+    return max(lo, min(hi, x))
+
+
+def american_to_decimal(price) -> float | None:
+    if price is None or (isinstance(price, float) and math.isnan(price)):
+        return None
+    price = float(price)
+    return 1 + price / 100 if price > 0 else 1 + 100 / -price
+
+
+class Outcomes:
+    """Actual stat lookups from nflverse weekly stats + which weeks/games are final."""
+
+    def __init__(self, stats: pd.DataFrame, games: pd.DataFrame):
+        self.stats = stats.set_index(["player_id", "week"])
+        self.stat_games = set(stats.game_id.unique())
+        self.games = games
+
+    def week_complete(self, week: int) -> bool:
+        """Every game that week is final AND has stat lines (scores can land before the
+        nightly stats refresh; grading then would wrongly void that game's players)."""
+        g = self.games[self.games.week == week]
+        return len(g) > 0 and g.home_score.notna().all() and set(g.game_id) <= self.stat_games
+
+    def actual(self, pid: str, week: int, market: str) -> float | None:
+        """Stat value, or None if the player has no stat line that week (didn't play)."""
+        col = MARKETS[market][0]
+        try:
+            row = self.stats.loc[(pid, week)]
+        except KeyError:
+            return None
+        if isinstance(row, pd.DataFrame):
+            row = row.iloc[0]
+        v = row[col]
+        return 0.0 if pd.isna(v) else float(v)
+
+
+def side_result(actual: float, line: float) -> str:
+    return "over" if actual > line else "under" if actual < line else "push"
+
+
+# ----------------------------------------------------------------------------- props
+def grade_snapshots(out: Outcomes) -> tuple[list[dict], list[int], list[int]]:
+    rows, graded, pending = [], [], []
+    for path in sorted(HISTORY.glob("week_*.json")):
+        snap = json.loads(path.read_text())
+        if snap.get("season", SEASON) != SEASON:
+            continue
+        week = int(snap["week"])
+        if not out.week_complete(week):
+            pending.append(week)
+            continue
+        graded.append(week)
+        for p in snap["props"]:
+            actual = out.actual(p["pid"], week, p["market"])
+            if actual is None:
+                continue   # did not play -> void, not graded
+            res = side_result(actual, p["line"])
+            pick = "over" if (p.get("edge_sd") or p.get("edge") or 0) > 0 else "under"
+            rows.append({**p, "week": week, "actual": actual, "result": res, "pick": pick,
+                         "pick_result": "push" if res == "push" else "win" if res == pick else "loss"})
+    return rows, graded, pending
+
+
+def record(rows: list[dict]) -> dict:
+    """W-L-P of the model's pick (the side it leans), ROI flat 1u at -110, Brier of P(over)."""
+    w = sum(r["pick_result"] == "win" for r in rows)
+    l = sum(r["pick_result"] == "loss" for r in rows)
+    p = sum(r["pick_result"] == "push" for r in rows)
+    units = w * JUICE_WIN - l
+    decided = [r for r in rows if r["result"] != "push" and r.get("p_over") is not None]
+    brier = statistics.fmean((r["p_over"] - (r["result"] == "over")) ** 2 for r in decided) if decided else None
+    return {"n": len(rows), "w": w, "l": l, "p": p,
+            "hit_pct": round(100 * w / (w + l), 1) if w + l else None,
+            "units": round(units, 2),
+            "roi": round(100 * units / len(rows), 1) if rows else None,
+            "brier": round(brier, 4) if brier is not None else None}
+
+
+def calibration(rows: list[dict]) -> list[dict]:
+    out = []
+    for i in range(10):
+        lo, hi = i / 10, (i + 1) / 10
+        b = [r for r in rows if r["result"] != "push" and r.get("p_over") is not None
+             and (lo <= r["p_over"] < hi or (i == 9 and r["p_over"] == 1.0))]
+        out.append({"bucket": f"{i * 10}–{(i + 1) * 10}%", "lo": lo, "hi": hi, "n": len(b),
+                    "predicted": round(statistics.fmean(r["p_over"] for r in b), 3) if b else None,
+                    "actual": round(sum(r["result"] == "over" for r in b) / len(b), 3) if b else None})
+    return out
+
+
+def corrections(rows: list[dict]) -> dict:
+    """Per-market suggestions from unflagged props, measured against the *raw* model
+    (before any correction), so applying them never compounds.
+      proj_mult: total actual / total projected  -> fixes systematic over/under-projection
+      sd_mult:   RMS of (actual − corrected proj) / σ  -> 1.0 means σ is the right width;
+                 >1 means outcomes spread wider than the model thinks (P(over) too confident)"""
+    out = {}
+    for market in MARKETS:
+        rs = [r for r in rows if r["market"] == market and not r.get("role_change")
+              and r.get("proj_raw") and r.get("sd_raw")]
+        if len(rs) < CORR_MIN_N:
+            out[market] = {"n": len(rs), "proj_mult": None, "sd_mult": None,
+                           "note": f"needs {CORR_MIN_N}+ graded props"}
+            continue
+        tot_a, tot_p = sum(r["actual"] for r in rs), sum(r["proj_raw"] for r in rs)
+        pm_raw = tot_a / tot_p if tot_p else 1.0
+        pm = clamp(pm_raw, *PROJ_MULT_RANGE)
+        z = [(r["actual"] - r["proj_raw"] * pm) / r["sd_raw"] for r in rs]
+        sm_raw = math.sqrt(statistics.fmean(x * x for x in z))
+        sm = clamp(sm_raw, *SD_MULT_RANGE)
+        out[market] = {"n": len(rs), "bias": round(statistics.fmean(r["actual"] - r["proj_raw"] for r in rs), 2),
+                       "proj_mult": round(pm, 3), "proj_mult_raw": round(pm_raw, 3),
+                       "sd_mult": round(sm, 3), "sd_mult_raw": round(sm_raw, 3)}
+    return out
+
+
+def build_results(out: Outcomes) -> dict:
+    rows, graded, pending = grade_snapshots(out)
+    unflagged = [r for r in rows if not r.get("role_change")]
+    flagged = [r for r in rows if r.get("role_change")]
+
+    def bucket(rs, lo, hi):
+        return [r for r in rs if lo <= abs(r.get("edge_sd") or 0) < hi]
+
+    weeks_n = len(graded)
+    return {
+        "season": SEASON, "updated": now_iso(),
+        "graded_weeks": weeks_n, "graded_week_list": graded, "pending_weeks": pending,
+        "corrections_min_weeks": CORRECTIONS_MIN_WEEKS,
+        "corrections_active": weeks_n >= CORRECTIONS_MIN_WEEKS,
+        "note": "Record = the side the model leans (projection vs line), 1u flat at -110. "
+                "Main tables use unflagged props (what the board ranks); role-change props are graded separately.",
+        "overall": record(unflagged),
+        "by_market": {MARKETS[m][1]: record([r for r in unflagged if r["market"] == m]) for m in MARKETS},
+        "by_edge": [{"bucket": b, **record(bucket(unflagged, lo, hi))} for b, lo, hi in EDGE_BUCKETS],
+        "flagged_vs_unflagged": {"unflagged": record(unflagged), "flagged": record(flagged),
+                                 "flagged_line": record([r for r in flagged if r["role_change"] == "line"]),
+                                 "flagged_usage": record([r for r in flagged if r["role_change"] == "usage"])},
+        "calibration": calibration(unflagged),
+        "by_week": [{"week": w, **record([r for r in unflagged if r["week"] == w])} for w in graded],
+        "corrections": corrections(rows),
+    }
+
+
+# ----------------------------------------------------------------------------- parlays
+def load_parlay_sheet(url: str) -> pd.DataFrame:
+    r = requests.get(url, timeout=60)
+    r.raise_for_status()
+    df = pd.read_csv(io.StringIO(r.text), dtype=str).fillna("")
+    df.columns = [c.strip().lower() for c in df.columns]
+    return df
+
+
+def grade_leg(leg: dict, week: int | None, out: Outcomes) -> dict:
+    g = dict(leg)
+    pid, _, market = str(leg.get("prop_id", "")).partition(":")
+    if not week or market not in MARKETS:
+        return {**g, "status": "unknown"}
+    actual = out.actual(pid, week, market)
+    if actual is None:
+        g["status"] = "void" if out.week_complete(week) else "pending"   # DNP once the week is final
+        return g
+    res = side_result(actual, float(leg["line"]))
+    side = str(leg.get("side", "")).lower()
+    g["actual"] = actual
+    g["status"] = "push" if res == "push" else "hit" if res == side else "miss"
+    return g
+
+
+def grade_parlays(out: Outcomes) -> dict:
+    url = os.environ.get("PARLAY_SHEET_CSV_URL", "").strip()
+    base = {"updated": now_iso(), "configured": bool(url), "parlays": [],
+            "summary": {"n": 0, "w": 0, "l": 0, "p": 0, "pending": 0, "units": 0.0}}
+    if not url:
+        log("parlays: PARLAY_SHEET_CSV_URL not set; skipping")
+        return base
+    try:
+        df = load_parlay_sheet(url)
+    except Exception as e:
+        log(f"parlays: could not read sheet ({e})")
+        return {**base, "error": str(e)[:200]}
+    parlays, s = [], base["summary"]
+    for row in df.to_dict("records"):
+        try:
+            legs = json.loads(row.get("legs_json") or "[]")
+        except json.JSONDecodeError:
+            continue
+        week = int(float(row["week"])) if row.get("week") else None
+        graded = [grade_leg(l, week, out) for l in legs]
+        st = [l["status"] for l in graded]
+        book = float(row["book_odds"]) if row.get("book_odds") else None
+        if "miss" in st:
+            status, units = "lost", -1.0
+        elif "pending" in st or "unknown" in st:
+            status, units = "pending", None
+        else:
+            live = [l for l in graded if l["status"] == "hit"]
+            if not live:
+                status, units = "push", 0.0
+            elif len(live) == len(graded) and book is not None:
+                status, units = "won", american_to_decimal(book) - 1
+            else:   # pushes/voids drop out; book reprices on the remaining legs
+                decs = [american_to_decimal(l.get("price")) for l in live]
+                status = "won"
+                units = math.prod(decs) - 1 if all(decs) else None
+        parlays.append({"id": row.get("id"), "created": row.get("created"), "week": week,
+                        "book_odds": book, "model_prob": float(row["model_prob"]) if row.get("model_prob") else None,
+                        "legs": graded, "status": status,
+                        "units": round(units, 2) if units is not None else None})
+        s["n"] += 1
+        if status == "won":
+            s["w"] += 1
+        elif status == "lost":
+            s["l"] += 1
+        elif status == "push":
+            s["p"] += 1
+        else:
+            s["pending"] += 1
+        s["units"] = round(s["units"] + (units or 0), 2)
+    parlays.sort(key=lambda x: x.get("created") or "", reverse=True)
+    log(f"parlays: {s}")
+    return {**base, "parlays": parlays, "summary": s}
+
+
+# ----------------------------------------------------------------------------- entry
+def run(frames: dict) -> None:
+    out = Outcomes(frames["stats"], frames["games"])
+    OUT.mkdir(parents=True, exist_ok=True)
+    results = build_results(out)
+    RESULTS.write_text(json.dumps(results, separators=(",", ":")))
+    log(f"results: {results['graded_weeks']} graded weeks {results['graded_week_list']}, "
+        f"pending {results['pending_weeks']}, overall {results['overall']}")
+    PARLAYS.write_text(json.dumps(grade_parlays(out), separators=(",", ":")))
