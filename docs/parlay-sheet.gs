@@ -11,9 +11,13 @@
  * and this appends one row to the "Parlays" sheet:
  *   id | created | week | legs_json | book_odds | model_prob | status
  *
- * "status" starts as "open". The nightly build grades every parlay from the
- * published CSV of this sheet and shows the results in the site's Parlays tab;
- * it does not write back here.
+ * "status" starts as "open". Every build reads the rows back as CSV from this same
+ * web app (GET <exec URL>?format=csv), grades every parlay, and shows the results
+ * in the site's Parlays tab; it does not write back here. No sheet sharing or
+ * publish-to-web is needed.
+ *
+ * After pasting a new version of this file: Deploy → Manage deployments → ✏️ Edit →
+ * Version: New version → Deploy. The /exec URL stays the same.
  */
 
 var SHEET_NAME = 'Parlays';
@@ -60,9 +64,21 @@ function doPost(e) {
   }
 }
 
-// Visiting the /exec URL in a browser should say it's alive.
-function doGet() {
-  return json_({ok: true, sheet: SHEET_NAME, rows: Math.max(0, sheet_().getLastRow() - 1)});
+// GET <exec URL>?format=csv  -> the Parlays sheet as CSV (what the build's grader reads)
+// GET <exec URL>               -> health check: {"ok":true,"sheet":"Parlays","rows":N}
+function doGet(e) {
+  var sh = sheet_();
+  if (e && e.parameter && e.parameter.format === 'csv') {
+    var values = sh.getDataRange().getValues();
+    var csv = values.map(function (row) {
+      return row.map(function (v) {
+        var s = v instanceof Date ? v.toISOString() : String(v);
+        return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',');
+    }).join('\n');
+    return ContentService.createTextOutput(csv).setMimeType(ContentService.MimeType.CSV);
+  }
+  return json_({ok: true, sheet: SHEET_NAME, rows: Math.max(0, sh.getLastRow() - 1)});
 }
 
 function sheet_() {

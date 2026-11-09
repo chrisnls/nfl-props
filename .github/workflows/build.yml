@@ -32,7 +32,9 @@ jobs:
         # Free (no odds calls). Scores every finished week's snapshot and the saved-parlay sheet.
         # Runs on every build so a week is graded as soon as nflverse has its stats.
         env:
-          PARLAY_SHEET_CSV_URL: ${{ secrets.PARLAY_SHEET_CSV_URL || vars.PARLAY_SHEET_CSV_URL }}
+          # Saved parlays come back from the Apps Script web app as CSV (see docs/parlay-sheet.gs).
+          # Same URL as PARLAY_WEBHOOK_URL in site/index.html; a secret/variable overrides it.
+          PARLAY_SHEET_CSV_URL: ${{ secrets.PARLAY_SHEET_CSV_URL || vars.PARLAY_SHEET_CSV_URL || 'https://script.google.com/macros/s/AKfycbyYThKB9IKk3k2zNRmEU0E9JHwHVQfHZLlkGFQneNQNnPrxaJPWEYTO8BwwyT6PJ6wa9Q/exec?format=csv' }}
         run: python pipeline/build.py --grade
       - name: Build data
         env:

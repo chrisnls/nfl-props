@@ -193,7 +193,7 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
 
 <script>
 // Google Apps Script web-app URL for saving parlays (see README → Saved parlays). Empty = saving off.
-const PARLAY_WEBHOOK_URL = '';
+const PARLAY_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyYThKB9IKk3k2zNRmEU0E9JHwHVQfHZLlkGFQneNQNnPrxaJPWEYTO8BwwyT6PJ6wa9Q/exec';
 
 const $ = s => document.querySelector(s);
 const fmtOdds = o => o == null ? '—' : (o > 0 ? '+' + o : '' + o);
@@ -662,10 +662,10 @@ async function loadParlays(){
 const LEG_ICON = {hit: ['✓', 'won', 'hit'], miss: ['✗', 'lost', 'miss'], push: ['=', 'push', 'push'], void: ['∅', 'push', 'void (DNP)'], pending: ['…', 'pending', 'pending'], unknown: ['?', 'pending', 'unknown']};
 const ST_ICON = {won: '✓ Won', lost: '✗ Lost', push: '= Push', pending: '… Pending'};
 function renderParlays(P){
-  const setup = !PARLAY_WEBHOOK_URL || !P.configured;
+  const setup = !PARLAY_WEBHOOK_URL || !P.configured || P.error;
   const help = setup ? `<div class="panel"><h3>Set up saved parlays</h3><p class="muted">Saving needs a Google Sheet with a small Apps Script web app; grading needs that sheet published as CSV. See <b>README → Saved parlays</b>.</p>
     <ul class="muted small"><li>Site → sheet: ${PARLAY_WEBHOOK_URL ? '✓ <code>PARLAY_WEBHOOK_URL</code> is set' : '✗ <code>PARLAY_WEBHOOK_URL</code> in <code>site/index.html</code> is empty'}</li>
-    <li>Sheet → grading: ${P.configured ? '✓ <code>PARLAY_SHEET_CSV_URL</code> is set' : '✗ <code>PARLAY_SHEET_CSV_URL</code> repo secret/variable is not set'}</li></ul></div>` : '';
+    <li>Sheet → grading: ${P.error ? `✗ the last build couldn't read the sheet: <i>${P.error}</i>` : P.configured ? '✓ the build reads the sheet back from the web app as CSV' : '✗ <code>PARLAY_SHEET_CSV_URL</code> is not set in the workflow'}</li></ul></div>` : '';
   const ps = P.parlays || [], s = P.summary || {};
   if (!ps.length) return help + `<div class="empty">No saved parlays yet. Build a slip on the board and press <b>Save parlay</b>.</div>`;
   const settled = s.w + s.l + s.p;

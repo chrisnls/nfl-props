@@ -237,10 +237,19 @@ def build_results(out: Outcomes, frames: dict) -> dict:
 
 # ----------------------------------------------------------------------------- parlays
 def load_parlay_sheet(url: str) -> pd.DataFrame:
-    r = requests.get(url, timeout=60)
+    """The Parlays sheet as CSV: the Apps Script web app's `?format=csv` (or any CSV URL)."""
+    r = requests.get(url, timeout=60)   # Apps Script answers via a redirect; requests follows it
     r.raise_for_status()
-    df = pd.read_csv(io.StringIO(r.text), dtype=str).fillna("")
+    text = r.text.strip()
+    if not text:
+        return pd.DataFrame(columns=["legs_json"])          # sheet exists, no rows yet
+    if text.startswith("{") or text.lstrip().startswith("<"):
+        raise ValueError("got JSON/HTML instead of CSV -- redeploy docs/parlay-sheet.gs "
+                         "as a new version so ?format=csv is supported")
+    df = pd.read_csv(io.StringIO(text), dtype=str).fillna("")
     df.columns = [c.strip().lower() for c in df.columns]
+    if "legs_json" not in df.columns:
+        raise ValueError(f"no legs_json column (got {list(df.columns)[:8]})")
     return df
 
 
@@ -277,6 +286,8 @@ def grade_parlays(out: Outcomes) -> dict:
         try:
             legs = json.loads(row.get("legs_json") or "[]")
         except json.JSONDecodeError:
+            continue
+        if not isinstance(legs, list) or not legs:
             continue
         week = int(float(row["week"])) if row.get("week") else None
         graded = [grade_leg(l, week, out) for l in legs]

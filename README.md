@@ -73,14 +73,14 @@ This is a v1 model — deliberately simple and transparent. Good next steps: usa
 The slip's **Save parlay** button posts the slip to a Google Sheet; every build grades it from the sheet's published CSV.
 
 1. Create a Google Sheet (any name). **Extensions → Apps Script**, replace the code with [`docs/parlay-sheet.gs`](docs/parlay-sheet.gs), and save.
-2. **Deploy → New deployment →** type **Web app**; *Execute as:* **Me**; *Who has access:* **Anyone**. Authorize it, then copy the **Web app URL** (ends in `/exec`). Opening that URL in a browser should show `{"ok":true,...}`. The script creates the **Parlays** tab with the header row on first use.
-3. In `site/index.html`, set `const PARLAY_WEBHOOK_URL = 'https://script.google.com/macros/s/…/exec';` and push.
-4. In the sheet: **File → Share → Publish to web →** pick the **Parlays** sheet and **Comma-separated values (.csv)** → Publish, then copy the URL.
-5. In the repo: **Settings → Secrets and variables → Actions →** add `PARLAY_SHEET_CSV_URL` with that URL, as a secret or a variable.
+2. **Deploy → New deployment →** type **Web app**; *Execute as:* **Me**; *Who has access:* **Anyone**. Authorize it, then copy the **Web app URL** (ends in `/exec`). Opening it in a browser should show `{"ok":true,...}`. The script creates the **Parlays** tab on first use.
+3. Put that URL in `PARLAY_WEBHOOK_URL` in `site/index.html` and in the `PARLAY_SHEET_CSV_URL` default in `.github/workflows/build.yml` (with `?format=csv` on the end), then push. The build reads the rows back from the same web app, so the sheet never needs to be shared or published. A repo secret or variable named `PARLAY_SHEET_CSV_URL` overrides the default.
+
+When you change the script later: **Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy.** The URL stays the same.
 
 Columns: `id, created, week, legs_json, book_odds, model_prob, status`. `status` stays `open` in the sheet; graded results live in `site/data/parlays.json`. Legs grade as hit/miss/push, or void if the player didn't play. A push or void leg drops out and the parlay is paid on the remaining legs at their saved prices. Units are 1u per parlay at the saved odds.
 
-The web-app URL sits in public page source, so anyone who finds it could add rows. The script only accepts the expected fields (max 20 legs), and you can redeploy to get a new URL at any time.
+The web-app URL sits in the public page source and repo, so anyone who finds it could add rows or read the parlays back. The script only accepts the expected fields (max 20 legs), and a new deployment gives a new URL whenever you want.
 
 ## Layout
 
