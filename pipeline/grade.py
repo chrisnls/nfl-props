@@ -20,16 +20,24 @@ import math
 import os
 import statistics
 
+from pathlib import Path
+
 import pandas as pd
 import requests
 
-from build import (CORRECTIONS_MIN_WEEKS, HISTORY, MARKETS, OUT, RESULTS, SEASON, log)
+import hashlib
+
+import build
+from build import (BACKTEST_CACHE, CORRECTIONS_MIN_N, HISTORY, MARKETS, OUT, RESULTS, SEASON, log)
 
 PARLAYS = OUT / "parlays.json"
 JUICE_WIN = 100 / 110            # profit per 1u staked at -110
 EDGE_BUCKETS = [("<0.5σ", 0, 0.5), ("0.5–1σ", 0.5, 1.0), (">1σ", 1.0, math.inf)]
-# corrections: need this many graded (unflagged) props in a market before suggesting one
+# corrections: need this many graded (unflagged) projections in a market before suggesting one;
+# they auto-apply at CORRECTIONS_MIN_N. Each is shrunk toward 1.0 by n / (n + CORR_SHRINK_K).
 CORR_MIN_N = 30
+CORR_SHRINK_K = 100
+BACKTEST_FIRST_WEEK = 5      # sample-line rule needs 4+ prior games
 PROJ_MULT_RANGE = (0.85, 1.15)
 SD_MULT_RANGE = (0.7, 1.5)
 
@@ -130,34 +138,76 @@ def calibration(rows: list[dict]) -> list[dict]:
     return out
 
 
-def corrections(rows: list[dict]) -> dict:
-    """Per-market suggestions from unflagged props, measured against the *raw* model
-    (before any correction), so applying them never compounds.
+def backtest_rows(frames: dict, out: Outcomes) -> tuple[list[dict], list[int]]:
+    """Corrections don't need betting lines -- only projection, σ and the actual result.
+    So replay the model on every finished week: for week W it sees only games before W,
+    and projects every player who'd plausibly have a prop (same rule as sample lines:
+    4+ games and a meaningful recent average). Cached per week; the cache resets whenever
+    build.py changes, so it always reflects the current model."""
+    stats, games = frames["stats"], frames["games"]
+    version = hashlib.sha1(Path(build.__file__).read_bytes()).hexdigest()[:12]
+    cache = json.loads(BACKTEST_CACHE.read_text()) if BACKTEST_CACHE.exists() else {}
+    if cache.get("model_version") != version or cache.get("season") != SEASON:
+        cache = {"season": SEASON, "model_version": version, "weeks": {}}
+    weeks = [w for w in sorted(int(x) for x in games.week.unique())
+             if w >= BACKTEST_FIRST_WEEK and out.week_complete(w)]
+    for w in weeks:
+        if str(w) in cache["weeks"]:
+            continue
+        g = games.copy()
+        g.loc[g.week == w, ["home_score", "away_score"]] = float("nan")   # as of before kickoff
+        played = set(stats[stats.week == w].player_id)
+        lines = build.sample_odds(stats, w, played)
+        props, _ = build.build_props(stats, g, frames["injuries"], frames["snaps"], w, lines)
+        rows = []
+        for p in props:
+            a = out.actual(p["pid"], w, p["market"])
+            if a is not None:
+                rows.append([p["market"], p["proj_raw"], p["sd_raw"], a, (p["role_change"] or {}).get("why")])
+        cache["weeks"][str(w)] = rows
+        log(f"backtest: week {w} -> {len(rows)} projections")
+    BACKTEST_CACHE.write_text(json.dumps(cache, separators=(",", ":")))
+    out_rows = [{"market": m, "proj_raw": pr, "sd_raw": sd, "actual": a, "role_change": f, "week": int(w)}
+                for w, rs in cache["weeks"].items() if int(w) in weeks for m, pr, sd, a, f in rs]
+    return out_rows, weeks
+
+
+def corrections(graded: list[dict], backtest: list[dict]) -> dict:
+    """Per-market suggestions from unflagged projections (backtest + real graded props),
+    measured against the *raw* model (before any correction), so applying them never compounds.
       proj_mult: total actual / total projected  -> fixes systematic over/under-projection
       sd_mult:   RMS of (actual − corrected proj) / σ  -> 1.0 means σ is the right width;
-                 >1 means outcomes spread wider than the model thinks (P(over) too confident)"""
+                 >1 means outcomes spread wider than the model thinks (P(over) too confident)
+    Both are shrunk toward 1.0 by n/(n+CORR_SHRINK_K), then clamped."""
     out = {}
     for market in MARKETS:
-        rs = [r for r in rows if r["market"] == market and not r.get("role_change")
-              and r.get("proj_raw") and r.get("sd_raw")]
-        if len(rs) < CORR_MIN_N:
-            out[market] = {"n": len(rs), "proj_mult": None, "sd_mult": None,
-                           "note": f"needs {CORR_MIN_N}+ graded props"}
+        ok = lambda r: r["market"] == market and not r.get("role_change") and r.get("proj_raw") and r.get("sd_raw")
+        g_rows, b_rows = [r for r in graded if ok(r)], [r for r in backtest if ok(r)]
+        rs = g_rows + b_rows
+        n = len(rs)
+        base = {"n": n, "n_graded": len(g_rows), "n_backtest": len(b_rows)}
+        if n < CORR_MIN_N:
+            out[market] = {**base, "proj_mult": None, "sd_mult": None, "active": False,
+                           "note": f"needs {CORR_MIN_N}+ graded projections"}
             continue
+        w = n / (n + CORR_SHRINK_K)
         tot_a, tot_p = sum(r["actual"] for r in rs), sum(r["proj_raw"] for r in rs)
         pm_raw = tot_a / tot_p if tot_p else 1.0
-        pm = clamp(pm_raw, *PROJ_MULT_RANGE)
+        pm = clamp(1 + (pm_raw - 1) * w, *PROJ_MULT_RANGE)
         z = [(r["actual"] - r["proj_raw"] * pm) / r["sd_raw"] for r in rs]
         sm_raw = math.sqrt(statistics.fmean(x * x for x in z))
-        sm = clamp(sm_raw, *SD_MULT_RANGE)
-        out[market] = {"n": len(rs), "bias": round(statistics.fmean(r["actual"] - r["proj_raw"] for r in rs), 2),
+        sm = clamp(1 + (sm_raw - 1) * w, *SD_MULT_RANGE)
+        out[market] = {**base, "bias": round(statistics.fmean(r["actual"] - r["proj_raw"] for r in rs), 2),
                        "proj_mult": round(pm, 3), "proj_mult_raw": round(pm_raw, 3),
-                       "sd_mult": round(sm, 3), "sd_mult_raw": round(sm_raw, 3)}
+                       "sd_mult": round(sm, 3), "sd_mult_raw": round(sm_raw, 3),
+                       "active": n >= CORRECTIONS_MIN_N}
     return out
 
 
-def build_results(out: Outcomes) -> dict:
+def build_results(out: Outcomes, frames: dict) -> dict:
     rows, graded, pending = grade_snapshots(out)
+    bt, bt_weeks = backtest_rows(frames, out)
+    corr = corrections(rows, bt)
     unflagged = [r for r in rows if not r.get("role_change")]
     flagged = [r for r in rows if r.get("role_change")]
 
@@ -168,8 +218,9 @@ def build_results(out: Outcomes) -> dict:
     return {
         "season": SEASON, "updated": now_iso(),
         "graded_weeks": weeks_n, "graded_week_list": graded, "pending_weeks": pending,
-        "corrections_min_weeks": CORRECTIONS_MIN_WEEKS,
-        "corrections_active": weeks_n >= CORRECTIONS_MIN_WEEKS,
+        "corrections_min_n": CORRECTIONS_MIN_N,
+        "corrections_active": any(c.get("active") for c in corr.values()),
+        "backtest_weeks": bt_weeks,
         "note": "Record = the side the model leans (projection vs line), 1u flat at -110. "
                 "Main tables use unflagged props (what the board ranks); role-change props are graded separately.",
         "overall": record(unflagged),
@@ -180,7 +231,7 @@ def build_results(out: Outcomes) -> dict:
                                  "flagged_usage": record([r for r in flagged if r["role_change"] == "usage"])},
         "calibration": calibration(unflagged),
         "by_week": [{"week": w, **record([r for r in unflagged if r["week"] == w])} for w in graded],
-        "corrections": corrections(rows),
+        "corrections": corr,
     }
 
 
@@ -268,7 +319,7 @@ def grade_parlays(out: Outcomes) -> dict:
 def run(frames: dict) -> None:
     out = Outcomes(frames["stats"], frames["games"])
     OUT.mkdir(parents=True, exist_ok=True)
-    results = build_results(out)
+    results = build_results(out, frames)
     RESULTS.write_text(json.dumps(results, separators=(",", ":")))
     log(f"results: {results['graded_weeks']} graded weeks {results['graded_week_list']}, "
         f"pending {results['pending_weeks']}, overall {results['overall']}")

@@ -75,7 +75,8 @@ VOLUME_LABEL = {"attempts": "att", "carries": "car", "targets": "tgt"}
 LINES_CACHE = ROOT / "pipeline" / "lines_cache.json"   # committed by the workflow; not published
 HISTORY = OUT / "history"          # week_NN.json: every live build's props, for grading
 RESULTS = OUT / "results.json"     # written by --grade
-CORRECTIONS_MIN_WEEKS = 4          # auto-apply suggested corrections only after this many graded weeks
+CORRECTIONS_MIN_N = 100            # a market's correction auto-applies once this many graded projections back it
+BACKTEST_CACHE = ROOT / "pipeline" / "backtest_cache.json"   # per-week backtest rows (see grade.py)
 ET = ZoneInfo("America/New_York")
 BOOKS = ["draftkings", "fanduel", "betmgm", "caesars", "espnbet", "fanatics"]
 
@@ -503,7 +504,7 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
         proj, sd = project(values, factor, discrete)
         proj_raw, sd_raw = proj, sd
         corr = (corrections or {}).get(market)
-        if corr:   # learned from graded weeks (see grade.py); only active after CORRECTIONS_MIN_WEEKS
+        if corr:   # learned from backtest + graded weeks (see grade.py); active per market at CORRECTIONS_MIN_N
             proj, sd = proj * corr["proj_mult"], sd * corr["sd_mult"]
 
         z_line = (line + (0.5 if discrete else 0)) - proj   # continuity for counts
@@ -607,16 +608,17 @@ def write_snapshot(props: list[dict], wg: list[dict], week: int, fetched: str) -
 
 
 def load_corrections() -> tuple[dict, dict]:
-    """Per-market corrections from results.json, active only after CORRECTIONS_MIN_WEEKS graded weeks."""
+    """Per-market corrections from results.json -- only markets grade.py marked active
+    (CORRECTIONS_MIN_N+ graded projections from the backtest and real graded props)."""
     if not RESULTS.exists():
-        return {}, {"active": False, "graded_weeks": 0}
+        return {}, {"active": False}
     r = json.loads(RESULTS.read_text())
-    weeks = r.get("graded_weeks", 0)
-    corr = {m: c for m, c in (r.get("corrections") or {}).items() if c and c.get("proj_mult")}
-    if weeks < CORRECTIONS_MIN_WEEKS or not corr:
-        return {}, {"active": False, "graded_weeks": weeks}
-    log(f"applying corrections from {weeks} graded weeks: {corr}")
-    return corr, {"active": True, "graded_weeks": weeks, "by_market": corr}
+    corr = {m: {"proj_mult": c["proj_mult"], "sd_mult": c["sd_mult"]}
+            for m, c in (r.get("corrections") or {}).items() if c and c.get("active")}
+    if not corr:
+        return {}, {"active": False}
+    log(f"applying corrections: {corr}")
+    return corr, {"active": True, "by_market": corr, "from": r.get("updated")}
 
 
 def main() -> None:

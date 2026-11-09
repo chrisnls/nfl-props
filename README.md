@@ -66,7 +66,7 @@ This is a v1 model — deliberately simple and transparent. Good next steps: usa
    - record by edge strength (|edge ÷ σ| < 0.5, 0.5–1, > 1);
    - calibration by P(over) decile (predicted vs actual over rate) and Brier score per market;
    - role-flagged vs unflagged props graded separately. The main tables use unflagged props, which is what the board ranks.
-3. **Corrections.** For each market with 30+ graded unflagged props, it suggests a **projection ×** (total actual ÷ total projected, clamped 0.85–1.15) and a **σ ×** (RMS of the standardized misses, clamped 0.7–1.5). Both are measured against the *uncorrected* model, so they never compound. They are only reported until **4 graded weeks** exist; after that the build applies them automatically, and the Results tab shows them as applied.
+3. **Corrections.** Per market, a **projection ×** (total actual ÷ total projected) and a **σ ×** (RMS of the standardized misses). These don't need betting lines, so they're learned from a **backtest** as well as graded props. The backtest replays the model on every finished week from week 5 on, using only earlier games, for every player who'd plausibly have a prop. It's cached in `pipeline/backtest_cache.json` and recomputed whenever `build.py` changes. Corrections use unflagged projections only, are measured against the *uncorrected* model (so they never compound), are shrunk toward ×1 by n/(n+100), and are clamped to 0.85–1.15 for projection and 0.7–1.5 for σ. A market's correction **applies automatically once 100+ projections back it** (`CORRECTIONS_MIN_N`), and it updates every build.
 
 ## Saved parlays (Parlays tab)
 

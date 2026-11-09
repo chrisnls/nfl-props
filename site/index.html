@@ -562,18 +562,32 @@ async function loadResults(){
   wireCalibration();
 }
 
+function correctionsHTML(R){
+  const bw = (R.backtest_weeks || []).filter(w => w >= 5);
+  const rows = Object.entries(R.corrections || {}).map(([m, c]) => `<tr><td>${(DATA && DATA.markets[m]) || m}</td>
+    <td class="num" title="${c.n_backtest ?? 0} backtest + ${c.n_graded ?? 0} graded props">${c.n}</td>
+    <td class="num">${c.bias != null ? (c.bias > 0 ? '+' : '') + c.bias : '—'}</td>
+    <td class="num">${c.proj_mult != null ? '×' + c.proj_mult.toFixed(3) : '—'}</td>
+    <td class="num">${c.sd_mult != null ? '×' + c.sd_mult.toFixed(3) : '—'}</td>
+    <td style="text-align:left">${c.proj_mult == null ? `<span class="muted">${c.note || 'not enough data'}</span>` : c.active ? '<span class="badge won">✓ applied</span>' : `<span class="badge pending">suggested · ${c.n}/${R.corrections_min_n || 100}</span>`}</td></tr>`).join('');
+  return `<div class="sec">Model corrections</div>
+    <div class="why"><ul>
+      <li><b>Projection ×</b> scales every projection in that market (total actual ÷ total projected). Below 1 means the model has been projecting too high.</li>
+      <li><b><span class="nc">σ</span> ×</b> widens or narrows the spread. Above 1 means real outcomes vary more than the model thinks, so its probabilities are too confident.</li>
+      <li><b>Where they come from:</b> ${bw.length ? `a backtest of weeks ${bw[0]}–${bw[bw.length - 1]} (the model replayed each week using only earlier games, for every player with a likely prop)` : 'a backtest of finished weeks'} plus every graded prop. Lines aren't needed, just projection, σ and the actual result. Unflagged projections only, measured against the uncorrected model, and shrunk toward ×1 when the sample is small.</li>
+      <li><b>When they apply:</b> automatically, per market, once ${R.corrections_min_n || 100}+ projections back it. They update every build as more weeks finish.</li>
+    </ul></div>
+    <table class="log"><tr><th>Market</th><th>Projections</th><th>Avg miss</th><th>Projection ×</th><th><span class="nc">σ</span> ×</th><th style="text-align:left">Status</th></tr>${rows}</table>`;
+}
+
 function renderResults(R){
   const pend = (R.pending_weeks || []).map(w => 'week ' + w).join(', ');
   if (!R.graded_weeks) return `<div class="panel"><h3>No graded weeks yet</h3>
     <p class="muted">Every live build saves its props (pre-game lines only) to <code>data/history/</code>. After a week's games are final and nflverse has the stats, the next build grades them here: record and ROI at -110, edge buckets, calibration and Brier score, plus suggested model corrections.</p>
-    ${pend ? `<p>Waiting on: <b>${pend}</b> — it grades automatically on the next build after the last game's stats land (usually the Tuesday run).</p>` : '<p>No snapshots saved yet — the next live build will create one.</p>'}</div>`;
+    ${pend ? `<p>Waiting on: <b>${pend}</b> — it grades automatically on the next build after the last game's stats land (usually the Tuesday run).</p>` : '<p>No snapshots saved yet — the next live build will create one.</p>'}</div>
+    ${correctionsHTML(R)}`;
   const o = R.overall || {};
   const fv = R.flagged_vs_unflagged || {};
-  const corrRows = Object.entries(R.corrections || {}).map(([m, c]) => `<tr><td>${(DATA && DATA.markets[m]) || m}</td><td class="num">${c.n}</td>
-    <td class="num">${c.bias != null ? (c.bias > 0 ? '+' : '') + c.bias : '—'}</td>
-    <td class="num">${c.proj_mult != null ? '×' + c.proj_mult.toFixed(3) : '—'}</td>
-    <td class="num">${c.sd_mult != null ? '×' + c.sd_mult.toFixed(3) : '—'}</td>
-    <td style="text-align:left">${c.proj_mult == null ? `<span class="muted">${c.note || 'not enough data'}</span>` : R.corrections_active ? '<span class="badge won">✓ applied</span>' : '<span class="badge pending">suggested</span>'}</td></tr>`).join('');
   return `
     <div class="grid">
       <div class="tile"><span class="k">Record (model's side)</span><div class="v">${recTxt(o)}</div><div class="meta">${o.hit_pct != null ? o.hit_pct + '% hit · 52.4% breaks even at -110' : ''}</div></div>
@@ -599,13 +613,7 @@ function renderResults(R){
     <table class="log"><tr><th>Model P(over)</th><th>Predicted</th><th>Actual over rate</th><th>Props</th></tr>
       ${(R.calibration || []).filter(c => c.n).map(c => `<tr><td>${c.bucket}</td><td class="num">${pct(c.predicted)}</td><td class="num">${pct(c.actual)}</td><td class="num">${c.n}</td></tr>`).join('')}</table>
 
-    <div class="sec">Suggested model corrections</div>
-    <div class="why"><ul>
-      <li><b>Projection ×</b> scales every projection in that market (total actual ÷ total projected). Below 1 means the model has been projecting too high.</li>
-      <li><b>σ ×</b> widens or narrows the spread. Above 1 means real outcomes vary more than the model thinks, so its probabilities are too confident.</li>
-      <li>${R.corrections_active ? `<b>Active:</b> ${R.graded_weeks} graded weeks, so these are applied automatically to the board.` : `<b>Not applied yet</b> — they switch on automatically after ${R.corrections_min_weeks || 4} graded weeks (${R.graded_weeks}/${R.corrections_min_weeks || 4}). Measured on unflagged props, against the uncorrected model.`}</li>
-    </ul></div>
-    <table class="log"><tr><th>Market</th><th>Props</th><th>Avg miss</th><th>Projection ×</th><th><span class="nc">σ</span> ×</th><th style="text-align:left">Status</th></tr>${corrRows}</table>
+    ${correctionsHTML(R)}
 
     ${(R.by_week || []).length ? `<div class="sec">By week</div><table class="log">${recHead('Week')}${R.by_week.map(w => recRow('Week ' + w.week, w)).join('')}</table>` : ''}
     <p class="muted small">Updated ${R.updated ? new Date(R.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}</p>`;
