@@ -59,6 +59,7 @@ MARKETS = {
 # below everything else. Flag when the line is ROLE_Z historical σ from the season
 # average, or ROLE_Z_OUTSIDE σ and beyond every game in the log.
 ROLE_Z = 2.0
+MIN_GAMES = 3      # fewer games than this: shown as "thin history", not rated, demoted
 ROLE_Z_OUTSIDE = 1.5
 # ...or when the player's snap share in the last 2 games moved this much vs before
 # (both absolute points and relative change must clear the bar) AND the move contradicts
@@ -112,6 +113,21 @@ def download(name: str, url: str, max_age_hours: float = 6) -> Path:
     return path
 
 
+# Sportsbooks and nflverse don't always use the same name for a player. Key = a normalized
+# name a book might use; value = the normalized name nflverse uses. Keys must NOT be another
+# real player's nflverse name. Add to this when the build log lists an "unmatched" player
+# who does have stats under a different name.
+NAME_ALIASES = {
+    "hollywood brown": "marquise brown",
+    "nathaniel dell": "tank dell",
+    "joshua palmer": "josh palmer",
+    "chigoziem okonkwo": "chig okonkwo",
+    "zonovan knight": "bam knight",
+    "cameron ward": "cam ward",
+    "kevin concepcion": "kc concepcion",
+}
+
+
 def norm_name(name) -> str:
     if not isinstance(name, str):
         return ""
@@ -119,7 +135,8 @@ def norm_name(name) -> str:
     n = re.sub(r"[.'’]", "", n)
     n = re.sub(r"\b(jr|sr|ii|iii|iv|v)\b", "", n)
     n = re.sub(r"[^a-z ]", " ", n)
-    return " ".join(n.split())
+    n = " ".join(n.split())
+    return NAME_ALIASES.get(n, n)
 
 
 def american_to_prob(price: float) -> float:
@@ -485,13 +502,15 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
 
     for (pname, market), book_lines in lines.items():
         col, label, positions, discrete = MARKETS[market]
+        pname = norm_name(pname)     # re-apply aliases (cached lines may predate an alias)
         pid = by_name.get(pname)
         if pid is None:
             unmatched.add(book_lines[0]["name"])
             continue
         glog = hist[hist.player_id == pid].sort_values("week")
-        if len(glog) < 3:
+        if len(glog) == 0:
             continue
+        thin = len(glog) < MIN_GAMES
         team = latest_team.get(pid)
         if team not in team_game:
             continue
@@ -518,6 +537,9 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
 
         glog_ctx = [game_context(r, pname, pid, pos, col) for r in glog.itertuples()]
         role = role_change(values, line, discrete, [g["snap"] for g in glog_ctx], (proj - line) / sd)
+        if thin:   # too few games to project honestly: show the line and the games, don't rate it
+            role = {"why": "thin", "games": len(values), "dir": "up" if line > statistics.fmean(values) else "down",
+                    "z": None, "lo": min(values), "hi": max(values)}
         grp = pos if pos in ("QB", "RB", "WR", "TE") else "WR"
         def_key = profile(opp, grp, col)
         hits = [v > line for v in values]

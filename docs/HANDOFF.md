@@ -63,6 +63,12 @@ A full-slate pull of 6 markets costs **~85 credits**. Three pulls a week is ~260
 - **UI:** Board / Results / Parlays tabs (deep-linkable as `#results`, `#parlays`). Results has record tiles, tables, a calibration chart with a diagonal reference line, and the corrections table. Parlays shows each slip with per-leg results.
 - **Odds credits:** a live pull at 12:16 CT on 11/8 used 78 credits, so **2 remain** until the monthly reset. Until then the scheduled live runs fall back to cached lines, or to sample lines once the week changes.
 
+### Follow-up (11/9): thin history, name aliases, instant saved parlays
+
+- **Thin history:** players with 1–2 games this season (e.g. Carson Wentz starting MNF for the injured Kyler Murray) used to be dropped. They now show in the demoted section tagged *Thin history · N g*: average and games only, no projection, rating, EV or suggested side (`MIN_GAMES = 3`). Graded separately as `flagged_thin`.
+- **Name aliases:** `NAME_ALIASES` in `build.py` maps sportsbook names to nflverse names (e.g. *Hollywood Brown* → *Marquise Brown*, who was silently missing). Add to it when the build log lists an unmatched player who does have stats.
+- **Saved parlays show instantly:** after a successful save, the slip appears on the Parlays tab (this browser) as *Saved · grades after next build* until the build's graded copy replaces it.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.

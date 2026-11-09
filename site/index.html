@@ -257,10 +257,15 @@ const esd = p => p.edge_sd ?? p.edge / p.sd;
 const strength = p => { const a = Math.abs(esd(p)); return a >= 1 ? 'Strong' : a >= 0.6 ? 'Solid' : a >= 0.3 ? 'Lean' : 'Thin'; };
 const gapText = p => p.edge === 0 ? 'right on the line' : `${Math.abs(p.edge)} ${p.edge > 0 ? 'over' : 'under'} the line`;
 const strTip = p => `Projection is ${gapText(p)}. That gap is ${Math.abs(esd(p)).toFixed(1)}× this player's normal game-to-game swing (σ ${p.sd}). Strong ≥ 1×, Solid ≥ 0.6×, Lean ≥ 0.3×, Thin below that.`;
-const roleWhy = r => r.why === 'usage'
+const isThin = p => p.role_change && p.role_change.why === 'thin';
+const roleWhy = r => r.why === 'thin'
+  ? `Only ${r.games} game${r.games === 1 ? '' : 's'} this season — too few to project, so this prop isn't rated`
+  : r.why === 'usage'
   ? `Snap share went from ${r.snap_prior}% to ${r.snap_recent}% over the last 2 games — the season-long game log the model uses hasn't caught up`
   : `Line is ${Math.abs(r.z)}σ ${r.dir === 'up' ? 'above' : 'below'} the player's season average — likely a role change the game log can't see`;
-const roleTag = p => p.role_change ? `<span class="tag role" title="${roleWhy(p.role_change)}">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>` : '';
+const roleTag = p => !p.role_change ? '' : isThin(p)
+  ? `<span class="tag role" title="${roleWhy(p.role_change)}">Thin history · ${p.role_change.games} g</span>`
+  : `<span class="tag role" title="${roleWhy(p.role_change)}">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>`;
 
 function bestSide(p){
   // which side the model likes, and that side's EV
@@ -269,7 +274,7 @@ function bestSide(p){
 }
 
 function render(){
-  let list = props.filter(p => state.markets.has(p.market) && (!state.side || bestSide(p).side === state.side) && (!state.game || p.game === state.game) && p.games.length >= state.min &&
+  let list = props.filter(p => state.markets.has(p.market) && (!state.side || bestSide(p).side === state.side) && (!state.game || p.game === state.game) && (p.games.length >= state.min || isThin(p)) &&
     (!state.q || (p.player + ' ' + p.team + ' ' + p.opp).toLowerCase().includes(state.q)));
   const key = {
     edge: p => -Math.abs(esd(p)), ev: p => -(bestSide(p).ev ?? -9), hit: p => -(p.hit_l5 ?? 0),
@@ -283,7 +288,7 @@ function render(){
   // cap the main board at 300, but always show the (few) demoted role-change props under a divider
   const main = list.filter(p => !demote(p)).slice(0, 300), sunk = list.filter(demote);
   for (const p of [...main, ...sunk]) {
-    if (p === sunk[0]) { const h = document.createElement('div'); h.className = 'sec'; h.textContent = `Possible role change · ${sunk.length} demoted — line far outside the player's history, or playing time just shifted`; board.appendChild(h); }
+    if (p === sunk[0]) { const h = document.createElement('div'); h.className = 'sec'; h.textContent = `Demoted · ${sunk.length} — possible role change (line far from history, or playing time just shifted), or thin history (under 3 games, not rated)`; board.appendChild(h); }
     const bs = bestSide(p);
     const inj = p.injury && p.injury.status ? `<span class="tag ${p.injury.status === 'Questionable' ? 'q' : 'inj'}">${p.injury.status[0]} · ${p.injury.injury || ''}</span>` : '';
     const el = document.createElement('div'); el.className = 'row' + (p.role_change ? ' demoted' : '') + (state.sel === p.id ? ' sel' : ''); el.setAttribute('role','button'); el.tabIndex = 0;
@@ -292,13 +297,17 @@ function render(){
         <div style="min-width:0"><div class="n">${p.player} <span style="color:var(--ink3);font-weight:400">· ${p.label}</span></div>
         <div class="s">${p.pos} ${p.team} ${p.home ? 'vs' : '@'} ${p.opp}${KICK[p.game] ? ` · ${kickoffText(KICK[p.game])}` : ''} ${roleTag(p)} ${inj}</div></div></div>
       <div class="num"><span class="k">Line</span>${p.line}</div>
-      <div class="num" title="${strTip(p)}"><span class="k">Proj</span>${p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
+      ${isThin(p) ? `<div class="num" title="${roleWhy(p.role_change)}"><span class="k">Avg</span>${p.avg_season} <span class="sig" style="white-space:nowrap">in ${p.games.length} game${p.games.length === 1 ? '' : 's'}</span>
+        <span class="str thin">Not rated</span></div>
+      <div><span class="k">Over ${fmtOdds(p.over)} · Under ${fmtOdds(p.under)}</span>
+        <span class="num" style="color:var(--ink3);font-size:12px">book ${pct(p.fair_over)} over</span></div>`
+      : `<div class="num" title="${strTip(p)}"><span class="k">Proj</span>${p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
         <span class="str ${strength(p) === 'Thin' ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}">${strength(p)} ${strength(p) === 'Thin' ? 'edge' : p.edge >= 0 ? 'over' : 'under'}</span></div>
       <div><span class="k">${bs.side} ${fmtOdds(bs.price)} ${bs.book ? BOOK[bs.book] || bs.book : ''}</span>
-        <span class="num side ${bs.ev > 0 ? 'pos' : ''}">${pct(bs.p)}</span> <span class="num" style="color:var(--ink3);font-size:12px">vs ${pct(bs.side === 'Over' ? p.fair_over : 1 - p.fair_over)}</span></div>
+        <span class="num side ${bs.ev > 0 ? 'pos' : ''}">${pct(bs.p)}</span> <span class="num" style="color:var(--ink3);font-size:12px">vs ${pct(bs.side === 'Over' ? p.fair_over : 1 - p.fair_over)}</span></div>`}
       <div class="hits">${[['L5', p.hit_l5], ['L10', p.hit_l10], ['Szn', p.hit_season]].map(([l, v]) => `<span><b><i style="width:${v ?? 0}%"></i></b>${v == null ? '—' : v + '%'}</span>`).join('')}</div>
-      <button class="add" data-id="${p.id}">+ ${bs.side}</button>`;
-    el.onclick = e => { if (e.target.closest('.add')) { addLeg(p, bs.side); } else openDetail(p); };
+      <button class="add" data-id="${p.id}">${isThin(p) ? 'Pick side' : '+ ' + bs.side}</button>`;
+    el.onclick = e => { if (e.target.closest('.add') && !isThin(p)) { addLeg(p, bs.side); } else openDetail(p); };
     el.onkeydown = e => { if (e.key === 'Enter') openDetail(p); };
     board.appendChild(el);
   }
@@ -452,16 +461,18 @@ function openDetail(p){
     <div class="who">${p.headshot ? `<img src="${p.headshot}" alt="" style="width:56px;height:56px">` : ''}
       <div><h2>${p.player}</h2><div class="sub">${p.pos} · ${p.team} ${p.home ? 'vs' : '@'} ${p.opp}${KICK[p.game] ? ` · ${kickoffText(KICK[p.game])}` : ''} · ${p.label} ${roleTag(p)} ${inj}</div></div></div>
     ${p.role_change && p.role_change.why === 'usage' ? `<div class="note"><b>Possible role change.</b> His snap share went from ${p.role_change.snap_prior}% to ${p.role_change.snap_recent}% over the last 2 games, but the model still projects off his whole season, so it leans ${p.edge > 0 ? 'over' : 'under'} while his playing time points the other way. Demoted to the bottom of the board — see the breakdown below.</div>` : ''}
-    ${p.role_change && p.role_change.why !== 'usage' ? `<div class="note"><b>Possible role change.</b> The line (${p.line}) is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average of ${p.avg_season} (range ${p.role_change.lo}–${p.role_change.hi}). Books usually move this far only on news — a starter out, a depth-chart change — that the game log doesn't reflect yet, so the edge here is likely the model being stale. Demoted to the bottom of the board.</div>` : ''}
+    ${isThin(p) ? `<div class="note"><b>Thin history — not rated.</b> ${p.player} has only ${p.role_change.games} game${p.role_change.games === 1 ? '' : 's'} this season (${p.games.map(g => `wk ${g.wk}: ${g.val}`).join(', ')}). That's too few to project honestly — the numbers below are just his average and its spread, not a real forecast. Often this is a backup stepping in for an injured starter, so the book's line reflects a role his games don't show.</div>` : ''}
+    ${p.role_change && !['usage', 'thin'].includes(p.role_change.why) ? `<div class="note"><b>Possible role change.</b> The line (${p.line}) is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average of ${p.avg_season} (range ${p.role_change.lo}–${p.role_change.hi}). Books usually move this far only on news — a starter out, a depth-chart change — that the game log doesn't reflect yet, so the edge here is likely the model being stale. Demoted to the bottom of the board.</div>` : ''}
     <div class="grid">
       <div class="tile"><span class="k">Line</span><div class="v">${p.line}</div><div class="meta">${p.books.length > 1 ? p.books.length + ' books' : (BOOK[p.books[0]] || '')}${p.line_spread ? ' · ±' + p.line_spread : ''}</div></div>
-      <div class="tile"><span class="k">Projection</span><div class="v">${p.proj}</div><div class="meta">σ ${p.sd}</div></div>
-      <div class="tile"><span class="k">Edge</span><div class="v ${p.edge >= 0 ? 'pos' : 'neg'}">${p.edge > 0 ? '+' : ''}${p.edge}</div><div class="meta" title="${strTip(p)}">${strength(p)} · ${Math.abs(esd(p)).toFixed(1)}× normal swing</div></div>
-      <div class="tile"><span class="k">P(over)</span><div class="v">${pct(p.p_over)}</div><div class="meta">book ${pct(p.fair_over)}</div></div>
-      <div class="tile"><span class="k">Over</span><div class="v">${fmtOdds(p.over)}</div><div class="meta">${BOOK[p.over_book] || ''} · EV ${p.ev_over == null ? '—' : (p.ev_over * 100).toFixed(1) + '%'}</div></div>
-      <div class="tile"><span class="k">Under</span><div class="v">${fmtOdds(p.under)}</div><div class="meta">${BOOK[p.under_book] || ''} · EV ${p.ev_under == null ? '—' : (p.ev_under * 100).toFixed(1) + '%'}</div></div>
+      ${isThin(p) ? `<div class="tile"><span class="k">Average</span><div class="v">${p.avg_season}</div><div class="meta">${p.games.length} game${p.games.length === 1 ? '' : 's'} · no projection</div></div>`
+        : `<div class="tile"><span class="k">Projection</span><div class="v">${p.proj}</div><div class="meta">σ ${p.sd}</div></div>`}
+      ${isThin(p) ? '' : `<div class="tile"><span class="k">Edge</span><div class="v ${p.edge >= 0 ? 'pos' : 'neg'}">${p.edge > 0 ? '+' : ''}${p.edge}</div><div class="meta" title="${strTip(p)}">${isThin(p) ? 'not rated · too few games' : `${strength(p)} · ${Math.abs(esd(p)).toFixed(1)}× normal swing`}</div></div>`}
+      <div class="tile"><span class="k">P(over)</span><div class="v">${isThin(p) ? '—' : pct(p.p_over)}</div><div class="meta">book ${pct(p.fair_over)}</div></div>
+      <div class="tile"><span class="k">Over</span><div class="v">${fmtOdds(p.over)}</div><div class="meta">${BOOK[p.over_book] || ''} · EV ${p.ev_over == null || isThin(p) ? '—' : (p.ev_over * 100).toFixed(1) + '%'}</div></div>
+      <div class="tile"><span class="k">Under</span><div class="v">${fmtOdds(p.under)}</div><div class="meta">${BOOK[p.under_book] || ''} · EV ${p.ev_under == null || isThin(p) ? '—' : (p.ev_under * 100).toFixed(1) + '%'}</div></div>
     </div>
-    <div class="btns"><button class="btn ${bs.side === 'Over' ? 'gold' : ''}" id="addO">Add Over ${p.line}</button><button class="btn ${bs.side === 'Under' ? 'gold' : ''}" id="addU">Add Under ${p.line}</button></div>
+    <div class="btns"><button class="btn ${bs.side === 'Over' && !isThin(p) ? 'gold' : ''}" id="addO">Add Over ${p.line}</button><button class="btn ${bs.side === 'Under' && !isThin(p) ? 'gold' : ''}" id="addU">Add Under ${p.line}</button></div>
 
     <div class="sec">Game log vs line · gold = over</div>
     <svg class="chart" viewBox="0 0 ${W} ${H}" id="chart">
@@ -605,7 +616,7 @@ function renderResults(R){
     <p class="muted small">If the model is any good, the stronger buckets should hit more often.</p>
 
     <div class="sec">Role-change flagged vs not</div>
-    <table class="log">${recHead('Group')}${recRow('Unflagged (the board)', fv.unflagged)}${recRow('Flagged — all', fv.flagged)}${recRow('· line far from history', fv.flagged_line)}${recRow('· snap-share shift', fv.flagged_usage)}</table>
+    <table class="log">${recHead('Group')}${recRow('Unflagged (the board)', fv.unflagged)}${recRow('Flagged — all', fv.flagged)}${recRow('· line far from history', fv.flagged_line)}${recRow('· snap-share shift', fv.flagged_usage)}${recRow('· thin history (under 3 games)', fv.flagged_thin)}</table>
     <p class="muted small">Flagged props are demoted on the board. If their record is worse, the flag is doing its job.</p>
 
     <div class="sec">Calibration — when the model says X%, does it happen X% of the time?</div>
@@ -660,13 +671,17 @@ async function loadParlays(){
   el.innerHTML = renderParlays(PARLAYS);
 }
 const LEG_ICON = {hit: ['✓', 'won', 'hit'], miss: ['✗', 'lost', 'miss'], push: ['=', 'push', 'push'], void: ['∅', 'push', 'void (DNP)'], pending: ['…', 'pending', 'pending'], unknown: ['?', 'pending', 'unknown']};
-const ST_ICON = {won: '✓ Won', lost: '✗ Lost', push: '= Push', pending: '… Pending'};
+const ST_ICON = {won: '✓ Won', lost: '✗ Lost', push: '= Push', pending: '… Pending', saved: '✓ Saved · grades after next build'};
 function renderParlays(P){
   const setup = !PARLAY_WEBHOOK_URL || !P.configured || P.error;
-  const help = setup ? `<div class="panel"><h3>Set up saved parlays</h3><p class="muted">Saving needs a Google Sheet with a small Apps Script web app; grading needs that sheet published as CSV. See <b>README → Saved parlays</b>.</p>
+  const help = setup ? `<div class="panel"><h3>Set up saved parlays</h3><p class="muted">Saving and grading both go through the Google Apps Script web app on your sheet (<code>docs/parlay-sheet.gs</code>). See <b>README → Saved parlays</b>.</p>
     <ul class="muted small"><li>Site → sheet: ${PARLAY_WEBHOOK_URL ? '✓ <code>PARLAY_WEBHOOK_URL</code> is set' : '✗ <code>PARLAY_WEBHOOK_URL</code> in <code>site/index.html</code> is empty'}</li>
     <li>Sheet → grading: ${P.error ? `✗ the last build couldn't read the sheet: <i>${P.error}</i>` : P.configured ? '✓ the build reads the sheet back from the web app as CSV' : '✗ <code>PARLAY_SHEET_CSV_URL</code> is not set in the workflow'}</li></ul></div>` : '';
-  const ps = P.parlays || [], s = P.summary || {};
+  // parlays saved from this browser that the last build hasn't picked up yet
+  const known = new Set((P.parlays || []).map(x => x.id));
+  let local = [];
+  try { local = JSON.parse(localStorage.getItem('savedParlays') || '[]').filter(x => !known.has(x.id)); localStorage.setItem('savedParlays', JSON.stringify(local)); } catch (e) {}
+  const ps = [...local, ...(P.parlays || [])], s = P.summary || {};
   if (!ps.length) return help + `<div class="empty">No saved parlays yet. Build a slip on the board and press <b>Save parlay</b>.</div>`;
   const settled = s.w + s.l + s.p;
   return help + `
@@ -676,7 +691,7 @@ function renderParlays(P){
       <div class="tile"><span class="k">ROI</span><div class="v ${signCls(s.units)}">${settled ? ((s.units / settled) * 100 > 0 ? '+' : '') + ((s.units / settled) * 100).toFixed(1) + '%' : '—'}</div><div class="meta">${settled} settled</div></div>
     </div>
     ${ps.map(p => `<div class="pcard">
-      <div class="phead"><span><span class="badge ${p.status}">${ST_ICON[p.status] || p.status}</span>
+      <div class="phead"><span><span class="badge ${p.status === 'saved' ? 'pending' : p.status}">${ST_ICON[p.status] || p.status}</span>
         <b>${p.legs.length}-leg</b> · wk ${p.week ?? '?'} · ${p.created ? new Date(p.created).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : ''}</span>
         <span class="num">${p.book_odds != null ? fmtOdds(Math.round(p.book_odds)) : '—'} · model ${pct(p.model_prob)} · <b class="${signCls(p.units)}">${p.units != null ? unitsTxt(p.units) : '—'}</b></span></div>
       ${p.legs.map(l => { const [ic, cls, word] = LEG_ICON[l.status] || LEG_ICON.unknown;
@@ -704,6 +719,12 @@ async function saveParlay(btn){
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'not saved');
     btn.textContent = `Saved ✓ ${j.id}`;
+    try {   // show it on the Parlays tab right away; the next build replaces it with the graded copy
+      const mine = JSON.parse(localStorage.getItem('savedParlays') || '[]');
+      mine.unshift({id: j.id, created: payload.created, week: payload.week, book_odds: payload.book_odds, model_prob: payload.model_prob,
+        status: 'saved', units: null, legs: legs.map(l => ({...l, status: 'pending'}))});
+      localStorage.setItem('savedParlays', JSON.stringify(mine.slice(0, 50)));
+    } catch (e) {}
     savedSig = slipSig();
     PARLAYS = null;
   } catch (e) {
