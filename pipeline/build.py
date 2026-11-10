@@ -446,8 +446,9 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
     inj = injuries[injuries.week == injuries.week.max()]
     def clean(v):
         return v if isinstance(v, str) else None
+    # keyed by (name, team): two players can share a name (e.g. Justin Jefferson MIN WR / CLE LB)
     inj_by_player = {
-        norm_name(r.full_name): {"status": clean(r.report_status), "injury": clean(r.report_primary_injury),
+        (norm_name(r.full_name), r.team): {"status": clean(r.report_status), "injury": clean(r.report_primary_injury),
                                  "practice": clean(r.practice_status)}
         for r in inj.itertuples() if isinstance(r.full_name, str)
     }
@@ -461,11 +462,11 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
     snap_by_week: dict[tuple[str, int], float] = {}
     if len(snaps):
         s = snaps[snaps.week < week].sort_values("week")
-        for name, grp in s.groupby("player"):
-            snap_pct[norm_name(name)] = [r1(v * 100) for v in grp.offense_pct.tail(5)]
+        for (name, tm), grp in s.groupby(["player", "team"]):
+            snap_pct[(norm_name(name), tm)] = [r1(v * 100) for v in grp.offense_pct.tail(5)]
         for r in s.itertuples():
             if not pd.isna(r.offense_pct):
-                snap_by_week[(norm_name(r.player), int(r.week))] = round(float(r.offense_pct) * 100)
+                snap_by_week[(norm_name(r.player), r.team, int(r.week))] = round(float(r.offense_pct) * 100)
 
     # game-by-game context for the "why" breakdown
     scores = {g.game_id: (g.home_team, g.away_team, None if pd.isna(g.home_score) else int(g.home_score),
@@ -486,24 +487,36 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
             m = mates.loc[mates[vc].fillna(0).idxmax()]
             if not pd.isna(m[vc]) and m[vc] > 0:
                 mate = {"name": m.player_display_name, "vol": int(m[vc]),
-                        "snap": snap_by_week.get((norm_name(m.player_display_name), int(r.week)))}
+                        "snap": snap_by_week.get((norm_name(m.player_display_name), r.team, int(r.week)))}
         return {
             "wk": int(r.week), "opp": r.opponent_team, "home": r.team == r.game_id.split("_")[3],
             "val": float(getattr(r, col)) if not pd.isna(getattr(r, col)) else 0.0,
             "vol": vol, "share": round(100 * vol / tot) if vol is not None and tot else None,
-            "snap": snap_by_week.get((pname, int(r.week))),
+            "snap": snap_by_week.get((pname, r.team, int(r.week))),
             "pts": pts, "opp_pts": opp_pts, "mate": mate,
         }
 
     props: list[dict] = []
     unmatched = set()
-    by_name = {norm_name(n): pid for pid, n in
-               stats.drop_duplicates("player_id").set_index("player_id").player_display_name.items()}
+    by_name: dict[str, list[str]] = {}
+    for pid_, n in stats.drop_duplicates("player_id").set_index("player_id").player_display_name.items():
+        by_name.setdefault(norm_name(n), []).append(pid_)
+    games_played = hist.groupby("player_id").size()
+    last_pos = hist.sort_values("week").groupby("player_id").position.last()
+
+    def resolve(pname: str, positions: set[str]) -> str | None:
+        """Name -> player_id. When several players share a name, prefer one whose team plays
+        this week and whose position fits the market, then the one with the most games."""
+        cands = by_name.get(pname) or []
+        if len(cands) <= 1:
+            return cands[0] if cands else None
+        return max(cands, key=lambda c: (latest_team.get(c) in team_game, last_pos.get(c) in positions,
+                                         int(games_played.get(c, 0))))
 
     for (pname, market), book_lines in lines.items():
         col, label, positions, discrete = MARKETS[market]
         pname = norm_name(pname)     # re-apply aliases (cached lines may predate an alias)
-        pid = by_name.get(pname)
+        pid = resolve(pname, positions)
         if pid is None:
             unmatched.add(book_lines[0]["name"])
             continue
@@ -582,8 +595,8 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
             "games": glog_ctx,
             "vol_label": VOLUME_LABEL[VOLUME[col]],
             "defense": def_key,
-            "snaps": snap_pct.get(pname),
-            "injury": inj_by_player.get(pname),
+            "snaps": snap_pct.get((pname, team)),
+            "injury": inj_by_player.get((pname, team)),
             "team_injuries": team_injuries.get(team, []),
             "opp_injuries": [i for i in team_injuries.get(opp, []) if i["status"] in ("Out", "Doubtful")],
             "headshot": glog.headshot_url.iloc[-1] if isinstance(glog.headshot_url.iloc[-1], str) else None,

@@ -69,6 +69,8 @@ A full-slate pull of 6 markets costs **~85 credits**. Three pulls a week is ~260
 - **Name aliases:** `NAME_ALIASES` in `build.py` maps sportsbook names to nflverse names (e.g. *Hollywood Brown* → *Marquise Brown*, who was silently missing). Add to it when the build log lists an unmatched player who does have stats.
 - **Saved parlays show instantly:** after a successful save, the slip appears on the Parlays tab (this browser) as *Saved · grades after next build* until the build's graded copy replaces it.
 
+- **Shared names (11/10):** nflverse has a few players with the same name (Justin Jefferson MIN WR / CLE LB, Michael Carter…). Name lookup now picks the player whose team plays this week and whose position fits the market; injuries and snap counts are keyed by name + team. This restored Justin Jefferson (and others) on the board. The week-9 snapshot was rebuilt: +32 props, including Jefferson, Josh Jacobs, Zach Charbonnet and Tank Dell.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.
