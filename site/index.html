@@ -171,7 +171,15 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
         <option value="hit">Sort: hit rate L5</option>
         <option value="over">Sort: over edge</option>
         <option value="under">Sort: under edge</option>
+        <option value="str_over">Sort: Strong over → Strong under</option>
+        <option value="str_under">Sort: Strong under → Strong over</option>
         <option value="player">Sort: player</option>
+      </select>
+      <select id="strSel" title="Only show props rated at these strengths">
+        <option value="">Any strength</option>
+        <option value="Strong over">Strong over</option><option value="Solid over">Solid over</option><option value="Lean over">Lean over</option>
+        <option value="Lean under">Lean under</option><option value="Solid under">Solid under</option><option value="Strong under">Strong under</option>
+        <option value="SS over">Strong + Solid overs</option><option value="SS under">Strong + Solid unders</option><option value="SS">Strong + Solid (either side)</option>
       </select>
       <select id="sideSel" title="Only show props where the model leans this way"><option value="">Overs &amp; unders</option><option value="Over">Overs only</option><option value="Under">Unders only</option></select>
       <select id="minGames"><option value="3">3+ games</option><option value="5" selected>5+ games</option><option value="7">7+ games</option></select>
@@ -230,9 +238,9 @@ const kickoffText = s => { const t = kickoffDate(s);
   return t.toLocaleDateString([], {weekday:'short', month:'numeric', day:'numeric'}) + ' · ' + t.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); };
 let KICK = {};
 
-let DATA, props = [], state = {markets:new Set(), game:'', sort:'edge', min:5, q:'', sel:null, side:''};
+let DATA, props = [], state = {markets:new Set(), game:'', sort:'edge', min:5, q:'', sel:null, side:'', str:''};
 // remember the over/under choice between visits
-try { state.side = localStorage.getItem('side') || ''; } catch (e) {}
+try { state.side = localStorage.getItem('side') || ''; state.str = localStorage.getItem('strength') || ''; state.sort = localStorage.getItem('sort') || 'edge'; } catch (e) {}
 let slip = JSON.parse(localStorage.getItem(SK('slip')) || '[]');
 
 async function load(){
@@ -259,8 +267,11 @@ async function load(){
     gs.appendChild(o);
   }
   gs.onchange = e => { state.game = e.target.value; render(); };
-  $('#sortSel').onchange = e => { state.sort = e.target.value; render(); };
+  $('#sortSel').onchange = e => { state.sort = e.target.value; try { localStorage.setItem('sort', state.sort); } catch (err) {} render(); };
   $('#sideSel').value = state.side;
+  $('#strSel').value = state.str;
+  $('#strSel').onchange = e => { state.str = e.target.value; try { localStorage.setItem('strength', state.str); } catch (err) {} render(); };
+  $('#sortSel').value = state.sort;
   $('#sideSel').onchange = e => { state.side = e.target.value; try { localStorage.setItem('side', state.side); } catch (err) {} render(); };
   $('#minGames').onchange = e => { state.min = +e.target.value; render(); };
   $('#q').oninput = e => { state.q = e.target.value.toLowerCase(); render(); };
@@ -272,6 +283,14 @@ const esd = p => p.edge_sd ?? p.edge / p.sd;
 // Plain-English strength of the edge: the gap vs the line, measured against the player's
 // normal game-to-game swing (σ). ~1 swing = strong; under a third of a swing = noise.
 const strength = p => { const a = Math.abs(esd(p)); return a >= 1 ? 'Strong' : a >= 0.6 ? 'Solid' : a >= 0.3 ? 'Lean' : 'Thin'; };
+// full rating, e.g. "Solid under" ("Thin" has no side); thin-history props aren't rated
+const rating = p => isThin(p) ? 'Not rated' : strength(p) === 'Thin' ? 'Thin' : `${strength(p)} ${p.edge >= 0 ? 'over' : 'under'}`;
+// rank for the strength sorts: Strong over 0 … Lean over 2, Thin 3, Lean under 4 … Strong under 6, not rated last
+const RANK = {'Strong over':0, 'Solid over':1, 'Lean over':2, 'Thin':3, 'Lean under':4, 'Solid under':5, 'Strong under':6, 'Not rated':7};
+const strMatch = (p, f) => { if (!f) return true; const r = rating(p);
+  if (f === 'SS') return /^(Strong|Solid) /.test(r);
+  if (f.startsWith('SS ')) return /^(Strong|Solid) /.test(r) && r.endsWith(f.slice(3));
+  return r === f; };
 const gapText = p => p.edge === 0 ? 'right on the line' : `${Math.abs(p.edge)} ${p.edge > 0 ? 'over' : 'under'} the line`;
 const strTip = p => `Projection is ${gapText(p)}. That gap is ${Math.abs(esd(p)).toFixed(1)}× this player's normal game-to-game swing (σ ${p.sd}). Strong ≥ 1×, Solid ≥ 0.6×, Lean ≥ 0.3×, Thin below that.`;
 const isThin = p => p.role_change && p.role_change.why === 'thin';
@@ -298,11 +317,14 @@ function bestSide(p){
 }
 
 function render(){
-  let list = props.filter(p => state.markets.has(p.market) && (!state.side || bestSide(p).side === state.side) && (!state.game || p.game === state.game) && (p.games.length >= state.min || isThin(p)) &&
+  let list = props.filter(p => state.markets.has(p.market) && (!state.side || bestSide(p).side === state.side) && strMatch(p, state.str) && (!state.game || p.game === state.game) && (p.games.length >= state.min || isThin(p)) &&
     (!state.q || (p.player + ' ' + p.team + ' ' + p.opp).toLowerCase().includes(state.q)));
   const key = {
     edge: p => -Math.abs(esd(p)), ev: p => -(bestSide(p).ev ?? -9), hit: p => -(p.hit_l5 ?? 0),
     over: p => -esd(p), under: p => esd(p), player: p => 0,
+    // strength buckets in order, strongest edge first within each bucket
+    str_over: p => RANK[rating(p)] * 100 - (RANK[rating(p)] <= 3 ? esd(p) : -esd(p)),
+    str_under: p => (RANK[rating(p)] === 7 ? 7 : 6 - RANK[rating(p)]) * 100 - (RANK[rating(p)] >= 3 && RANK[rating(p)] < 7 ? -esd(p) : esd(p)),
   }[state.sort];
   // role-change props sink below everything else (except in the alphabetical view)
   const demote = p => state.sort !== 'player' && p.role_change ? 1 : 0;
@@ -519,8 +541,8 @@ function openDetail(p){
       <div class="tile"><span class="k">${p.opp} D vs ${p.pos}</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league ${p.def_basis === 'mean' ? 'avg' : p.def_basis === 'per-minute' ? 'per-minute rate' : 'typical game'} allowed${p.def_factor > 1.2 || p.def_factor < 0.8 ? ' · model caps at ±20%' : ''}</div></div>
       ${p.snaps ? `<div class="tile"><span class="k">Snap % L5</span><div class="v" style="font-size:15px">${p.snaps.join(' · ')}</div></div>` : ''}
     </div>
-    <table class="log"><tr><th>${NBA ? 'Date' : 'Wk'}</th><th>Opp</th><th>${p.label}</th>${p.vol_label && p.label !== 'Rush Att' ? `<th>${p.vol_label}</th>` : ''}${NBA ? '' : '<th>Snap%</th>'}<th>Score</th><th>vs line</th></tr>
-      ${[...games].reverse().map(g => `<tr><td>${g.wk}</td><td>${g.home ? 'vs' : '@'} ${g.opp}</td><td class="num">${g.val}</td>${p.vol_label && p.label !== 'Rush Att' ? `<td class="num">${g.vol ?? '—'}</td>` : ''}${NBA ? '' : `<td class="num">${g.snap ?? '—'}</td>`}<td>${g.pts != null ? `${g.pts > g.opp_pts ? 'W' : g.pts < g.opp_pts ? 'L' : 'T'} ${g.pts}–${g.opp_pts}` : ''}</td><td class="num ${g.val > p.line ? 'pos' : 'neg'}">${g.val > p.line ? '+' : ''}${(g.val - p.line).toFixed(1)}</td></tr>`).join('')}
+    <table class="log"><tr><th>${NBA ? 'Date' : 'Wk'}</th><th>Opp</th><th>${p.label}</th>${p.vol_label && !/^(Rush|Pass) Att$/.test(p.label) ? `<th>${p.vol_label}</th>` : ''}${NBA ? '' : '<th>Snap%</th>'}<th>Score</th><th>vs line</th></tr>
+      ${[...games].reverse().map(g => `<tr><td>${g.wk}</td><td>${g.home ? 'vs' : '@'} ${g.opp}</td><td class="num">${g.val}</td>${p.vol_label && !/^(Rush|Pass) Att$/.test(p.label) ? `<td class="num">${g.vol ?? '—'}</td>` : ''}${NBA ? '' : `<td class="num">${g.snap ?? '—'}</td>`}<td>${g.pts != null ? `${g.pts > g.opp_pts ? 'W' : g.pts < g.opp_pts ? 'L' : 'T'} ${g.pts}–${g.opp_pts}` : ''}</td><td class="num ${g.val > p.line ? 'pos' : 'neg'}">${g.val > p.line ? '+' : ''}${(g.val - p.line).toFixed(1)}</td></tr>`).join('')}
     </table>
     ${whyRecent(p)}
     ${defenseDive(p)}

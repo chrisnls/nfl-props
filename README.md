@@ -5,7 +5,7 @@ Personal NFL player-prop analysis app. Zero monthly cost:
 | Piece | Source | Cost |
 |---|---|---|
 | Player stats, schedule, injuries, snap counts | [nflverse](https://github.com/nflverse/nflverse-data) releases (updated nightly during the season) | free |
-| Prop lines (pass yds/TDs, rush yds/att, rec yds, receptions) | [The-Odds-API](https://the-odds-api.com) free tier | free, 500 credits/mo |
+| Prop lines (pass yds/TDs/attempts, rush yds/att, rec yds, receptions) | [The-Odds-API](https://the-odds-api.com) free tier | free, 500 credits/mo |
 | Scheduled builds | GitHub Actions | free |
 | Hosting | GitHub Pages | free |
 
@@ -28,7 +28,7 @@ Nothing secret lives in the repo — the Odds API key is a GitHub secret and nev
 
 ## Schedule and credit budget
 
-Live lines are pulled (Central time) **Wed 9:07am, Thu 9:07am, Thu 5:37pm (TNF), Sat 8:07am, Sun 7:07am / 10:07am / 11:17am (after noon inactives) / 2:37pm (after late inactives) / 6:37pm (SNF), and Mon 5:37pm (MNF)**. Tue 9:07am is stats + grading only (cached lines, no credits). A full-slate pull of 6 markets costs about **6 credits per game (~84)**, and live pulls skip games that have already kicked off, so later pulls cost less. That's about **520 credits a week (~2,200/month)**, comfortably inside the 20K paid plan. The header shows credits remaining after each build. Every pre-game pull also updates the week's grading snapshot, so props are graded against the last line before kickoff. To spend less, delete cron lines in `.github/workflows/build.yml`.
+Live lines are pulled (Central time) **Wed 9:07am, Thu 9:07am, Thu 5:37pm (TNF), Sat 8:07am, Sun 7:07am / 10:07am / 11:17am (after noon inactives) / 2:37pm (after late inactives) / 6:37pm (SNF), and Mon 5:37pm (MNF)**. Tue 9:07am is stats + grading only (cached lines, no credits). A full-slate pull of 7 markets costs about **7 credits per game (~98)**, and live pulls skip games that have already kicked off, so later pulls cost less. That's about **600 credits a week (~2,600/month)**, comfortably inside the 20K paid plan. The header shows credits remaining after each build. Every pre-game pull also updates the week's grading snapshot, so props are graded against the last line before kickoff. To spend less, delete cron lines in `.github/workflows/build.yml`.
 
 **Updating for free.** Every live pull saves its lines to `pipeline/lines_cache.json`. Actions → Build props → Run workflow has a **lines** choice that defaults to **cached**: it re-runs the whole model with fresh stats, injuries and snap counts against this week's last pulled lines and spends **zero credits**. Pick **live** only when you want new lines. Cached lines are only reused within the same week; if there are none, the build uses sample lines.
 
@@ -53,6 +53,7 @@ cd site && python -m http.server 8000            # open http://localhost:8000
 - **Role change** — a line ≥2 historical σ from the player's season average (or ≥1.5σ and outside every game in the log) gets a *Role ↑/↓* tag and is demoted to a separate section at the bottom of the board. Books only move that far on news (starter out, depth-chart change) the game log can't see yet, so those "edges" are usually the model being stale. Also flagged: a snap-share swing of 20+ points (and 40%+) over the last 2 games that contradicts the model's lean, e.g. snaps down while the model says over. Thresholds: `ROLE_*` in `build.py`.
 - **EV** uses the best available price at that line, after stripping the vig from the book's implied probability for comparison.
 - **Detail panel analysis.** *Why the last 2 games went over/under* breaks the result into volume (carries/targets/attempts), snap share, efficiency (yards per carry, etc.), which teammate took work, and game script, then names the main driver. The *defense deep dive* shows the opponent's rank, average vs median (and which blowouts skew the average), per-carry/target efficiency, the last 3 games, the spread/total for this game, a game-by-game table, and how much the model's matchup adjustment moved the projection.
+- **Strength** labels (Strong ≥1σ, Solid ≥0.6σ, Lean ≥0.3σ, Thin below) can be sorted (*Strong over → Strong under* or the reverse, strongest first within each bucket) and filtered (a single rating, or Strong + Solid on either or both sides). The board remembers your sort and filters.
 - **Hit rates** are the share of games this season where the player cleared the *current* line.
 - The **parlay slip** multiplies leg probabilities as if independent. Same-game legs are correlated; the slip warns when you do that.
 

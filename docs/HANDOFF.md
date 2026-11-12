@@ -93,6 +93,11 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 - **Teammate-out redistribution: built, tested, left off (11/12).** `redistribution()` shares an out player's projected minutes and production among the rotation (weighted by role and position, scaled by recent presence, alpha 0.8–0.9). `pipeline/eval_redistribution.py` replays 15 slates with real absences (who actually sat): without a boost, teammates' errors were already ~unbiased (points +0.3–0.7, rebounds ~0). With a boost, every variant was worse: full share (PRA bias −2.6, MAE 6.90→7.42), 10–30% (flat to worse), fresh absences only (worse), same-position backups only (much worse). So `REDIST_ON = False`. Shipped instead: a *Teammate out* tag (fresh absence of a 15+ min player), `tm_out` in snapshots, and a Results split `teammate_out.with/without` to test whether books overreact on those lines. Re-run the eval as the season grows.
 - Next: back-to-back/rest adjustments, pace / game total.
 
+### NFL pass attempts + strength sort/filter (11/12)
+
+- New NFL market `player_pass_attempts` (stat `attempts`, QB, count). +1 credit per game per pull (~98 per full slate). Backtest: 121 QB games, correction active (proj ×0.968, σ ×0.85).
+- Board: sorts *Strong over → Strong under* / reverse, a strength filter (single rating, Strong+Solid overs/unders/either), and sort/filter remembered per browser. Both sports.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.

@@ -49,6 +49,7 @@ ODDS_BASE = "https://api.the-odds-api.com/v4/sports/americanfootball_nfl"
 MARKETS = {
     "player_pass_yds": ("passing_yards", "Pass Yds", {"QB"}, False),
     "player_pass_tds": ("passing_tds", "Pass TDs", {"QB"}, True),
+    "player_pass_attempts": ("attempts", "Pass Att", {"QB"}, True),
     "player_rush_yds": ("rushing_yards", "Rush Yds", {"QB", "RB", "WR"}, False),
     "player_rush_attempts": ("carries", "Rush Att", {"RB", "QB"}, True),
     "player_reception_yds": ("receiving_yards", "Rec Yds", {"WR", "TE", "RB"}, False),
@@ -72,7 +73,7 @@ ROLE_SNAP_MIN_EDGE = 0.3   # |edge ÷ σ|; below this the lean is too weak to ma
 
 # Volume stat behind each market, for the "why" breakdown (volume x efficiency).
 VOLUME = {"passing_yards": "attempts", "passing_tds": "attempts", "rushing_yards": "carries",
-          "carries": "carries", "receiving_yards": "targets", "receptions": "targets"}
+          "carries": "carries", "attempts": "attempts", "receiving_yards": "targets", "receptions": "targets"}
 VOLUME_LABEL = {"attempts": "att", "carries": "car", "targets": "tgt"}
 LINES_CACHE = ROOT / "pipeline" / "lines_cache.json"   # committed by the workflow; not published
 HISTORY = OUT / "history"          # week_NN.json: every live build's props, for grading
