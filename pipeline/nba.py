@@ -71,6 +71,12 @@ SAMPLE_MIN = {"player_points": 8, "player_rebounds": 3, "player_assists": 2, "pl
 MIN_GAMES = 3
 ROLE_Z, ROLE_Z_OUTSIDE = 2.0, 1.5
 ROLE_MIN_PTS, ROLE_MIN_REL, ROLE_MIN_EDGE = 8.0, 0.30, 0.3   # minutes shift: last 2 vs before
+# Minutes the BOOK is pricing: points (or PRA) line / the player's per-minute rate. If that's far from
+# the model's projected minutes, the book knows something about playing time (restriction lifting,
+# returning starter, blowout risk, a teammate out) that the box scores don't show yet. Points/PRA
+# only -- low-count stats (threes, assists) are too coarse for this. Flags all of that player's props.
+IMPLIED_MIN_HI, IMPLIED_MIN_LO = 1.35, 0.70
+IMPLIED_MIN_MARKETS = ("player_points", "player_points_rebounds_assists")
 CORRECTIONS_MIN_N = build.CORRECTIONS_MIN_N
 BACKTEST_MIN_GAMES = 4
 GRP_NAME = {"G": "G", "F": "F", "C": "C"}
@@ -417,6 +423,26 @@ def build_props(box, sched, date, lines, corrections=None):
             "headshot": latest["head"].get(pid) if isinstance(latest["head"].get(pid), str) else None,
             "role_change": role,
         })
+    # implied-minutes check, per player (prefer the points line, else PRA)
+    by_pid: dict[str, list] = {}
+    for p in props:
+        by_pid.setdefault(p["pid"], []).append(p)
+    for pid, ps in by_pid.items():
+        ref = next((p for m in IMPLIED_MIN_MARKETS for p in ps if p["market"] == m and not p["role_change"]), None)
+        if not ref or not ref["proj_min"] or not ref["proj_raw"]:
+            continue
+        rate = ref["proj_raw"] / ref["proj_min"]
+        implied = ref["line"] / rate if rate > 0 else None
+        if not implied:
+            continue
+        ratio = implied / ref["proj_min"]
+        if ratio >= IMPLIED_MIN_HI or ratio <= IMPLIED_MIN_LO:
+            flag = {"why": "minutes", "dir": "up" if ratio > 1 else "down", "implied_min": round(implied),
+                    "proj_min": round(ref["proj_min"]), "ref": MARKETS[ref["market"]][1], "z": None,
+                    "lo": None, "hi": None}
+            for p in ps:
+                if not p["role_change"]:
+                    p["role_change"] = flag
     if unmatched:
         log(f"nba: unmatched players from odds feed: {sorted(unmatched)[:20]}")
     props.sort(key=lambda p: (p["role_change"] is not None, -abs(p["edge_sd"])))
@@ -606,6 +632,7 @@ def run_grade(frames):
         "flagged_vs_unflagged": {"unflagged": rec(unflagged), "flagged": rec(flagged),
                                  "flagged_line": rec([r for r in flagged if r["role_change"] == "line"]),
                                  "flagged_usage": rec([r for r in flagged if r["role_change"] == "usage"]),
+                                 "flagged_minutes": rec([r for r in flagged if r["role_change"] == "minutes"]),
                                  "flagged_thin": rec([r for r in flagged if r["role_change"] == "thin"])},
         "calibration": cal(unflagged),
         "by_week": [{"week": d, "label": label_date(d), **rec([r for r in unflagged if r["week"] == d])} for d in graded],
