@@ -23,14 +23,20 @@ For each player × market that has a line this week:
 
 `.github/workflows/build.yml` ("Build props"); all times Central:
 
-| When | What |
+| When (CT) | What |
 |---|---|
-| Thu 9am | lines + stats (TNF and early-week lines) |
-| Sat 8am | lines + stats (after injury reports) |
-| Sun 7am | lines + stats (final Sunday lines) |
-| Tue 9am | stats only, cached lines, **no credits** |
+| Wed 9:07am | first look once player props are posted |
+| Thu 9:07am | full refresh |
+| Thu 5:37pm | TNF, right before kickoff |
+| Sat 8:07am | after Friday's final injury reports |
+| Sun 7:07am, 10:07am | morning lines and line moves |
+| Sun 11:17am | after noon-game inactives |
+| Sun 2:37pm | after late-game inactives |
+| Sun 6:37pm | SNF |
+| Mon 5:37pm | MNF |
+| Tue 9:07am | stats + grading only, cached lines, **no credits** |
 
-A full-slate pull of 6 markets costs **~85 credits**. Three pulls a week is ~260/month, well inside the **500/month** free tier. The site header shows credits remaining after each build. **Free updates:** Actions → Build props → Run workflow → lines = **cached** (the default) re-runs everything against this week's last pull, using **0 credits**. Each live pull is saved to `pipeline/lines_cache.json` for this purpose. **Credit guard:** a live pull first checks credits remaining (the events list call is free); if they can't cover the slate, it uses cached lines instead of half-pulling. If the Odds API fails or there's no cache for the week, the build falls back to sample lines so the site stays up, and the site shows a banner.
+A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls skip games that have already started, so later pulls cost less. About **520 credits/week (~2,200/month)** on the **20K/month** paid plan. The site header shows credits remaining after each build. **Free updates:** Actions → Build props → Run workflow → lines = **cached** (the default) re-runs everything against this week's last pull, using **0 credits**. Each live pull is saved to `pipeline/lines_cache.json` for this purpose. **Credit guard:** a live pull first checks credits remaining (the events list call is free); if they can't cover the slate, it uses cached lines instead of half-pulling. If the Odds API fails or there's no cache for the week, the build falls back to sample lines so the site stays up, and the site shows a banner.
 
 `ODDS_API_KEY` is stored as a repo secret and never appears in code or output.
 
@@ -70,6 +76,10 @@ A full-slate pull of 6 markets costs **~85 credits**. Three pulls a week is ~260
 - **Saved parlays show instantly:** after a successful save, the slip appears on the Parlays tab (this browser) as *Saved · grades after next build* until the build's graded copy replaces it.
 
 - **Shared names (11/10):** nflverse has a few players with the same name (Justin Jefferson MIN WR / CLE LB, Michael Carter…). Name lookup now picks the player whose team plays this week and whose position fits the market; injuries and snap counts are keyed by name + team. This restored Justin Jefferson (and others) on the board. The week-9 snapshot was rebuilt: +32 props, including Jefferson, Josh Jacobs, Zach Charbonnet and Tank Dell.
+
+### Paid odds plan + denser schedule (11/12)
+
+- Odds API upgraded to the **20K/month** plan (the `ODDS_API_KEY` secret was updated; the first paid pull left 19,916). The schedule is now 10 live pulls a week: Wed and Thu mornings, TNF pre-kickoff, Saturday morning, four Sunday pulls (7:07, 10:07, 11:17 after noon inactives, 2:37 after late inactives), SNF and MNF pre-kickoff. Tuesday is cached + grading. ~520 credits/week. Each pre-game pull overwrites that game's props in the week snapshot, so grading uses the line closest to kickoff.
 
 ## Open ideas
 

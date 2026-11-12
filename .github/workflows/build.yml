@@ -8,11 +8,20 @@ on:
         options: [cached, live, sample]
         default: cached
   schedule:
-    # Times are UTC. Central = UTC-6 (CST). Lines refreshed:
-    - cron: "0 15 * * 4"   # Thu 9am CT  (TNF + early week lines)
-    - cron: "0 14 * * 6"   # Sat 8am CT  (injury reports in)
-    - cron: "0 13 * * 0"   # Sun 7am CT  (final lines + Sunday stats from Thu game)
-    - cron: "0 15 * * 2"   # Tue 9am CT  (stats-only refresh after MNF; reuses cached lines, no credits)
+    # Times are UTC; Central (CST) = UTC-6 for the rest of the season. Minutes are off the hour
+    # because GitHub delays top-of-hour schedules most. Live pulls skip games that have already
+    # kicked off, so later pulls in a day cost less. ~520 credits/week (~2,200/month).
+    - cron: "7 15 * * 3"    # Wed  9:07am CT  first look once player props are posted
+    - cron: "7 15 * * 4"    # Thu  9:07am CT  full refresh
+    - cron: "37 23 * * 4"   # Thu  5:37pm CT  TNF, right before kickoff
+    - cron: "7 14 * * 6"    # Sat  8:07am CT  after Friday's final injury reports
+    - cron: "7 13 * * 0"    # Sun  7:07am CT  morning lines
+    - cron: "7 16 * * 0"    # Sun 10:07am CT  morning line moves
+    - cron: "17 17 * * 0"   # Sun 11:17am CT  after noon-game inactives (posted ~10:30)
+    - cron: "37 20 * * 0"   # Sun  2:37pm CT  after late-game inactives (posted ~2:35)
+    - cron: "37 0 * * 1"    # Sun  6:37pm CT  SNF (Mon 00:37 UTC)
+    - cron: "37 23 * * 1"   # Mon  5:37pm CT  MNF
+    - cron: "7 15 * * 2"    # Tue  9:07am CT  stats + grading only; cached lines, no credits
 permissions:
   contents: write
   pages: write
@@ -45,7 +54,7 @@ jobs:
           # A live pull is skipped automatically (falls back to cached) if credits can't cover the slate.
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             MODE="${LINES_INPUT:-cached}"
-          elif [ "$(date -u +%u)" = "2" ]; then
+          elif [ "$(date -u +%u)" = "2" ]; then   # Tuesday UTC = the 9:07am CT grading run
             MODE=cached
           else
             MODE=live

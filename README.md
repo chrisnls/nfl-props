@@ -28,7 +28,7 @@ Nothing secret lives in the repo — the Odds API key is a GitHub secret and nev
 
 ## Schedule and credit budget
 
-The workflow runs Thu 9am, Sat 8am, Sun 7am Central (live lines + stats) and Tue 9am (stats only, cached lines — no credits). A full-slate pull of 6 markets across ~14 games costs roughly **80–90 credits** (6 per game), so three pulls a week is ~260/month, well inside the 500 free. The header shows credits remaining after each build. To spend fewer: drop a market in `MARKETS`, or remove the Thursday run.
+Live lines are pulled (Central time) **Wed 9:07am, Thu 9:07am, Thu 5:37pm (TNF), Sat 8:07am, Sun 7:07am / 10:07am / 11:17am (after noon inactives) / 2:37pm (after late inactives) / 6:37pm (SNF), and Mon 5:37pm (MNF)**. Tue 9:07am is stats + grading only (cached lines, no credits). A full-slate pull of 6 markets costs about **6 credits per game (~84)**, and live pulls skip games that have already kicked off, so later pulls cost less. That's about **520 credits a week (~2,200/month)**, comfortably inside the 20K paid plan. The header shows credits remaining after each build. Every pre-game pull also updates the week's grading snapshot, so props are graded against the last line before kickoff. To spend less, delete cron lines in `.github/workflows/build.yml`.
 
 **Updating for free.** Every live pull saves its lines to `pipeline/lines_cache.json`. Actions → Build props → Run workflow has a **lines** choice that defaults to **cached**: it re-runs the whole model with fresh stats, injuries and snap counts against this week's last pulled lines and spends **zero credits**. Pick **live** only when you want new lines. Cached lines are only reused within the same week; if there are none, the build uses sample lines.
 
