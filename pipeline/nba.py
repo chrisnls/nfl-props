@@ -23,6 +23,7 @@ import json
 import math
 import os
 import re
+import unicodedata
 import statistics
 import time
 from pathlib import Path
@@ -92,7 +93,8 @@ NAME_ALIASES: dict[str, str] = {
 def norm_name(name) -> str:
     if not isinstance(name, str):
         return ""
-    n = name.lower()
+    # fold accents (Schröder -> schroder, Jokić -> jokic) so feeds that spell names differently still match
+    n = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
     n = re.sub(r"[.'’]", "", n)
     n = re.sub(r"\b(jr|sr|ii|iii|iv|v)\b", "", n)
     n = re.sub(r"[^a-z ]", " ", n)
