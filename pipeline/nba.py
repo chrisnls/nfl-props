@@ -52,6 +52,8 @@ SOURCES = {
     "sched": f"{SDV}/espn_nba_schedules/nba_schedule_{SEASON}.csv",
 }
 ODDS_BASE = "https://api.the-odds-api.com/v4/sports/basketball_nba"
+ESPN_INJURIES = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/injuries"
+OUT_STATUSES = {"out", "doubtful", "suspension", "suspended", "inactive"}
 BOOKS = build.BOOKS
 
 # Odds API market -> (box column(s) summed, label)
@@ -161,6 +163,48 @@ def team_name_map(sched: pd.DataFrame) -> dict[str, str]:
     m["LA Clippers"] = m.get("LA Clippers", "LAC")
     m["Los Angeles Clippers"] = "LAC"
     return m
+
+
+def fetch_injuries(names: dict[str, str]) -> dict:
+    """ESPN's public NBA injury report (free, no key). Returns
+    {"by_id": {athlete_id: info}, "by_name": {(norm name, team): info}, "by_team": {team: [info...]}}.
+    Any failure -> empty report (the board still builds; it just has no injury tags)."""
+    empty = {"by_id": {}, "by_name": {}, "by_team": {}, "ok": False}
+    try:
+        r = requests.get(ESPN_INJURIES, timeout=30, headers={"User-Agent": "prop-edge/1.0"})
+        r.raise_for_status()
+        data = r.json()
+    except Exception as e:
+        log(f"nba injuries: unavailable ({e})")
+        return empty
+    rep = {"by_id": {}, "by_name": {}, "by_team": {}, "ok": True}
+    for t in data.get("injuries") or []:
+        team = names.get(t.get("displayName") or "") or (t.get("abbreviation") or "")
+        for i in t.get("injuries") or []:
+            a = i.get("athlete") or {}
+            name = a.get("displayName") or a.get("fullName")
+            if not name:
+                continue
+            aid = str(a.get("id") or "")
+            if not aid:
+                for l in a.get("links") or []:
+                    m = re.search(r"/id/(\d+)", l.get("href") or "")
+                    if m:
+                        aid = m.group(1)
+                        break
+            det = i.get("details") or {}
+            status = i.get("status") or ((i.get("type") or {}).get("description") or "").title() or None
+            info = {"name": name, "pos": ((a.get("position") or {}).get("abbreviation")), "status": status,
+                    "injury": det.get("type") or None, "return": det.get("returnDate"),
+                    "note": i.get("shortComment"), "team": team}
+            if aid:
+                rep["by_id"][aid] = info
+            rep["by_name"][(norm_name(name), team)] = info
+            rep["by_team"].setdefault(team, []).append(info)
+    n = sum(len(v) for v in rep["by_team"].values())
+    log(f"nba injuries: {n} players on {len(rep['by_team'])} teams"
+        + (f"; e.g. {next(iter(rep['by_team'].values()))[0]}" if n else ""))
+    return rep
 
 
 def label_date(d: str) -> str:
@@ -324,7 +368,8 @@ def role_change(values, line, mins, edge_sd):
     return None
 
 
-def build_props(box, sched, date, lines, corrections=None):
+def build_props(box, sched, date, lines, corrections=None, injuries=None):
+    injuries = injuries or {"by_id": {}, "by_name": {}, "by_team": {}}
     hist = box[box.date < date]
     played = hist[hist.played]
     games = slate_games(sched, date)
@@ -418,11 +463,19 @@ def build_props(box, sched, date, lines, corrections=None):
             "median": r1(statistics.median(values)),
             "hit_l5": rate_pct(5), "hit_l10": rate_pct(10), "hit_season": rate_pct(len(hits)),
             "def_factor": round(factor, 2), "def_basis": "per-minute",
-            "games": ctx, "vol_label": "min", "defense": def_key, "snaps": None, "injury": None,
-            "team_injuries": [], "opp_injuries": [],
+            "games": ctx, "vol_label": "min", "defense": def_key, "snaps": None,
+            "injury": inj_of(pid, latest.name.get(pid), team, injuries),
+            "team_injuries": [x for x in injuries["by_team"].get(team, []) if x["name"] != latest.name.get(pid)],
+            "opp_injuries": [x for x in injuries["by_team"].get(opp, []) if (x["status"] or "").lower() in OUT_STATUSES],
             "headshot": latest["head"].get(pid) if isinstance(latest["head"].get(pid), str) else None,
             "role_change": role,
         })
+    # listed OUT / doubtful but the book still has a line: almost certainly stale or about to be pulled
+    for p in props:
+        st = ((p["injury"] or {}).get("status") or "").lower()
+        if st in OUT_STATUSES and (not p["role_change"] or p["role_change"]["why"] != "thin"):
+            p["role_change"] = {"why": "injury", "dir": "down", "status": p["injury"]["status"],
+                                "injury_type": p["injury"].get("injury"), "z": None, "lo": None, "hi": None}
     # implied-minutes check, per player (prefer the points line, else PRA)
     by_pid: dict[str, list] = {}
     for p in props:
@@ -451,6 +504,12 @@ def build_props(box, sched, date, lines, corrections=None):
 
 # ----------------------------------------------------------------------------- history + grading
 SNAP_FIELDS = build.SNAP_FIELDS
+
+
+def inj_of(pid, name, team, injuries):
+    i = injuries["by_id"].get(str(pid)) or injuries["by_name"].get((norm_name(name), team))
+    return {"status": i["status"], "injury": i["injury"], "practice": None, "note": i.get("note"),
+            "return": i.get("return")} if i else None
 
 
 def write_snapshot(props, games, date, fetched):
@@ -633,6 +692,7 @@ def run_grade(frames):
                                  "flagged_line": rec([r for r in flagged if r["role_change"] == "line"]),
                                  "flagged_usage": rec([r for r in flagged if r["role_change"] == "usage"]),
                                  "flagged_minutes": rec([r for r in flagged if r["role_change"] == "minutes"]),
+                                 "flagged_injury": rec([r for r in flagged if r["role_change"] == "injury"]),
                                  "flagged_thin": rec([r for r in flagged if r["role_change"] == "thin"])},
         "calibration": cal(unflagged),
         "by_week": [{"week": d, "label": label_date(d), **rec([r for r in unflagged if r["week"] == d])} for d in graded],
@@ -689,7 +749,8 @@ def main():
     if lines is None:
         lines, usage, mode = sample_lines(box, date, teams), err, "sample"
     corr, corr_info = load_corrections()
-    props, defense, games = build_props(box, sched, date, lines, corr)
+    injuries = fetch_injuries(team_name_map(sched))
+    props, defense, games = build_props(box, sched, date, lines, corr, injuries)
     OUT.mkdir(parents=True, exist_ok=True)
     x = dt.date.fromisoformat(date)
     payload = {
@@ -698,7 +759,7 @@ def main():
         "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"), "lines_fetched": fetched,
         "stats_through_week": label_date(str(box.date.max())), "usage": usage,
         "markets": {k: v[1] for k, v in MARKETS.items()}, "games": games, "props": props,
-        "defense": defense, "corrections": corr_info,
+        "defense": defense, "corrections": corr_info, "injuries_ok": injuries.get("ok", False),
     }
     (OUT / "props.json").write_text(json.dumps(payload, separators=(",", ":")))
     log(f"nba: wrote {len(props)} props -> {OUT / 'props.json'}")

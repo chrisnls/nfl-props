@@ -89,7 +89,8 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 - Both workflows deploy Pages, so they share a `pages` concurrency group that queues instead of cancelling.
 - **Continuity fix (both sports):** P(over) for count markets used to add +0.5 even to half-point lines, double-correcting (over 1.5 already means 2+). The +0.5 now applies only to whole-number lines. This raises P(over) on NFL pass TDs, rush attempts and receptions.
 - **Implied-minutes flag:** points/PRA line ÷ per-minute rate = the minutes the book prices. ≥1.35× or ≤0.70× the model's projected minutes flags all of that player's props (e.g. Coby White 11/12: 4 starts at 16–20 min, a PRA line of 21 implies ~29 min).
-- Next: an NBA injury feed (ESPN's public injuries endpoint), back-to-back/rest adjustments, pace / game total.
+- **Injury feed (11/12):** `fetch_injuries()` reads ESPN's public NBA injuries JSON each build: tags on rows, team/opponent injury lists in the panel, and players listed out/doubtful flagged `injury` and demoted (graded separately as `flagged_injury`).
+- Next: back-to-back/rest adjustments, pace / game total, and teammate-out usage redistribution (the injury list makes this possible now).
 
 ## Open ideas
 

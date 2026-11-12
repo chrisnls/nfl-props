@@ -91,7 +91,7 @@ The site has an **NFL | NBA** switch in the header (`?sport=nba`, remembered per
 - **Grading:** every live pull writes `site/data/nba/history/YYYY-MM-DD.json`. `nba.py --grade` grades each slate once its games are final and in the box scores, and writes `site/data/nba/results.json`. Corrections come from a backtest of every finished slate (`pipeline/nba_backtest_cache.json`) plus graded props, and apply per market at 100+ projections, same as the NFL.
 - **Parlays:** NBA slips save to the same sheet. Legs have `prop_id` = `nba:<athlete>:<market>` and the week column holds the date as YYYYMMDD. `nba.py --grade` writes `site/data/nba/parlays.json`.
 - **Workflow:** `.github/workflows/nba.yml` ("Build NBA props") runs daily at 10:07am and 5:07pm CT. It costs about 5 credits per game per pull (~100/day). Manual runs default to cached (free).
-- **Not in v1:** an injury report. This data source has none, so watch news; the minutes-shift flag catches some of it after the fact.
+- **Injuries:** ESPN's public NBA injury report (free, no key), fetched on every build. Statuses show as tags (OUT, DBT, Q, GTD, with the injury type and ESPN's note on hover). Players listed **out or doubtful** who still have a line are flagged and demoted. Each player's detail panel lists his team's injuries and the opponent's outs. If ESPN is unreachable, the board still builds without tags (`injuries_ok: false` in props.json).
 
 ```bash
 python pipeline/nba.py --lines sample      # or live / cached
