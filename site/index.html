@@ -49,6 +49,7 @@ header{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 85%,
 .tag{display:inline-block;padding:1px 6px;border-radius:5px;font-size:11px;font-weight:600;letter-spacing:.03em}
 .tag.inj{background:rgba(232,113,111,.15);color:var(--bad)}
 .tag.q{background:rgba(242,182,92,.15);color:var(--warn)}
+.tag.tmout{background:rgba(111,207,151,.12);color:var(--good)}
 .tag.role{background:rgba(125,122,114,.2);color:var(--ink2)}
 .row.demoted{opacity:.55}
 .sig{color:var(--ink3);font-size:12px}
@@ -318,7 +319,7 @@ function render(){
     el.innerHTML = `
       <div class="who">${p.headshot ? `<img src="${p.headshot}" alt="" loading="lazy">` : '<span style="width:40px"></span>'}
         <div style="min-width:0"><div class="n">${p.player} <span style="color:var(--ink3);font-weight:400">· ${p.label}</span></div>
-        <div class="s">${p.pos} ${p.team} ${p.home ? 'vs' : '@'} ${p.opp}${KICK[p.game] ? ` · ${kickoffText(KICK[p.game])}` : ''} ${roleTag(p)} ${inj}</div></div></div>
+        <div class="s">${p.pos} ${p.team} ${p.home ? 'vs' : '@'} ${p.opp}${KICK[p.game] ? ` · ${kickoffText(KICK[p.game])}` : ''} ${roleTag(p)} ${inj}${p.tm_out ? ` <span class="tag tmout" title="Ruled out tonight after playing the last game: ${p.tm_out.join(', ')}">Teammate out</span>` : ''}</div></div></div>
       <div class="num"><span class="k">Line</span>${p.line}</div>
       ${isThin(p) ? `<div class="num" title="${roleWhy(p.role_change)}"><span class="k">Avg</span>${p.avg_season} <span class="sig" style="white-space:nowrap">in ${p.games.length} game${p.games.length === 1 ? '' : 's'}</span>
         <span class="str thin">Not rated</span></div>
@@ -489,6 +490,7 @@ function openDetail(p){
       <div><h2>${p.player}</h2><div class="sub">${p.pos} · ${p.team} ${p.home ? 'vs' : '@'} ${p.opp}${KICK[p.game] ? ` · ${kickoffText(KICK[p.game])}` : ''} · ${p.label} ${roleTag(p)} ${inj}</div></div></div>
     ${p.role_change && p.role_change.why === 'usage' ? `<div class="note"><b>Possible role change.</b> His ${p.role_change.metric === 'minutes' ? 'minutes' : 'snap share'} went from ${p.role_change.snap_prior}${p.role_change.metric === 'minutes' ? '' : '%'} to ${p.role_change.snap_recent}${p.role_change.metric === 'minutes' ? ' a game' : '%'} over the last 2 games, but the model still projects off his whole season, so it leans ${p.edge > 0 ? 'over' : 'under'} while his playing time points the other way. Demoted to the bottom of the board — see the breakdown below.</div>` : ''}
     ${isThin(p) ? `<div class="note"><b>Thin history — not rated.</b> ${p.player} has only ${p.role_change.games} game${p.role_change.games === 1 ? '' : 's'} this season (${p.games.map(g => `wk ${g.wk}: ${g.val}`).join(', ')}). That's too few to project honestly — the numbers below are just his average and its spread, not a real forecast. Often this is a backup stepping in for an injured starter, so the book's line reflects a role his games don't show.</div>` : ''}
+    ${p.tm_out ? `<div class="note"><b>Teammate out: ${p.tm_out.join(', ')}.</b> Ruled out tonight after playing the last game. Books usually nudge teammates' lines up for this. The model doesn't: in a backtest of 15 nights, teammates of a missing player were already projected without bias, and boosting them made projections worse. These props are graded separately (Results → Teammate out) to see whether the lines overreact.</div>` : ''}
     ${p.role_change && p.role_change.why === 'injury' ? `<div class="note"><b>On the injury report: ${p.role_change.status}.</b> ${p.injury && p.injury.note ? p.injury.note + ' ' : ''}${p.injury && p.injury.return ? `Estimated return ${p.injury.return}. ` : ''}Books usually pull these lines; if this one is still up, the model can't price a player who may not play. Demoted to the bottom of the board.</div>` : ''}
     ${p.role_change && p.role_change.why === 'minutes' ? `<div class="note"><b>Playing time doesn't match.</b> ${roleWhy(p.role_change)}. The model projects off recent minutes, so its edge here is probably stale. Check the news. Demoted to the bottom of the board, along with his other props.</div>` : ''}
     ${p.role_change && !['usage', 'thin', 'minutes', 'injury'].includes(p.role_change.why) ? `<div class="note"><b>Possible role change.</b> The line (${p.line}) is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average of ${p.avg_season} (range ${p.role_change.lo}–${p.role_change.hi}). Books usually move this far only on news — a starter out, a depth-chart change — that the game log doesn't reflect yet, so the edge here is likely the model being stale. Demoted to the bottom of the board.</div>` : ''}
@@ -648,6 +650,10 @@ function renderResults(R){
     <div class="sec">Role-change flagged vs not</div>
     <table class="log">${recHead('Group')}${recRow('Unflagged (the board)', fv.unflagged)}${recRow('Flagged — all', fv.flagged)}${recRow('· line far from history', fv.flagged_line)}${recRow('· snap-share shift', fv.flagged_usage)}${recRow('· thin history (under 3 games)', fv.flagged_thin)}${fv.flagged_minutes ? recRow('· book implies different minutes', fv.flagged_minutes) : ''}${fv.flagged_injury ? recRow('· listed out / doubtful', fv.flagged_injury) : ''}</table>
     <p class="muted small">Flagged props are demoted on the board. If their record is worse, the flag is doing its job.</p>
+
+    ${R.teammate_out ? `<div class="sec">Teammate out vs not</div>
+    <table class="log">${recHead('Group')}${recRow('A rotation teammate newly out', R.teammate_out.with)}${recRow('No new absence', R.teammate_out.without)}</table>
+    <p class="muted small">Books tend to raise lines when a teammate is out; the model doesn't. If the first row beats the second (especially on unders), the books are overreacting.</p>` : ''}
 
     <div class="sec">Calibration — when the model says X%, does it happen X% of the time?</div>
     ${calibrationChart(R.calibration || [])}

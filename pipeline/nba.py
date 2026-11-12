@@ -79,6 +79,21 @@ ROLE_MIN_PTS, ROLE_MIN_REL, ROLE_MIN_EDGE = 8.0, 0.30, 0.3   # minutes shift: la
 # returning starter, blowout risk, a teammate out) that the box scores don't show yet. Points/PRA
 # only -- low-count stats (threes, assists) are too coarse for this. Flags all of that player's props.
 IMPLIED_MIN_HI, IMPLIED_MIN_LO = 1.35, 0.70
+# Teammate-out redistribution: an out player's projected minutes and production are shared among the
+# remaining rotation, weighted by what each already does (same position x REDIST_SAME_GRP), scaled by how
+# often the out player was actually in the lineup lately (if he's missed the last 5, recent stats already
+# reflect it), and only partly (REDIST_ALPHA): replacements are less productive than the player they replace.
+REDIST_ALPHA = {"player_points": 0.8, "player_rebounds": 0.9, "player_assists": 0.8, "player_threes": 0.8,
+                "player_points_rebounds_assists": 0.85}
+# OFF: backtest (pipeline/eval_redistribution.py, 15 slates 10/27-11/11) found teammates of an absent player
+# are already projected without bias, and every variant tried (full/partial share, fresh absences only,
+# same-position backups only) made projections WORSE. Kept for re-testing as the season grows. Instead,
+# props get a "teammate out" context tag and are graded separately (do books over-adjust those lines?).
+REDIST_ON = False
+REDIST_SAME_GRP = 1.5
+REDIST_MIN_OUT = 15.0       # only players projected for 15+ minutes count as a real absence
+REDIST_MAX_MIN = 10.0       # cap on extra minutes for any one player
+REDIST_RECENT = 5           # team's last N games for the "was he in the lineup lately" weight
 IMPLIED_MIN_MARKETS = ("player_points", "player_points_rebounds_assists")
 CORRECTIONS_MIN_N = build.CORRECTIONS_MIN_N
 BACKTEST_MIN_GAMES = 4
@@ -370,7 +385,107 @@ def role_change(values, line, mins, edge_sd):
     return None
 
 
-def build_props(box, sched, date, lines, corrections=None, injuries=None):
+def team_rotation(played, team, date):
+    """Projected minutes and per-market production for everyone in a team's recent rotation."""
+    tg = played[played.team_abbreviation == team]
+    dates = sorted(tg.date.unique())[-REDIST_RECENT:]
+    out = {}
+    for pid, g in tg[tg.date.isin(sorted(tg.date.unique())[-10:])].groupby("athlete_id"):
+        g = played[(played.athlete_id == pid) & (played.team_abbreviation == team)].sort_values("date")
+        if len(g) < MIN_GAMES:
+            continue
+        mins = [float(m) for m in g.minutes]
+        pm = wavg(mins)
+        if pm < 8:
+            continue
+        stats = {}
+        for m in MARKETS:
+            vals = [float(v) for v in stat_of(g, m)]
+            stats[m] = pm * wavg([v / x for v, x in zip(vals, mins) if x > 0])
+        out[pid] = {"min": pm, "stats": stats, "grp": g.grp.iloc[-1], "name": g.athlete_display_name.iloc[-1],
+                    # a FRESH absence only: he played the team's most recent game. If he'd already been
+                    # sitting, his teammates' recent numbers already show it (redistributing would double-count).
+                    "presence": 1.0 if dates and dates[-1] in set(g.date) else 0.0}
+    return out
+
+
+def redistribution(played, date, teams, outs_by_team):
+    """{pid: {"min": +minutes, market: +stat, "outs": [names]}} for players whose teammates are out."""
+    boosts: dict = {}
+    for team in teams:
+        outs = outs_by_team.get(team) or set()
+        if not outs:
+            continue
+        rot = team_rotation(played, team, date)
+        real_outs = [o for o in outs if o in rot and rot[o]["min"] >= REDIST_MIN_OUT and rot[o]["presence"] > 0]
+        if not real_outs:
+            continue
+        stay = {pid: r for pid, r in rot.items() if pid not in outs}
+        for o in real_outs:
+            ro, w = rot[o], rot[o]["presence"]
+            aff = {pid: (REDIST_SAME_GRP if r["grp"] == ro["grp"] else 1.0) for pid, r in stay.items()}
+            wmin = {pid: r["min"] * aff[pid] for pid, r in stay.items()}
+            tot = sum(wmin.values()) or 1
+            for pid, r in stay.items():
+                b = boosts.setdefault(pid, {"min": 0.0, "outs": [], **{m: 0.0 for m in MARKETS}})
+                b["min"] = min(REDIST_MAX_MIN, b["min"] + ro["min"] * w * wmin[pid] / tot)
+                b["outs"].append(ro["name"])
+                for m in MARKETS:
+                    ws = {q: rr["stats"][m] * aff[q] for q, rr in stay.items()}
+                    t = sum(ws.values()) or 1
+                    b[m] += REDIST_ALPHA[m] * ro["stats"][m] * w * ws[pid] / t
+    return boosts
+
+
+def fresh_outs(played, date, teams, outs_by_team):
+    """{team: [names]} of rotation players (15+ projected min) ruled out who played the team's last game."""
+    ctx = {}
+    for team in teams:
+        outs = outs_by_team.get(team) or set()
+        if not outs:
+            continue
+        rot = team_rotation(played, team, date)
+        names = [rot[o]["name"] for o in outs if o in rot and rot[o]["min"] >= REDIST_MIN_OUT and rot[o]["presence"] > 0]
+        if names:
+            ctx[team] = sorted(names)
+    return ctx
+
+
+def outs_from_injuries(injuries, played, teams):
+    """Map the injury report's OUT/doubtful players to athlete ids, per team."""
+    outs = {}
+    names = played.drop_duplicates("athlete_id").set_index("athlete_id")
+    for team in teams:
+        for x in injuries["by_team"].get(team, []):
+            if (x["status"] or "").lower() not in OUT_STATUSES:
+                continue
+            pid = None
+            for aid, info in injuries["by_id"].items():
+                if info is x:
+                    pid = int(aid) if str(aid).isdigit() else aid
+            if pid is None or pid not in names.index:
+                cand = names[(names.team_abbreviation == team) &
+                             (names.athlete_display_name.map(norm_name) == norm_name(x["name"]))]
+                pid = cand.index[0] if len(cand) else None
+            if pid is not None:
+                outs.setdefault(team, set()).add(pid)
+    return outs
+
+
+def outs_from_box(box, date, teams):
+    """Backtest stand-in for the injury report: who actually sat that night (DNP or absent)."""
+    day = box[box.date == date]
+    played_ids = set(day[day.played].athlete_id)
+    outs = {}
+    for team in teams:
+        recent = box[(box.team_abbreviation == team) & (box.date < date) & box.played]
+        last = sorted(recent.date.unique())[-REDIST_RECENT:]
+        regulars = set(recent[recent.date.isin(last)].athlete_id)
+        outs[team] = {pid for pid in regulars if pid not in played_ids}
+    return outs
+
+
+def build_props(box, sched, date, lines, corrections=None, injuries=None, outs_override=None):
     injuries = injuries or {"by_id": {}, "by_name": {}, "by_team": {}}
     hist = box[box.date < date]
     played = hist[hist.played]
@@ -393,6 +508,10 @@ def build_props(box, sched, date, lines, corrections=None, injuries=None):
     for pid, row in latest.iterrows():
         by_name.setdefault(norm_name(row["name"]), []).append(pid)
     gp = played.groupby("athlete_id").size()
+    teams_tonight = set(team_game)
+    outs = outs_override if outs_override is not None else outs_from_injuries(injuries, played, teams_tonight)
+    boosts = redistribution(played, date, teams_tonight, outs) if REDIST_ON else {}
+    tm_out = fresh_outs(played, date, teams_tonight, outs)
     memo: dict = {}
     props, unmatched = [], set()
     for (pname, market), book_lines in lines.items():
@@ -420,7 +539,11 @@ def build_props(box, sched, date, lines, corrections=None, injuries=None):
         rate = wavg(rates)
         factor = factors.get((opp, grp, market), 1.0)
         adj = 1 + 0.5 * (max(0.8, min(1.2, factor)) - 1)
-        proj = proj_min * rate * adj
+        boost = boosts.get(pid)
+        base = proj_min * rate * adj
+        proj = base + (boost[market] * adj if boost else 0.0)
+        if boost:
+            proj_min = proj_min + boost["min"]
         mean = statistics.fmean(values)
         a, f = SD_FLOOR[market]
         sd = (statistics.pstdev(values) if len(values) > 2 else mean * 0.4)
@@ -471,6 +594,9 @@ def build_props(box, sched, date, lines, corrections=None, injuries=None):
             "opp_injuries": [x for x in injuries["by_team"].get(opp, []) if (x["status"] or "").lower() in OUT_STATUSES],
             "headshot": latest["head"].get(pid) if isinstance(latest["head"].get(pid), str) else None,
             "role_change": role,
+            "tm_out": [n for n in tm_out.get(team, []) if n != latest.name.get(pid)] or None,
+            "redistrib": {"outs": sorted(set(boost["outs"])), "add": r1(proj_raw - base), "add_min": r1(boost["min"]),
+                          "base": r1(base)} if boost and (proj_raw - base) >= 0.05 else None,
         })
     # listed OUT / doubtful but the book still has a line: almost certainly stale or about to be pulled
     for p in props:
@@ -527,6 +653,7 @@ def write_snapshot(props, games, date, fetched):
             continue
         row = {k: p.get(k) for k in SNAP_FIELDS}
         row["role_change"] = (p["role_change"] or {}).get("why")
+        row["tm_out"] = bool(p.get("tm_out"))
         row["fetched"] = fetched
         by_id[p["id"]] = row
         added += 1
@@ -696,6 +823,8 @@ def run_grade(frames):
                                  "flagged_minutes": rec([r for r in flagged if r["role_change"] == "minutes"]),
                                  "flagged_injury": rec([r for r in flagged if r["role_change"] == "injury"]),
                                  "flagged_thin": rec([r for r in flagged if r["role_change"] == "thin"])},
+        "teammate_out": {"with": rec([r for r in unflagged if r.get("tm_out")]),
+                         "without": rec([r for r in unflagged if not r.get("tm_out")])},
         "calibration": cal(unflagged),
         "by_week": [{"week": d, "label": label_date(d), **rec([r for r in unflagged if r["week"] == d])} for d in graded],
         "corrections": corr,

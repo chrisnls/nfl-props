@@ -90,7 +90,8 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 - **Continuity fix (both sports):** P(over) for count markets used to add +0.5 even to half-point lines, double-correcting (over 1.5 already means 2+). The +0.5 now applies only to whole-number lines. This raises P(over) on NFL pass TDs, rush attempts and receptions.
 - **Implied-minutes flag:** points/PRA line ÷ per-minute rate = the minutes the book prices. ≥1.35× or ≤0.70× the model's projected minutes flags all of that player's props (e.g. Coby White 11/12: 4 starts at 16–20 min, a PRA line of 21 implies ~29 min).
 - **Injury feed (11/12):** `fetch_injuries()` reads ESPN's public NBA injuries JSON each build: tags on rows, team/opponent injury lists in the panel, and players listed out/doubtful flagged `injury` and demoted (graded separately as `flagged_injury`).
-- Next: back-to-back/rest adjustments, pace / game total, and teammate-out usage redistribution (the injury list makes this possible now).
+- **Teammate-out redistribution: built, tested, left off (11/12).** `redistribution()` shares an out player's projected minutes and production among the rotation (weighted by role and position, scaled by recent presence, alpha 0.8–0.9). `pipeline/eval_redistribution.py` replays 15 slates with real absences (who actually sat): without a boost, teammates' errors were already ~unbiased (points +0.3–0.7, rebounds ~0). With a boost, every variant was worse: full share (PRA bias −2.6, MAE 6.90→7.42), 10–30% (flat to worse), fresh absences only (worse), same-position backups only (much worse). So `REDIST_ON = False`. Shipped instead: a *Teammate out* tag (fresh absence of a 15+ min player), `tm_out` in snapshots, and a Results split `teammate_out.with/without` to test whether books overreact on those lines. Re-run the eval as the season grows.
+- Next: back-to-back/rest adjustments, pace / game total.
 
 ## Open ideas
 
