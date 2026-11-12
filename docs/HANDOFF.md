@@ -81,10 +81,19 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 
 - Odds API upgraded to the **20K/month** plan (the `ODDS_API_KEY` secret was updated; the first paid pull left 19,916). The schedule is now 10 live pulls a week: Wed and Thu mornings, TNF pre-kickoff, Saturday morning, four Sunday pulls (7:07, 10:07, 11:17 after noon inactives, 2:37 after late inactives), SNF and MNF pre-kickoff. Tuesday is cached + grading. ~520 credits/week. Each pre-game pull overwrites that game's props in the week snapshot, so grading uses the line closest to kickoff.
 
+## NBA module (11/12)
+
+- `pipeline/nba.py` + `.github/workflows/nba.yml` (daily 10:07am / 5:07pm CT, ~100 credits/day). Data from sportsdataverse ESPN box scores and schedule (`player_box_2027.csv`, `nba_schedule_2027.csv`). Markets: points, rebounds, assists, threes, PRA.
+- Model: minutes × per-minute rate × per-minute opponent factor by G/F/C (per-minute because ESPN's position labels make per-game group totals swing 20–150 minutes). Role flags on minutes shifts; thin history under 3 games. Backtest of 10/20–11/11 = 6,000+ projections; corrections active for all 5 markets (projection ×0.96–0.98, σ ×1.10–1.14).
+- Site: NFL | NBA switch (`?sport=nba`); per-sport data folder (`data/nba/`), slip and saved-parlay keys. NBA parlays share the sheet (`nba:` prop ids, YYYYMMDD in the week column); the NFL grader skips them.
+- Both workflows deploy Pages, so they share a `pages` concurrency group that queues instead of cancelling.
+- **Continuity fix (both sports):** P(over) for count markets used to add +0.5 even to half-point lines, double-correcting (over 1.5 already means 2+). The +0.5 now applies only to whole-number lines. This raises P(over) on NFL pass TDs, rush attempts and receptions.
+- Next: an NBA injury feed (ESPN's public injuries endpoint), back-to-back/rest adjustments, pace / game total.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.
 - **Usage-trend weighting.** Weight by target share, carry share and snap % trends, not just raw output.
 - **Pace and game-total adjustments.** Scale volume by the implied team total and the spread (already in the schedule data).
 - **Teammate-out redistribution.** When a starter is Out, redistribute their volume to teammates. This is the proper fix for what the role-change flag currently only detects.
-- **NBA / MLB / NHL modules.** The same pipeline shape with sport-specific markets, stat sources and projection rules.
+- **MLB / NHL modules.** NBA is done (above); same pipeline shape.

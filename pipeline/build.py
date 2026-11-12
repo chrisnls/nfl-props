@@ -539,7 +539,9 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
         if corr:   # learned from backtest + graded weeks (see grade.py); active per market at CORRECTIONS_MIN_N
             proj, sd = proj * corr["proj_mult"], sd * corr["sd_mult"]
 
-        z_line = (line + (0.5 if discrete else 0)) - proj   # continuity for counts
+        # continuity for counts: over a whole-number line L means L+1 or more (L is a push), so
+        # compare at L+0.5; a half-point line (1.5) already sits between the integers -- no shift.
+        z_line = (line + (0.5 if discrete and float(line).is_integer() else 0)) - proj
         p_over = 1 - norm_cdf(z_line / sd)
         imp_over = american_to_prob(cons["over"]) if cons["over"] is not None else None
         imp_under = american_to_prob(cons["under"]) if cons["under"] is not None else None

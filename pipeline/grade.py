@@ -290,6 +290,8 @@ def grade_parlays(out: Outcomes) -> dict:
             continue
         if not isinstance(legs, list) or not legs:
             continue
+        if any(str(l.get("prop_id", "")).startswith("nba:") for l in legs):
+            continue   # NBA parlay -- graded by nba.py
         week = int(float(row["week"])) if row.get("week") else None
         graded = [grade_leg(l, week, out) for l in legs]
         st = [l["status"] for l in graded]

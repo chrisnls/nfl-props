@@ -1,0 +1,59 @@
+name: Build NBA props
+on:
+  workflow_dispatch:
+    inputs:
+      lines:
+        description: "Prop lines: cached = reuse today's last pull (FREE), live = new pull (~5 credits per game), sample = fake lines"
+        type: choice
+        options: [cached, live, sample]
+        default: cached
+  schedule:
+    # Times are UTC; Central (CST) = UTC-6. Each run grades finished slates first (free), then pulls
+    # today's lines. Live pulls skip games that have tipped. ~5 credits/game/pull -> ~100/day.
+    - cron: "7 16 * * *"    # 10:07am CT  morning lines (and grades last night's games)
+    - cron: "7 23 * * *"    #  5:07pm CT  ~1h before most tips; catches late scratches / line moves
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency: { group: pages, cancel-in-progress: false }   # shared with the NFL workflow; queue, don't cancel
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with: { enablement: true }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r pipeline/requirements.txt
+      - name: Grade NBA results and parlays
+        env:
+          PARLAY_SHEET_CSV_URL: ${{ secrets.PARLAY_SHEET_CSV_URL || vars.PARLAY_SHEET_CSV_URL || 'https://script.google.com/macros/s/AKfycbyYThKB9IKk3k2zNRmEU0E9JHwHVQfHZLlkGFQneNQNnPrxaJPWEYTO8BwwyT6PJ6wa9Q/exec?format=csv' }}
+        run: python pipeline/nba.py --grade
+      - name: Build NBA data
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          LINES_INPUT: ${{ inputs.lines }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then MODE="${LINES_INPUT:-cached}"; else MODE=live; fi
+          echo "lines mode: $MODE"
+          python pipeline/nba.py --lines "$MODE"
+      - name: Commit data
+        run: |
+          git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"
+          for f in site/data/nba pipeline/nba_lines_cache.json pipeline/nba_backtest_cache.json; do [ -e "$f" ] && git add "$f"; done
+          git diff --cached --quiet || git commit -m "data: nba $(python -c "import json;print(json.load(open('site/data/nba/props.json'))['slate'])") $(date -u +%FT%H%MZ)"
+          git pull --rebase origin main || true
+          git push || echo "push skipped"
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,4 +1,4 @@
-# Prop Edge — NFL
+# Prop Edge — NFL + NBA
 
 Personal NFL player-prop analysis app. Zero monthly cost:
 
@@ -82,11 +82,28 @@ Columns: `id, created, week, legs_json, book_odds, model_prob, status`. `status`
 
 The web-app URL sits in the public page source and repo, so anyone who finds it could add rows or read the parlays back. The script only accepts the expected fields (max 20 legs), and a new deployment gives a new URL whenever you want.
 
+## NBA
+
+The site has an **NFL | NBA** switch in the header (`?sport=nba`, remembered per browser). Each sport has its own board, Results, Parlays and parlay slip.
+
+- **Data:** sportsdataverse / hoopR ESPN player box scores and schedule (`sportsdataverse-data` GitHub releases, free, updated nightly). Lines come from The-Odds-API (`basketball_nba`): points, rebounds, assists, threes, and PRA.
+- **Model** (`pipeline/nba.py`): projection = projected minutes × per-minute rate × opponent factor. Minutes and rates use the same 0.45·L5 + 0.30·L10 + 0.25·season weighting as the NFL model. The opponent factor is what that defense allows **per minute** to the player's position group (G/F/C) vs league, half-weighted and capped at ±20%. σ = game-to-game SD with a floor, ×1.15. Role-change flags use a **minutes** shift (≥8 min and ≥30% over the last 2 games, against the model's lean) plus the line-far-from-history rule. Players with fewer than 3 games are shown as thin history, not rated.
+- **Grading:** every live pull writes `site/data/nba/history/YYYY-MM-DD.json`. `nba.py --grade` grades each slate once its games are final and in the box scores, and writes `site/data/nba/results.json`. Corrections come from a backtest of every finished slate (`pipeline/nba_backtest_cache.json`) plus graded props, and apply per market at 100+ projections, same as the NFL.
+- **Parlays:** NBA slips save to the same sheet. Legs have `prop_id` = `nba:<athlete>:<market>` and the week column holds the date as YYYYMMDD. `nba.py --grade` writes `site/data/nba/parlays.json`.
+- **Workflow:** `.github/workflows/nba.yml` ("Build NBA props") runs daily at 10:07am and 5:07pm CT. It costs about 5 credits per game per pull (~100/day). Manual runs default to cached (free).
+- **Not in v1:** an injury report. This data source has none, so watch news; the minutes-shift flag catches some of it after the fact.
+
+```bash
+python pipeline/nba.py --lines sample      # or live / cached
+python pipeline/nba.py --grade
+```
+
 ## Layout
 
 ```
 pipeline/build.py        data pull + model → site/data/props.json (+ history snapshot on live builds)
 pipeline/grade.py        --grade: results.json + parlays.json
+pipeline/nba.py          NBA: data + model + grading -> site/data/nba/
 pipeline/requirements.txt
 site/index.html          the app (no build step, no framework)
 site/data/props.json     generated; committed by the workflow
@@ -94,6 +111,7 @@ site/data/history/       week_NN.json snapshots of live builds (graded later)
 site/data/results.json   model record, calibration, corrections
 site/data/parlays.json   saved parlays, graded
 docs/parlay-sheet.gs     Google Apps Script web app for saving parlays
-.github/workflows/build.yml
+.github/workflows/build.yml   NFL
+.github/workflows/nba.yml     NBA
 docs/HANDOFF.md          project handoff: model, schedule, change log, open ideas
 ```

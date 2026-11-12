@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prop Edge — NFL</title>
+<title>Prop Edge</title>
 <meta name="theme-color" content="#0b0b0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏈</text></svg>">
 <style>
@@ -112,6 +112,9 @@ table.log td:first-child,table.log th:first-child{text-align:left}
 .corr{color:var(--warn);font-size:12px;margin-top:6px}
 
 /* tabs + results/parlays views */
+.sports{display:flex;gap:4px}
+.sport{padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink3);font-size:12px;font-weight:700;letter-spacing:.06em;text-decoration:none}
+.sport.on{border-color:var(--gold);color:#1a1405;background:var(--gold)}
 .tabs{display:flex;gap:4px;margin-top:12px;border-bottom:1px solid var(--line)}
 .tab{padding:8px 14px;color:var(--ink3);font-weight:600;font-size:14px;border-bottom:2px solid transparent;margin-bottom:-1px}
 .tab:hover{color:var(--ink2)}
@@ -153,6 +156,7 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
   <header>
     <div class="brand">
       <h1>Prop <span>Edge</span></h1>
+      <nav class="sports" aria-label="Sport"><a class="sport" data-sport="nfl" href="?sport=nfl">NFL</a><a class="sport" data-sport="nba" href="?sport=nba">NBA</a></nav>
       <div class="meta" id="meta">loading…</div>
     </div>
     <div id="banner"></div>
@@ -192,6 +196,18 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
 </div>
 
 <script>
+// ---- which sport: ?sport=nba (remembered); each sport has its own data folder and slip
+const SPORT = (() => { const q = new URLSearchParams(location.search).get('sport');
+  let s = q; if (!s) { try { s = localStorage.getItem('sport'); } catch (e) {} }
+  s = s === 'nba' ? 'nba' : 'nfl'; try { localStorage.setItem('sport', s); } catch (e) {} return s; })();
+const NBA = SPORT === 'nba';
+const BASE = NBA ? 'data/nba/' : 'data/';
+const SK = k => NBA ? k + '_nba' : k;              // localStorage keys per sport
+const GL = g => NBA ? g.wk : 'Wk ' + g.wk;         // game label: "11/10" vs "Wk 8"
+document.title = `Prop Edge — ${SPORT.toUpperCase()}`;
+document.querySelectorAll('.sport').forEach(a => { a.classList.toggle('on', a.dataset.sport === SPORT);
+  a.onclick = () => { a.href = '?sport=' + a.dataset.sport + location.hash; }; });
+
 // Google Apps Script web-app URL for saving parlays (see README → Saved parlays). Empty = saving off.
 const PARLAY_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyYThKB9IKk3k2zNRmEU0E9JHwHVQfHZLlkGFQneNQNnPrxaJPWEYTO8BwwyT6PJ6wa9Q/exec';
 
@@ -216,14 +232,14 @@ let KICK = {};
 let DATA, props = [], state = {markets:new Set(), game:'', sort:'edge', min:5, q:'', sel:null, side:''};
 // remember the over/under choice between visits
 try { state.side = localStorage.getItem('side') || ''; } catch (e) {}
-let slip = JSON.parse(localStorage.getItem('slip') || '[]');
+let slip = JSON.parse(localStorage.getItem(SK('slip')) || '[]');
 
 async function load(){
-  const r = await fetch('data/props.json?v=' + Date.now());
+  const r = await fetch(BASE + 'props.json?v=' + Date.now());
   DATA = await r.json();
   props = DATA.props;
   const gen = new Date(DATA.generated);
-  $('#meta').textContent = `Week ${DATA.week} · stats thru wk ${DATA.stats_through_week} · lines ${new Date(DATA.lines_fetched || DATA.generated).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}` +
+  $('#meta').textContent = `${NBA ? DATA.week : 'Week ' + DATA.week} · stats thru ${NBA ? '' : 'wk '}${DATA.stats_through_week} · lines ${new Date(DATA.lines_fetched || DATA.generated).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}` +
     (DATA.mode === 'cached' ? ` (reused · stats updated ${gen.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})})` : '') +
     (DATA.usage && DATA.usage.remaining ? ` · ${DATA.usage.remaining} API credits left` : '');
   if (DATA.mode === 'sample') $('#banner').innerHTML = `<div class="banner"><b>Sample lines.</b> No Odds API key is configured, so each line is set at the player's recent average. Projections and hit rates are real; edges are not.</div>`;
@@ -316,12 +332,14 @@ function render(){
 // ---- analysis: why recent games landed where they did, and a deep look at the defense
 const fmt = x => x == null || isNaN(x) ? '—' : (+x).toFixed(1).replace(/\.0$/, '');
 const ord = n => n + (['th','st','nd','rd'][(n % 100 - 20) % 10] || ['th','st','nd','rd'][n % 100] || 'th');
-const GRP = {QB:'QBs', RB:'RBs', WR:'WRs', TE:'TEs'};
-const KIND = m => /rush/.test(m) ? 'rush' : /pass/.test(m) ? 'pass' : 'rec';
+const GRP = {QB:'QBs', RB:'RBs', WR:'WRs', TE:'TEs', G:'guards', F:'forwards', C:'centers'};
+const KIND = m => NBA ? 'nba' : /rush/.test(m) ? 'rush' : /pass/.test(m) ? 'pass' : 'rec';
 // efficiency = stat per unit of volume; skip where the stat *is* the volume (carries) or too sparse (pass TDs)
-const EFF = {player_rush_yds:['yards per carry', 1], player_reception_yds:['yards per target', 1],
+const EFF = {player_points:['points per 36 min', 36], player_rebounds:['rebounds per 36 min', 36], player_assists:['assists per 36 min', 36],
+             player_threes:['3s per 36 min', 36], player_points_rebounds_assists:['PRA per 36 min', 36],
+             player_rush_yds:['yards per carry', 1], player_reception_yds:['yards per target', 1],
              player_pass_yds:['yards per attempt', 1], player_receptions:['catch rate', 100]};
-const VOLNAME = {car:'Carries', tgt:'Targets', att:'Pass attempts'};
+const VOLNAME = {car:'Carries', tgt:'Targets', att:'Pass attempts', min:'Minutes'};
 const sumOf = (a, f) => a.reduce((s, g) => s + (f(g) ?? 0), 0);
 const avgOf = (a, f) => { const v = a.map(f).filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
 const pctChg = (a, b) => b ? Math.round(100 * (a - b) / b) : null;
@@ -343,7 +361,7 @@ function whyRecent(p){
   const pts = [];
 
   // per-game result line
-  pts.push(rec.map(g => `Wk ${g.wk} ${g.home ? 'vs' : '@'} ${g.opp}: <b>${fmt(g.val)}</b> (${g.val >= p.line ? '+' : ''}${fmt(g.val - p.line)} vs ${p.line})` +
+  pts.push(rec.map(g => `${GL(g)} ${g.home ? 'vs' : '@'} ${g.opp}: <b>${fmt(g.val)}</b> (${g.val >= p.line ? '+' : ''}${fmt(g.val - p.line)} vs ${p.line})` +
     (g.vol != null ? ` on ${g.vol} ${p.vol_label}` : '') + (g.snap != null ? `, ${g.snap}% of snaps` : '')).join('<br>'));
 
   // volume
@@ -379,7 +397,9 @@ function whyRecent(p){
     const sc = rec.map(g => scoreTxt(g.pts, g.opp_pts)).join(', ');
     const bigWin = margins.filter(m => m >= 14).length, bigLoss = margins.filter(m => m <= -14).length;
     let note;
-    if (kind === 'rush') note = bigLoss ? `Trailing big pushes teams to pass, which cuts carries.` :
+    if (kind === 'nba') { const big = margins.filter(m => Math.abs(m) >= 18).length;
+      note = big ? `A blowout (18+ points) usually means starters sit the 4th quarter, which cuts minutes and counting stats.` : `No blowouts, so garbage time doesn't explain it.`; }
+    else if (kind === 'rush') note = bigLoss ? `Trailing big pushes teams to pass, which cuts carries.` :
       margins.every(m => m > 0) ? `Leading usually means <i>more</i> running, so game script doesn't explain ${dir < 0 ? 'the misses' : 'it'}.` : `Close games — no strong game-script effect.`;
     else note = bigWin ? `A comfortable lead usually means less passing late.` :
       bigLoss ? `Playing from behind usually means more passing.` : `Close games — no strong game-script effect.`;
@@ -400,9 +420,9 @@ function whyRecent(p){
 function defenseDive(p){
   const d = DATA.defense && DATA.defense[p.defense];
   if (!d) return '';
-  const grp = GRP[d.grp] || d.grp, vl = d.vol_label, cnt = /Receptions|TDs|Att/.test(p.label);
+  const grp = GRP[d.grp] || d.grp, vl = d.vol_label, cnt = !NBA && /Receptions|TDs|Att/.test(p.label);
   const perVol = x => x == null ? '—' : vl === 'tgt' && p.label === 'Receptions' ? Math.round(x * 100) + '%' : fmt(x);
-  const perVolName = p.label === 'Receptions' ? 'catch rate allowed' : `per ${{car:'carry', tgt:'target', att:'attempt'}[vl]}`;
+  const perVolName = p.label === 'Receptions' ? 'catch rate allowed' : vl === 'min' ? 'per 36 minutes' : `per ${{car:'carry', tgt:'target', att:'attempt'}[vl]}`;
   const games = d.games;
   // outliers: games well above their typical game
   const big = games.filter(g => g.val >= 1.5 * d.median && g.val > d.lg_avg && games.length >= 4);
@@ -423,21 +443,21 @@ function defenseDive(p){
   const medRatio = d.lg_median ? Math.round(100 * d.median / d.lg_median) : null;
   const notes = [
     `<li><b>Season:</b> allows the <b>${ord(d.rank)}-most</b> ${p.label.toLowerCase()} to ${grp} of ${d.n_teams} teams — ${fmt(d.avg)} per game vs a league average of ${fmt(d.lg_avg)}.</li>`,
-    skew ? `<li><b>But the average is skewed.</b> ${big.map(g => `Wk ${g.wk} vs ${g.vs}: ${fmt(g.val)}${g.vol != null ? ` on ${g.vol} ${vl}` : ''}${g.def_pts != null ? ` (${d.team} ${scoreTxt(g.def_pts, g.off_pts)})` : ''}`).join('; ')}. ` +
+    skew ? `<li><b>But the average is skewed.</b> ${big.map(g => `${GL(g)} vs ${g.vs}: ${fmt(g.val)}${g.vol != null ? ` on ${g.vol} ${vl}` : ''}${g.def_pts != null ? ` (${d.team} ${scoreTxt(g.def_pts, g.off_pts)})` : ''}`).join('; ')}. ` +
       `In their other ${rest.length} games they allowed <b>${fmt(restAvg)}</b> per game${restPer != null && !cnt ? ` at ${fmt(restPer)} ${perVolName}` : ''}. ` +
       `${big.some(g => g.def_pts != null && g.def_pts < g.off_pts - 13) && KIND(p.market) === 'rush' ? 'Teams with a big lead run the ball to burn clock, which inflates rushing allowed.' : ''}</li>` : '',
     `<li><b>Typical game (median):</b> ${fmt(d.median)} vs league ${fmt(d.lg_median)}${medRatio != null ? ` — ${medRatio}% of league` : ''}.</li>`,
     !cnt || p.label === 'Receptions' ? `<li><b>Efficiency:</b> ${perVol(d.per_vol)} ${perVolName} vs league ${perVol(d.lg_per_vol)}; faces ${fmt(d.vol_avg)} ${vl} per game (league ${fmt(d.lg_vol_avg)}).</li>` : '',
     `<li><b>Last 3 games:</b> ${fmt(d.l3)} per game (${games.slice(-3).map(g => `${g.vs} ${fmt(g.val)}`).join(', ')}).</li>`,
     matchup,
-    `<li><b>What the model used:</b> ${p.def_basis === 'mean' ? 'average' : 'typical-game (median)'} allowed = ${Math.round(p.def_factor * 100)}% of league, half-weighted and capped at ±20%, so it moved the projection ${p.def_factor >= 1 ? 'up' : 'down'} ${Math.round(Math.abs(Math.max(-0.2, Math.min(0.2, p.def_factor - 1))) * 50)}%.${skew && p.def_basis !== 'mean' ? ' Because it uses the median, the blowouts above don’t inflate it.' : ''}</li>`,
+    `<li><b>What the model used:</b> ${p.def_basis === 'mean' ? 'average' : p.def_basis === 'per-minute' ? 'per-minute' : 'typical-game (median)'} allowed = ${Math.round(p.def_factor * 100)}% of league, half-weighted and capped at ±20%, so it moved the projection ${p.def_factor >= 1 ? 'up' : 'down'} ${Math.round(Math.abs(Math.max(-0.2, Math.min(0.2, p.def_factor - 1))) * 50)}%.${skew && p.def_basis === 'median' ? ' Because it uses the median, the blowouts above don’t inflate it.' : p.def_basis === 'per-minute' ? ' Per minute, so how many minutes that position group logged doesn’t skew it.' : ''}</li>`,
   ].join('');
   const rows = [...games].reverse().map(g => `<tr><td>${g.wk}</td><td>${g.vs}</td><td class="num">${fmt(g.val)}</td>` +
     `<td class="num">${g.vol ?? '—'}</td><td style="text-align:left">${g.top ? `${g.top} <span style="color:var(--ink3)">${fmt(g.top_val)}${g.top_vol != null ? '/' + g.top_vol : ''}</span>` : '—'}</td>` +
     `<td style="text-align:left" class="${g.def_pts > g.off_pts ? 'pos' : g.def_pts < g.off_pts ? 'neg' : ''}">${g.def_pts != null ? `${g.def_pts > g.off_pts ? 'W' : g.def_pts < g.off_pts ? 'L' : 'T'} ${g.def_pts}–${g.off_pts}` : ''}</td></tr>`).join('');
   return `<div class="sec">${d.team} defense vs ${grp} · ${p.label}</div>
     <div class="why"><ul>${notes}</ul></div>
-    <table class="log"><tr><th>Wk</th><th>Opp</th><th>${grp}</th><th>${vl}</th><th style="text-align:left">Top ${d.grp}</th><th style="text-align:left">${d.team} result</th></tr>${rows}</table>`;
+    <table class="log"><tr><th>${NBA ? 'Date' : 'Wk'}</th><th>Opp</th><th>${grp}</th><th>${vl}</th><th style="text-align:left">Top ${d.grp}</th><th style="text-align:left">${d.team} result</th></tr>${rows}</table>`;
 }
 
 function openDetail(p){
@@ -485,11 +505,11 @@ function openDetail(p){
       <div class="tile"><span class="k">L5 avg</span><div class="v">${p.avg_l5}</div></div>
       <div class="tile"><span class="k">L10 avg</span><div class="v">${p.avg_l10}</div></div>
       <div class="tile"><span class="k">Season</span><div class="v">${p.avg_season}</div><div class="meta">median ${p.median}</div></div>
-      <div class="tile"><span class="k">${p.opp} D vs ${p.pos}</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league ${p.def_basis === 'mean' ? 'avg' : 'typical game'} allowed${p.def_factor > 1.2 || p.def_factor < 0.8 ? ' · model caps at ±20%' : ''}</div></div>
+      <div class="tile"><span class="k">${p.opp} D vs ${p.pos}</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league ${p.def_basis === 'mean' ? 'avg' : p.def_basis === 'per-minute' ? 'per-minute rate' : 'typical game'} allowed${p.def_factor > 1.2 || p.def_factor < 0.8 ? ' · model caps at ±20%' : ''}</div></div>
       ${p.snaps ? `<div class="tile"><span class="k">Snap % L5</span><div class="v" style="font-size:15px">${p.snaps.join(' · ')}</div></div>` : ''}
     </div>
-    <table class="log"><tr><th>Wk</th><th>Opp</th><th>${p.label}</th>${p.vol_label && p.label !== 'Rush Att' ? `<th>${p.vol_label}</th>` : ''}<th>Snap%</th><th>Score</th><th>vs line</th></tr>
-      ${[...games].reverse().map(g => `<tr><td>${g.wk}</td><td>${g.home ? 'vs' : '@'} ${g.opp}</td><td class="num">${g.val}</td>${p.vol_label && p.label !== 'Rush Att' ? `<td class="num">${g.vol ?? '—'}</td>` : ''}<td class="num">${g.snap ?? '—'}</td><td>${g.pts != null ? `${g.pts > g.opp_pts ? 'W' : g.pts < g.opp_pts ? 'L' : 'T'} ${g.pts}–${g.opp_pts}` : ''}</td><td class="num ${g.val > p.line ? 'pos' : 'neg'}">${g.val > p.line ? '+' : ''}${(g.val - p.line).toFixed(1)}</td></tr>`).join('')}
+    <table class="log"><tr><th>${NBA ? 'Date' : 'Wk'}</th><th>Opp</th><th>${p.label}</th>${p.vol_label && p.label !== 'Rush Att' ? `<th>${p.vol_label}</th>` : ''}${NBA ? '' : '<th>Snap%</th>'}<th>Score</th><th>vs line</th></tr>
+      ${[...games].reverse().map(g => `<tr><td>${g.wk}</td><td>${g.home ? 'vs' : '@'} ${g.opp}</td><td class="num">${g.val}</td>${p.vol_label && p.label !== 'Rush Att' ? `<td class="num">${g.vol ?? '—'}</td>` : ''}${NBA ? '' : `<td class="num">${g.snap ?? '—'}</td>`}<td>${g.pts != null ? `${g.pts > g.opp_pts ? 'W' : g.pts < g.opp_pts ? 'L' : 'T'} ${g.pts}–${g.opp_pts}` : ''}</td><td class="num ${g.val > p.line ? 'pos' : 'neg'}">${g.val > p.line ? '+' : ''}${(g.val - p.line).toFixed(1)}</td></tr>`).join('')}
     </table>
     ${whyRecent(p)}
     ${defenseDive(p)}
@@ -501,7 +521,7 @@ function openDetail(p){
   const tip = $('#tip');
   d.querySelectorAll('.bar').forEach(b => {
     const g = games[+b.dataset.i];
-    b.onmousemove = e => { tip.style.display = 'block'; tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY - 30) + 'px'; tip.textContent = `Wk ${g.wk} ${g.home ? 'vs' : '@'} ${g.opp}: ${g.val}`; };
+    b.onmousemove = e => { tip.style.display = 'block'; tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY - 30) + 'px'; tip.textContent = `${GL(g)} ${g.home ? 'vs' : '@'} ${g.opp}: ${g.val}`; };
     b.onmouseleave = () => tip.style.display = 'none';
   });
   d.classList.add('open'); $('#scrim').classList.add('open'); render();
@@ -517,7 +537,7 @@ function addLeg(p, side){
     price: side === 'Over' ? p.over : p.under, prob: side === 'Over' ? p.p_over : 1 - p.p_over});
   saveSlip(); $('#slip').classList.add('open');
 }
-function saveSlip(){ localStorage.setItem('slip', JSON.stringify(slip)); renderSlip(); }
+function saveSlip(){ localStorage.setItem(SK('slip'), JSON.stringify(slip)); renderSlip(); }
 function renderSlip(){
   $('#slipCount').textContent = `${slip.length} leg${slip.length === 1 ? '' : 's'}`;
   $('#legs').innerHTML = slip.map((l, i) => `<div class="leg"><span><b>${l.player}</b> ${l.side} ${l.line} ${l.label} <span style="color:var(--ink3)">${fmtOdds(l.price)}</span></span>
@@ -551,7 +571,7 @@ function showTab(t){
   if (!TABS.includes(t)) t = 'board';
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   document.querySelectorAll('[data-view]').forEach(el => el.hidden = el.dataset.view !== t);
-  if (location.hash.slice(1) !== t) history.replaceState(null, '', t === 'board' ? location.pathname : '#' + t);
+  if (location.hash.slice(1) !== t) history.replaceState(null, '', location.pathname + location.search + (t === 'board' ? '' : '#' + t));
   if (t === 'results') loadResults();
   if (t === 'parlays') loadParlays();
 }
@@ -568,13 +588,13 @@ const recHead = first => `<tr><th>${first}</th><th>Record</th><th>Hit</th><th>Un
 
 async function loadResults(){
   const el = $('#resultsView');
-  if (!RESULTS) { el.innerHTML = '<div class="empty">Loading results…</div>'; RESULTS = await getJSON('data/results.json') || {}; }
+  if (!RESULTS) { el.innerHTML = '<div class="empty">Loading results…</div>'; RESULTS = await getJSON(BASE + 'results.json') || {}; }
   el.innerHTML = renderResults(RESULTS);
   wireCalibration();
 }
 
 function correctionsHTML(R){
-  const bw = (R.backtest_weeks || []).filter(w => w >= 5);
+  const bw = (R.backtest_weeks || []).filter(w => typeof w !== 'number' || w >= 5);
   const rows = Object.entries(R.corrections || {}).map(([m, c]) => `<tr><td>${(DATA && DATA.markets[m]) || m}</td>
     <td class="num" title="${c.n_backtest ?? 0} backtest + ${c.n_graded ?? 0} graded props">${c.n}</td>
     <td class="num">${c.bias != null ? (c.bias > 0 ? '+' : '') + c.bias : '—'}</td>
@@ -585,17 +605,18 @@ function correctionsHTML(R){
     <div class="why"><ul>
       <li><b>Projection ×</b> scales every projection in that market (total actual ÷ total projected). Below 1 means the model has been projecting too high.</li>
       <li><b><span class="nc">σ</span> ×</b> widens or narrows the spread. Above 1 means real outcomes vary more than the model thinks, so its probabilities are too confident.</li>
-      <li><b>Where they come from:</b> ${bw.length ? `a backtest of weeks ${bw[0]}–${bw[bw.length - 1]} (the model replayed each week using only earlier games, for every player with a likely prop)` : 'a backtest of finished weeks'} plus every graded prop. Lines aren't needed, just projection, σ and the actual result. Unflagged projections only, measured against the uncorrected model, and shrunk toward ×1 when the sample is small.</li>
+      <li><b>Where they come from:</b> ${bw.length ? `a backtest of ${R.backtest_label ? R.backtest_label : `weeks ${bw[0]}–${bw[bw.length - 1]}`} (the model replayed each ${R.period === 'day' ? 'slate' : 'week'} using only earlier games, for every player with a likely prop)` : 'a backtest of finished weeks'} plus every graded prop. Lines aren't needed, just projection, σ and the actual result. Unflagged projections only, measured against the uncorrected model, and shrunk toward ×1 when the sample is small.</li>
       <li><b>When they apply:</b> automatically, per market, once ${R.corrections_min_n || 100}+ projections back it. They update every build as more weeks finish.</li>
     </ul></div>
     <table class="log"><tr><th>Market</th><th>Projections</th><th>Avg miss</th><th>Projection ×</th><th><span class="nc">σ</span> ×</th><th style="text-align:left">Status</th></tr>${rows}</table>`;
 }
 
 function renderResults(R){
-  const pend = (R.pending_weeks || []).map(w => 'week ' + w).join(', ');
-  if (!R.graded_weeks) return `<div class="panel"><h3>No graded weeks yet</h3>
-    <p class="muted">Every live build saves its props (pre-game lines only) to <code>data/history/</code>. After a week's games are final and nflverse has the stats, the next build grades them here: record and ROI at -110, edge buckets, calibration and Brier score, plus suggested model corrections.</p>
-    ${pend ? `<p>Waiting on: <b>${pend}</b> — it grades automatically on the next build after the last game's stats land (usually the Tuesday run).</p>` : '<p>No snapshots saved yet — the next live build will create one.</p>'}</div>
+  const pend = (R.pending_weeks || []).map(w => R.period === 'day' ? w : 'week ' + w).join(', ');
+  const unit = R.period === 'day' ? 'slate' : 'week';
+  if (!R.graded_weeks) return `<div class="panel"><h3>No graded ${unit}s yet</h3>
+    <p class="muted">Every live build saves its props (pre-game lines only) to <code>data/history/</code>. After a ${unit}'s games are final and the stats are in, the next build grades them here: record and ROI at -110, edge buckets, calibration and Brier score, plus suggested model corrections.</p>
+    ${pend ? `<p>Waiting on: <b>${pend}</b> — it grades automatically on the next build after the last game's stats land (${R.period === 'day' ? 'usually the next morning' : 'usually the Tuesday run'}).</p>` : '<p>No snapshots saved yet — the next live build will create one.</p>'}</div>
     ${correctionsHTML(R)}`;
   const o = R.overall || {};
   const fv = R.flagged_vs_unflagged || {};
@@ -604,7 +625,7 @@ function renderResults(R){
       <div class="tile"><span class="k">Record (model's side)</span><div class="v">${recTxt(o)}</div><div class="meta">${o.hit_pct != null ? o.hit_pct + '% hit · 52.4% breaks even at -110' : ''}</div></div>
       <div class="tile"><span class="k">Units at -110</span><div class="v ${signCls(o.units)}">${unitsTxt(o.units)}</div><div class="meta">ROI ${o.roi != null ? (o.roi > 0 ? '+' : '') + o.roi + '%' : '—'} · 1u per prop</div></div>
       <div class="tile"><span class="k">Brier score</span><div class="v">${o.brier != null ? o.brier.toFixed(3) : '—'}</div><div class="meta">0.250 = coin flip · lower is better</div></div>
-      <div class="tile"><span class="k">Graded</span><div class="v">${R.graded_weeks} wk${R.graded_weeks === 1 ? '' : 's'}</div><div class="meta">${o.n} props${pend ? ' · pending ' + pend : ''}</div></div>
+      <div class="tile"><span class="k">Graded</span><div class="v">${R.graded_weeks} ${R.period === 'day' ? 'day' : 'wk'}${R.graded_weeks === 1 ? '' : 's'}</div><div class="meta">${o.n} props${pend ? ' · pending ' + pend : ''}</div></div>
     </div>
     <p class="muted small">${R.note || ''}</p>
 
@@ -626,7 +647,7 @@ function renderResults(R){
 
     ${correctionsHTML(R)}
 
-    ${(R.by_week || []).length ? `<div class="sec">By week</div><table class="log">${recHead('Week')}${R.by_week.map(w => recRow('Week ' + w.week, w)).join('')}</table>` : ''}
+    ${(R.by_week || []).length ? `<div class="sec">By ${R.period === 'day' ? 'day' : 'week'}</div><table class="log">${recHead(R.period === 'day' ? 'Date' : 'Week')}${R.by_week.map(w => recRow(w.label || 'Week ' + w.week, w)).join('')}</table>` : ''}
     <p class="muted small">Updated ${R.updated ? new Date(R.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}</p>`;
 }
 
@@ -667,7 +688,7 @@ function wireCalibration(){
 
 async function loadParlays(){
   const el = $('#parlaysView');
-  if (!PARLAYS) { el.innerHTML = '<div class="empty">Loading parlays…</div>'; PARLAYS = await getJSON('data/parlays.json') || {}; }
+  if (!PARLAYS) { el.innerHTML = '<div class="empty">Loading parlays…</div>'; PARLAYS = await getJSON(BASE + 'parlays.json') || {}; }
   el.innerHTML = renderParlays(PARLAYS);
 }
 const LEG_ICON = {hit: ['✓', 'won', 'hit'], miss: ['✗', 'lost', 'miss'], push: ['=', 'push', 'push'], void: ['∅', 'push', 'void (DNP)'], pending: ['…', 'pending', 'pending'], unknown: ['?', 'pending', 'unknown']};
@@ -680,7 +701,7 @@ function renderParlays(P){
   // parlays saved from this browser that the last build hasn't picked up yet
   const known = new Set((P.parlays || []).map(x => x.id));
   let local = [];
-  try { local = JSON.parse(localStorage.getItem('savedParlays') || '[]').filter(x => !known.has(x.id)); localStorage.setItem('savedParlays', JSON.stringify(local)); } catch (e) {}
+  try { local = JSON.parse(localStorage.getItem(SK('savedParlays')) || '[]').filter(x => !known.has(x.id)); localStorage.setItem(SK('savedParlays'), JSON.stringify(local)); } catch (e) {}
   const ps = [...local, ...(P.parlays || [])], s = P.summary || {};
   if (!ps.length) return help + `<div class="empty">No saved parlays yet. Build a slip on the board and press <b>Save parlay</b>.</div>`;
   const settled = s.w + s.l + s.p;
@@ -692,7 +713,7 @@ function renderParlays(P){
     </div>
     ${ps.map(p => `<div class="pcard">
       <div class="phead"><span><span class="badge ${p.status === 'saved' ? 'pending' : p.status}">${ST_ICON[p.status] || p.status}</span>
-        <b>${p.legs.length}-leg</b> · wk ${p.week ?? '?'} · ${p.created ? new Date(p.created).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : ''}</span>
+        <b>${p.legs.length}-leg</b> · ${NBA ? '' : 'wk '}${p.week ?? '?'} · ${p.created ? new Date(p.created).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : ''}</span>
         <span class="num">${p.book_odds != null ? fmtOdds(Math.round(p.book_odds)) : '—'} · model ${pct(p.model_prob)} · <b class="${signCls(p.units)}">${p.units != null ? unitsTxt(p.units) : '—'}</b></span></div>
       ${p.legs.map(l => { const [ic, cls, word] = LEG_ICON[l.status] || LEG_ICON.unknown;
         return `<div class="pleg"><span class="badge ${cls}" title="${word}">${ic}</span>
@@ -709,7 +730,7 @@ async function saveParlay(btn){
     side: l.side, price: l.price ?? null, model_prob: l.prob != null ? +l.prob.toFixed(4) : null}));
   const priced = slip.every(l => l.price != null);
   const d = slip.reduce((a, l) => a * (l.price != null ? dec(l.price) : 1), 1);
-  const payload = {created: new Date().toISOString(), week: DATA.week, legs,
+  const payload = {created: new Date().toISOString(), week: NBA ? DATA.slate_num : DATA.week, legs,
     book_odds: priced ? Math.round(d >= 2 ? (d - 1) * 100 : -100 / (d - 1)) : null,
     model_prob: +slip.reduce((a, l) => a * l.prob, 1).toFixed(4)};
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -720,10 +741,10 @@ async function saveParlay(btn){
     if (!j.ok) throw new Error(j.error || 'not saved');
     btn.textContent = `Saved ✓ ${j.id}`;
     try {   // show it on the Parlays tab right away; the next build replaces it with the graded copy
-      const mine = JSON.parse(localStorage.getItem('savedParlays') || '[]');
+      const mine = JSON.parse(localStorage.getItem(SK('savedParlays')) || '[]');
       mine.unshift({id: j.id, created: payload.created, week: payload.week, book_odds: payload.book_odds, model_prob: payload.model_prob,
         status: 'saved', units: null, legs: legs.map(l => ({...l, status: 'pending'}))});
-      localStorage.setItem('savedParlays', JSON.stringify(mine.slice(0, 50)));
+      localStorage.setItem(SK('savedParlays'), JSON.stringify(mine.slice(0, 50)));
     } catch (e) {}
     savedSig = slipSig();
     PARLAYS = null;
@@ -737,7 +758,7 @@ async function saveParlay(btn){
 let savedSig = null;
 const slipSig = () => slip.map(l => l.id + l.side + l.line).join('|');
 
-load().catch(e => { $('#meta').textContent = 'Could not load data/props.json — run the pipeline first.'; console.error(e); });
+load().catch(e => { $('#meta').textContent = `Could not load ${BASE}props.json — run the ${NBA ? 'NBA ' : ''}pipeline first.`; console.error(e); });
 </script>
 </body>
 </html>
