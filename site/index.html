@@ -111,6 +111,11 @@ table.log td:first-child,table.log th:first-child{text-align:left}
 .sum{display:flex;gap:16px;flex-wrap:wrap;margin:10px auto 0;max-width:1180px;font-size:13px;color:var(--ink2)}
 .sum b{color:var(--ink);font-family:var(--mono)}
 .corr{color:var(--warn);font-size:12px;margin-top:6px}
+.conflicts{max-width:1180px;margin:8px auto 0;display:grid;gap:6px}
+.conflict{background:rgba(232,113,111,.10);border:1px solid rgba(232,113,111,.45);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink2)}
+.conflict b{color:var(--ink)} .conflict .h{color:var(--bad);font-weight:700}
+.conflict.warn{background:rgba(242,182,92,.08);border-color:rgba(242,182,92,.4)} .conflict.warn .h{color:var(--warn)}
+.leg .flag{color:var(--bad);font-weight:700;margin-right:4px}
 
 /* tabs + results/parlays views */
 .sports{display:flex;gap:4px}
@@ -202,6 +207,7 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
   <div class="legs" id="legs"></div>
   <div class="sum" id="slipSum"></div>
   <div class="corr" id="corr"></div>
+  <div class="conflicts" id="conflicts"></div>
 </div>
 
 <script>
@@ -584,9 +590,73 @@ function addLeg(p, side){
   saveSlip(); $('#slip').classList.add('open');
 }
 function saveSlip(){ localStorage.setItem(SK('slip'), JSON.stringify(slip)); renderSlip(); }
+// ---- parlay conflict checks: legs that work against each other
+// "share" = how much of the job a player had in a game: NFL snap %, NBA minutes
+const shareOf = g => NBA ? g.vol : g.snap;
+const shareTxt = x => x == null ? '—' : NBA ? `${Math.round(x)} min` : `${Math.round(x)}% of snaps`;
+const median = xs => { const a = xs.filter(x => x != null).sort((x, y) => x - y); return a.length ? a[Math.floor((a.length - 1) / 2)] : null; };
+const avgOf2 = xs => { const a = xs.filter(x => x != null); return a.length ? a.reduce((s, x) => s + x, 0) / a.length : null; };
+const VOLUME_MKTS = /pass_yds|pass_attempts|rush|reception|points|rebounds|assists|threes|anytime/;
+const legHits = (l, g) => l.side === 'Over' ? g.val > l.line : g.val < l.line;
+function propFor(l){ return props.find(p => p.id === l.id); }
+// one prop per player, to find a player's position-mates on tonight's board
+function playersOnBoard(){ const m = new Map(); for (const p of props) if (!m.has(p.pid)) m.set(p.pid, p); return [...m.values()]; }
+function mates(p){ return playersOnBoard().filter(q => q.team === p.team && q.pos === p.pos && q.pid !== p.pid && !(q.role_change && ['absent', 'injury'].includes(q.role_change.why))); }
+
+function parlayConflicts(legs){
+  const out = [], seen = new Set();
+  const L = legs.map(l => ({l, p: propFor(l)})).filter(x => x.p);
+  // 1) two overs on players who share one job (same team + position)
+  for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+    const a = L[i], b = L[j];
+    if (a.p.team !== b.p.team || a.p.pos !== b.p.pos || a.p.pid === b.p.pid) continue;
+    if (a.l.side !== 'Over' || b.l.side !== 'Over' || !VOLUME_MKTS.test(a.p.market) || !VOLUME_MKTS.test(b.p.market)) continue;
+    const bw = new Map(b.p.games.map(g => [g.wk, g]));
+    const shared = a.p.games.filter(g => bw.has(g.wk)).map(g => [g, bw.get(g.wk)]);
+    let ev = '';
+    if (shared.length >= 2) {
+      const both = shared.filter(([ga, gb]) => legHits(a.l, ga) && legHits(b.l, gb)).length;
+      const ra = shared.filter(([ga]) => legHits(a.l, ga)).length / shared.length, rb = shared.filter(([, gb]) => legHits(b.l, gb)).length / shared.length;
+      ev = ` In the ${shared.length} games they've played together, both overs hit <b>${both}</b> time${both === 1 ? '' : 's'}` +
+        ` (${Math.round(100 * both / shared.length)}%; if the legs were unrelated you'd expect ~${Math.round(100 * ra * rb)}%).`;
+    }
+    const sa = median(a.p.games.slice(-4).map(shareOf)), sb = median(b.p.games.slice(-4).map(shareOf));
+    out.push({sev: 'bad', ids: [a.l.id, b.l.id], html: `<span class="h">⚠ These legs compete.</span> <b>${a.p.player}</b> and <b>${b.p.player}</b> share the ${a.p.team} ${a.p.pos} job` +
+      `${sa != null && sb != null ? ` (lately ${shareTxt(sa)} vs ${shareTxt(sb)})` : ''} — when one gets the work, the other usually doesn't, so two overs need both to have big games.${ev}`});
+    seen.add(a.l.id); seen.add(b.l.id);
+  }
+  for (const {l, p} of L) {
+    if (l.side !== 'Over' || !VOLUME_MKTS.test(p.market)) continue;
+    const g = p.games, last = g[g.length - 1];
+    if (!last) continue;
+    // 2) his recent numbers came while a position-mate was out -- and that mate is playing tonight
+    const prior = median(g.slice(0, -1).map(shareOf)), lastShare = shareOf(last);
+    for (const q of mates(p)) {
+      const qMissedLast = !q.games.some(x => x.wk === last.wk) && q.games.some(x => x.wk !== last.wk);
+      if (qMissedLast && lastShare != null && prior != null && lastShare >= 1.4 * prior) {
+        out.push({sev: 'bad', ids: [l.id], html: `<span class="h">⚠ Inflated role.</span> <b>${p.player}</b>'s last game (${NBA ? last.wk : 'wk ' + last.wk}: ${shareTxt(lastShare)}) came with <b>${q.player}</b> out. ${q.player} is on tonight's board, so expect ${p.player}'s usual role (~${shareTxt(prior)}).`});
+        seen.add(l.id); break;
+      }
+    }
+    if (seen.has(l.id)) continue;
+    // 3) an over on a clear backup
+    const mine = median(g.slice(-4).map(shareOf));
+    const top = mates(p).map(q => ({q, s: median(q.games.slice(-4).map(shareOf))})).filter(x => x.s != null).sort((x, y) => y.s - x.s)[0];
+    const backup = mine != null && top && (NBA ? (mine < 22 && top.s >= 26 && top.s - mine >= 8) : (mine < 45 && top.s >= 55));
+    if (backup) out.push({sev: 'warn', ids: [l.id], html: `<span class="h">Backup over.</span> <b>${p.player}</b> is behind <b>${top.q.player}</b> (${shareTxt(mine)} vs ${shareTxt(top.s)} lately). Overs on a backup mostly need the starter to get hurt or the game to turn into a blowout.`});
+    // ...or the starter isn't on the board, but he clearly plays a part-time role
+    else if (mine != null && (NBA ? mine < 22 : mine < 40))
+      out.push({sev: 'warn', ids: [l.id], html: `<span class="h">Part-time role.</span> <b>${p.player}</b> has played ${shareTxt(mine)} lately — a bench role. Overs on part-timers swing on how much he plays, which depends on fouls, matchups and the score more than on him.`});
+  }
+  return out;
+}
+
 function renderSlip(){
   $('#slipCount').textContent = `${slip.length} leg${slip.length === 1 ? '' : 's'}`;
-  $('#legs').innerHTML = slip.map((l, i) => `<div class="leg"><span><b>${l.player}</b> ${l.market === 'player_anytime_td' ? `${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}` : `${l.side} ${l.line} ${l.label}`} <span style="color:var(--ink3)">${fmtOdds(l.price)}</span></span>
+  const conflicts = parlayConflicts(slip), flagged = new Set(conflicts.flatMap(c => c.ids));
+  if (conflicts.length) $('#slipCount').textContent += ` · ⚠ ${conflicts.length} warning${conflicts.length === 1 ? '' : 's'}`;
+  $('#conflicts').innerHTML = conflicts.map(c => `<div class="conflict ${c.sev === 'warn' ? 'warn' : ''}">${c.html}</div>`).join('');
+  $('#legs').innerHTML = slip.map((l, i) => `<div class="leg"><span>${flagged.has(l.id) ? '<span class="flag" title="See the warning below">⚠</span>' : ''}<b>${l.player}</b> ${l.market === 'player_anytime_td' ? `${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}` : `${l.side} ${l.line} ${l.label}`} <span style="color:var(--ink3)">${fmtOdds(l.price)}</span></span>
     <span><span class="num">${pct(l.prob)}</span> <button class="x" data-i="${i}" aria-label="remove">×</button></span></div>`).join('');
   $('#legs').querySelectorAll('.x').forEach(b => b.onclick = () => { slip.splice(+b.dataset.i, 1); saveSlip(); });
   if (!slip.length) { $('#slipOdds').textContent = ''; $('#slipSum').innerHTML = ''; $('#corr').textContent = ''; return; }
@@ -776,6 +846,9 @@ function renderParlays(P){
 // ---- save the current slip to the Parlays sheet
 async function saveParlay(btn){
   if (!PARLAY_WEBHOOK_URL) { alert('Saving parlays is not set up yet: put your Google Apps Script web-app URL in PARLAY_WEBHOOK_URL in site/index.html (see README → Saved parlays).'); return; }
+  const bad = parlayConflicts(slip).filter(c => c.sev === 'bad');
+  if (bad.length && !confirm(`This slip has ${bad.length} warning${bad.length === 1 ? '' : 's'} — legs that work against each other:\n\n` +
+      bad.map(c => '• ' + c.html.replace(/<[^>]+>/g, '')).join('\n\n') + '\n\nSave it anyway?')) return;
   const legs = slip.map(l => ({prop_id: l.id, player: l.player, market: l.market || l.id.split(':')[1], line: l.line,
     side: l.side, price: l.price ?? null, model_prob: l.prob != null ? +l.prob.toFixed(4) : null}));
   const priced = slip.every(l => l.price != null);

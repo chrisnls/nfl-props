@@ -102,6 +102,10 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 
 - `player_anytime_td` (yes/no; Yes→over / No→under 0.5; odds parser maps Yes/No outcomes, point 0.5). Model: λ = w·own TD rate + (1−w)·usage xTD (w = n/(n+8)), × half-weighted implied team points, then λ′ = 0.12 + 0.75·λ (fit on wks 5–7, out-of-sample on 8–9: Brier .2057 → .2045), P = 1 − e^(−λ′). edge = P − fair; edge_sd = edge/0.10. The generic projection/σ correction is disabled for this market (it scales counts, not P). Backtest Brier .2066 vs base-rate .2189. First live pull (11/12, 367 props, 4 books, Yes-only) exposed: (1) stale logs, e.g. Emanuel Wilson last played wk 7 but projected off his old starter usage → new all-market flag `absent` (missed the team's last 2 games); (2) best-price outliers → the book probability is now the median Yes price; (3) unbettable No leans → `no_bet_side`, edge_sd 0; (4) fringe players at +2000 got an 11% floor → `lowuse` (<4 touches L5) not rated; (5) TEs overpredicted → `TD_CAL_C_POS = {"TE": 0.02}` (out-of-sample Brier .1831 → .1807; RB/WR/QB per-position fits didn't hold up).
 
+### Parlay conflict checks (11/13)
+
+- `parlayConflicts()` in index.html, prompted by two lost slips: Kalshi (Skattebo 60+ rush+rec **and** Singletary 40+, both NYG RBs) and an SGP (Maluach, PHX's ~20-min backup C, over 6.5 points). Rules: (1) two overs on the same team + position → "compete", with joint-hit history (Skattebo/Singletary: both hit 0 of 3 shared games); (2) last game's share ≥1.4× his median while a position-mate missed it and that mate is on tonight's board → "inflated role"; (3) backup over (NFL <45% snaps vs a ≥55% mate; NBA <22 vs ≥26 min), else part-time (<40% / <22 min). Red warnings need a confirm to save.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.

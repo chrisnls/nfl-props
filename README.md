@@ -57,7 +57,11 @@ cd site && python -m http.server 8000            # open http://localhost:8000
 - **Hasn't played lately** (all NFL markets): a player who missed his team's last 2 games has a stale game log, so his props are flagged and demoted.
 - **Strength** labels (Strong ≥1σ, Solid ≥0.6σ, Lean ≥0.3σ, Thin below) can be sorted (*Strong over → Strong under* or the reverse, strongest first within each bucket) and filtered (a single rating, or Strong + Solid on either or both sides). The board remembers your sort and filters.
 - **Hit rates** are the share of games this season where the player cleared the *current* line.
-- The **parlay slip** multiplies leg probabilities as if independent. Same-game legs are correlated; the slip warns when you do that.
+- The **parlay slip** multiplies leg probabilities as if they were independent, and warns about same-game legs. It also **flags legs that work against each other**, using each player's game log:
+  - *These legs compete* (red): overs on two players who share a job (same team + position), with how often both overs actually hit in their games together vs what independence would predict.
+  - *Inflated role* (red): a player's last game came with a position-mate out who is playing tonight (e.g. Singletary's 93%-snap week without Skattebo).
+  - *Backup over* / *Part-time role* (amber): an over on a clear backup (NFL <45% of snaps vs a 55%+ starter; NBA <22 min vs 26+), or on a part-timer when the starter isn't on the board.
+  Saving a slip with a red warning asks you to confirm first. Rebuild a slip here before placing it elsewhere to check it.
 
 This is a v1 model — deliberately simple and transparent. Good next steps: usage/target-share trend weighting, pace and game-total adjustments, teammate-out redistribution, and a results tracker to grade the model's closing-line value week over week.
 
