@@ -98,6 +98,10 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 - New NFL market `player_pass_attempts` (stat `attempts`, QB, count). +1 credit per game per pull (~98 per full slate). Backtest: 121 QB games, correction active (proj ×0.968, σ ×0.85).
 - Board: sorts *Strong over → Strong under* / reverse, a strength filter (single rating, Strong+Solid overs/unders/either), and sort/filter remembered per browser. Both sports.
 
+### Anytime TD (11/13)
+
+- `player_anytime_td` (yes/no; Yes→over / No→under 0.5; odds parser maps Yes/No outcomes, point 0.5). Model: λ = w·own TD rate + (1−w)·usage xTD (w = n/(n+8)), × half-weighted implied team points, then λ′ = 0.12 + 0.75·λ (fit on wks 5–7, out-of-sample on 8–9: Brier .2057 → .2045), P = 1 − e^(−λ′). edge = P − fair; edge_sd = edge/0.10. The generic projection/σ correction is disabled for this market (it scales counts, not P). Backtest Brier .2066 vs base-rate .2189.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.

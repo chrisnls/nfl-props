@@ -186,6 +186,10 @@ def corrections(graded: list[dict], backtest: list[dict]) -> dict:
         rs = g_rows + b_rows
         n = len(rs)
         base = {"n": n, "n_graded": len(g_rows), "n_backtest": len(b_rows)}
+        if market in build.BINARY_MARKETS:
+            out[market] = {**base, "proj_mult": None, "sd_mult": None, "active": False,
+                           "note": "not used: probability is calibrated directly (TD_CAL in build.py)"}
+            continue
         if n < CORR_MIN_N:
             out[market] = {**base, "proj_mult": None, "sd_mult": None, "active": False,
                            "note": f"needs {CORR_MIN_N}+ graded projections"}

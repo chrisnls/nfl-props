@@ -284,15 +284,18 @@ const esd = p => p.edge_sd ?? p.edge / p.sd;
 // normal game-to-game swing (σ). ~1 swing = strong; under a third of a swing = noise.
 const strength = p => { const a = Math.abs(esd(p)); return a >= 1 ? 'Strong' : a >= 0.6 ? 'Solid' : a >= 0.3 ? 'Lean' : 'Thin'; };
 // full rating, e.g. "Solid under" ("Thin" has no side); thin-history props aren't rated
-const rating = p => isThin(p) ? 'Not rated' : strength(p) === 'Thin' ? 'Thin' : `${strength(p)} ${p.edge >= 0 ? 'over' : 'under'}`;
+const rating = p => isThin(p) ? 'Not rated' : strength(p) === 'Thin' ? 'Thin' : `${strength(p)} ${p.edge >= 0 ? 'over' : 'under'}`;   // TD yes/no map onto over/under for sorting
 // rank for the strength sorts: Strong over 0 … Lean over 2, Thin 3, Lean under 4 … Strong under 6, not rated last
 const RANK = {'Strong over':0, 'Solid over':1, 'Lean over':2, 'Thin':3, 'Lean under':4, 'Solid under':5, 'Strong under':6, 'Not rated':7};
 const strMatch = (p, f) => { if (!f) return true; const r = rating(p);
   if (f === 'SS') return /^(Strong|Solid) /.test(r);
   if (f.startsWith('SS ')) return /^(Strong|Solid) /.test(r) && r.endsWith(f.slice(3));
   return r === f; };
-const gapText = p => p.edge === 0 ? 'right on the line' : `${Math.abs(p.edge)} ${p.edge > 0 ? 'over' : 'under'} the line`;
-const strTip = p => `Projection is ${gapText(p)}. That gap is ${Math.abs(esd(p)).toFixed(1)}× this player's normal game-to-game swing (σ ${p.sd}). Strong ≥ 1×, Solid ≥ 0.6×, Lean ≥ 0.3×, Thin below that.`;
+const isTD = p => p.market === 'player_anytime_td';
+const SIDE = (p, side) => isTD(p) ? (side === 'Over' ? 'Yes' : 'No') : side;     // yes/no market wording
+const ptsTxt = x => (x > 0 ? '+' : '') + Math.round(x * 100) + ' pts';
+const gapText = p => isTD(p) ? `${pct(p.p_over)} to score` : p.edge === 0 ? 'right on the line' : `${Math.abs(p.edge)} ${p.edge > 0 ? 'over' : 'under'} the line`;
+const strTip = p => isTD(p) ? `Model gives him ${pct(p.p_over)} to score (expected TDs ${p.proj}); the book's price implies ${pct(p.fair_over)}${p.under == null ? ' (incl. vig — no "No" price posted)' : ''}. Gap ${ptsTxt(p.edge)}. Strong ≥ 10 pts, Solid ≥ 6, Lean ≥ 3.` : `Projection is ${gapText(p)}. That gap is ${Math.abs(esd(p)).toFixed(1)}× this player's normal game-to-game swing (σ ${p.sd}). Strong ≥ 1×, Solid ≥ 0.6×, Lean ≥ 0.3×, Thin below that.`;
 const isThin = p => p.role_change && p.role_change.why === 'thin';
 const INJ_ABBR = {'out':'OUT', 'doubtful':'DBT', 'questionable':'Q', 'day-to-day':'GTD', 'probable':'P', 'suspension':'SUSP'};
 const injAbbr = st => INJ_ABBR[String(st).toLowerCase()] || String(st)[0];
@@ -347,12 +350,12 @@ function render(){
         <span class="str thin">Not rated</span></div>
       <div><span class="k">Over ${fmtOdds(p.over)} · Under ${fmtOdds(p.under)}</span>
         <span class="num" style="color:var(--ink3);font-size:12px">book ${pct(p.fair_over)} over</span></div>`
-      : `<div class="num" title="${strTip(p)}"><span class="k">Proj</span>${p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
-        <span class="str ${strength(p) === 'Thin' ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}">${strength(p)} ${strength(p) === 'Thin' ? 'edge' : p.edge >= 0 ? 'over' : 'under'}</span></div>
-      <div><span class="k">${bs.side} ${fmtOdds(bs.price)} ${bs.book ? BOOK[bs.book] || bs.book : ''}</span>
+      : `<div class="num" title="${strTip(p)}"><span class="k">${isTD(p) ? 'xTD' : 'Proj'}</span>${p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
+        <span class="str ${strength(p) === 'Thin' ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}">${strength(p)} ${strength(p) === 'Thin' ? 'edge' : isTD(p) ? (p.edge >= 0 ? 'yes' : 'no') : p.edge >= 0 ? 'over' : 'under'}</span></div>
+      <div><span class="k">${SIDE(p, bs.side)} ${fmtOdds(bs.price)} ${bs.book ? BOOK[bs.book] || bs.book : ''}</span>
         <span class="num side ${bs.ev > 0 ? 'pos' : ''}">${pct(bs.p)}</span> <span class="num" style="color:var(--ink3);font-size:12px">vs ${pct(bs.side === 'Over' ? p.fair_over : 1 - p.fair_over)}</span></div>`}
       <div class="hits">${[['L5', p.hit_l5], ['L10', p.hit_l10], ['Szn', p.hit_season]].map(([l, v]) => `<span><b><i style="width:${v ?? 0}%"></i></b>${v == null ? '—' : v + '%'}</span>`).join('')}</div>
-      <button class="add" data-id="${p.id}">${isThin(p) ? 'Pick side' : '+ ' + bs.side}</button>`;
+      <button class="add" data-id="${p.id}">${isThin(p) ? 'Pick side' : '+ ' + SIDE(p, bs.side)}</button>`;
     el.onclick = e => { if (e.target.closest('.add') && !isThin(p)) { addLeg(p, bs.side); } else openDetail(p); };
     el.onkeydown = e => { if (e.key === 'Enter') openDetail(p); };
     board.appendChild(el);
@@ -369,7 +372,7 @@ const EFF = {player_points:['points per 36 min', 36], player_rebounds:['rebounds
              player_threes:['3s per 36 min', 36], player_points_rebounds_assists:['PRA per 36 min', 36],
              player_rush_yds:['yards per carry', 1], player_reception_yds:['yards per target', 1],
              player_pass_yds:['yards per attempt', 1], player_receptions:['catch rate', 100]};
-const VOLNAME = {car:'Carries', tgt:'Targets', att:'Pass attempts', min:'Minutes'};
+const VOLNAME = {car:'Carries', tgt:'Targets', att:'Pass attempts', min:'Minutes', touch:'Touches'};
 const sumOf = (a, f) => a.reduce((s, g) => s + (f(g) ?? 0), 0);
 const avgOf = (a, f) => { const v = a.map(f).filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
 const pctChg = (a, b) => b ? Math.round(100 * (a - b) / b) : null;
@@ -519,15 +522,16 @@ function openDetail(p){
     <div class="grid">
       <div class="tile"><span class="k">Line</span><div class="v">${p.line}</div><div class="meta">${p.books.length > 1 ? p.books.length + ' books' : (BOOK[p.books[0]] || '')}${p.line_spread ? ' · ±' + p.line_spread : ''}</div></div>
       ${isThin(p) ? `<div class="tile"><span class="k">Average</span><div class="v">${p.avg_season}</div><div class="meta">${p.games.length} game${p.games.length === 1 ? '' : 's'} · no projection</div></div>`
+        : isTD(p) ? `<div class="tile"><span class="k">Expected TDs</span><div class="v">${p.proj}</div><div class="meta">usage + his TD rate, game total</div></div>`
         : `<div class="tile"><span class="k">Projection</span><div class="v">${p.proj}</div><div class="meta">σ ${p.sd}</div></div>`}
-      ${isThin(p) ? '' : `<div class="tile"><span class="k">Edge</span><div class="v ${p.edge >= 0 ? 'pos' : 'neg'}">${p.edge > 0 ? '+' : ''}${p.edge}</div><div class="meta" title="${strTip(p)}">${isThin(p) ? 'not rated · too few games' : `${strength(p)} · ${Math.abs(esd(p)).toFixed(1)}× normal swing`}</div></div>`}
-      <div class="tile"><span class="k">P(over)</span><div class="v">${isThin(p) ? '—' : pct(p.p_over)}</div><div class="meta">book ${pct(p.fair_over)}</div></div>
-      <div class="tile"><span class="k">Over</span><div class="v">${fmtOdds(p.over)}</div><div class="meta">${BOOK[p.over_book] || ''} · EV ${p.ev_over == null || isThin(p) ? '—' : (p.ev_over * 100).toFixed(1) + '%'}</div></div>
-      <div class="tile"><span class="k">Under</span><div class="v">${fmtOdds(p.under)}</div><div class="meta">${BOOK[p.under_book] || ''} · EV ${p.ev_under == null || isThin(p) ? '—' : (p.ev_under * 100).toFixed(1) + '%'}</div></div>
+      ${isThin(p) ? '' : `<div class="tile"><span class="k">Edge</span><div class="v ${p.edge >= 0 ? 'pos' : 'neg'}">${isTD(p) ? ptsTxt(p.edge) : (p.edge > 0 ? '+' : '') + p.edge}</div><div class="meta" title="${strTip(p)}">${isThin(p) ? 'not rated · too few games' : isTD(p) ? `${strength(p)} · model vs book` : `${strength(p)} · ${Math.abs(esd(p)).toFixed(1)}× normal swing`}</div></div>`}
+      <div class="tile"><span class="k">${isTD(p) ? 'P(scores)' : 'P(over)'}</span><div class="v">${isThin(p) ? '—' : pct(p.p_over)}</div><div class="meta">book ${pct(p.fair_over)}</div></div>
+      <div class="tile"><span class="k">${SIDE(p, 'Over')}</span><div class="v">${fmtOdds(p.over)}</div><div class="meta">${BOOK[p.over_book] || ''} · EV ${p.ev_over == null || isThin(p) ? '—' : (p.ev_over * 100).toFixed(1) + '%'}</div></div>
+      <div class="tile"><span class="k">${SIDE(p, 'Under')}</span><div class="v">${fmtOdds(p.under)}</div><div class="meta">${BOOK[p.under_book] || ''} · EV ${p.ev_under == null || isThin(p) ? '—' : (p.ev_under * 100).toFixed(1) + '%'}</div></div>
     </div>
-    <div class="btns"><button class="btn ${bs.side === 'Over' && !isThin(p) ? 'gold' : ''}" id="addO">Add Over ${p.line}</button><button class="btn ${bs.side === 'Under' && !isThin(p) ? 'gold' : ''}" id="addU">Add Under ${p.line}</button></div>
+    <div class="btns"><button class="btn ${bs.side === 'Over' && !isThin(p) ? 'gold' : ''}" id="addO">${isTD(p) ? 'Add Yes (scores)' : 'Add Over ' + p.line}</button><button class="btn ${bs.side === 'Under' && !isThin(p) ? 'gold' : ''}" id="addU" ${isTD(p) && p.under == null ? 'disabled title="No \'No\' price posted"' : ''}>${isTD(p) ? 'Add No' : 'Add Under ' + p.line}</button></div>
 
-    <div class="sec">Game log vs line · gold = over</div>
+    <div class="sec">${isTD(p) ? 'TDs by game · gold = scored' : 'Game log vs line · gold = over'}</div>
     <svg class="chart" viewBox="0 0 ${W} ${H}" id="chart">
       <line x1="${padL}" x2="${W}" y1="${y(p.line)}" y2="${y(p.line)}" stroke="var(--ink2)" stroke-dasharray="4 4"/>
       <text x="0" y="${y(p.line) + 4}" font-size="11" fill="var(--ink2)">${p.line}</text>
@@ -538,7 +542,8 @@ function openDetail(p){
       <div class="tile"><span class="k">L5 avg</span><div class="v">${p.avg_l5}</div></div>
       <div class="tile"><span class="k">L10 avg</span><div class="v">${p.avg_l10}</div></div>
       <div class="tile"><span class="k">Season</span><div class="v">${p.avg_season}</div><div class="meta">median ${p.median}</div></div>
-      <div class="tile"><span class="k">${p.opp} D vs ${p.pos}</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league ${p.def_basis === 'mean' ? 'avg' : p.def_basis === 'per-minute' ? 'per-minute rate' : 'typical game'} allowed${p.def_factor > 1.2 || p.def_factor < 0.8 ? ' · model caps at ±20%' : ''}</div></div>
+      ${isTD(p) ? `<div class="tile"><span class="k">${p.team} implied pts</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league avg points (spread + total), half-weighted</div></div>` : ''}
+      <div class="tile" ${isTD(p) ? 'hidden' : ''}><span class="k">${p.opp} D vs ${p.pos}</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league ${p.def_basis === 'mean' ? 'avg' : p.def_basis === 'per-minute' ? 'per-minute rate' : 'typical game'} allowed${p.def_factor > 1.2 || p.def_factor < 0.8 ? ' · model caps at ±20%' : ''}</div></div>
       ${p.snaps ? `<div class="tile"><span class="k">Snap % L5</span><div class="v" style="font-size:15px">${p.snaps.join(' · ')}</div></div>` : ''}
     </div>
     <table class="log"><tr><th>${NBA ? 'Date' : 'Wk'}</th><th>Opp</th><th>${p.label}</th>${p.vol_label && !/^(Rush|Pass) Att$/.test(p.label) ? `<th>${p.vol_label}</th>` : ''}${NBA ? '' : '<th>Snap%</th>'}<th>Score</th><th>vs line</th></tr>
@@ -573,7 +578,7 @@ function addLeg(p, side){
 function saveSlip(){ localStorage.setItem(SK('slip'), JSON.stringify(slip)); renderSlip(); }
 function renderSlip(){
   $('#slipCount').textContent = `${slip.length} leg${slip.length === 1 ? '' : 's'}`;
-  $('#legs').innerHTML = slip.map((l, i) => `<div class="leg"><span><b>${l.player}</b> ${l.side} ${l.line} ${l.label} <span style="color:var(--ink3)">${fmtOdds(l.price)}</span></span>
+  $('#legs').innerHTML = slip.map((l, i) => `<div class="leg"><span><b>${l.player}</b> ${l.market === 'player_anytime_td' ? `${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}` : `${l.side} ${l.line} ${l.label}`} <span style="color:var(--ink3)">${fmtOdds(l.price)}</span></span>
     <span><span class="num">${pct(l.prob)}</span> <button class="x" data-i="${i}" aria-label="remove">×</button></span></div>`).join('');
   $('#legs').querySelectorAll('.x').forEach(b => b.onclick = () => { slip.splice(+b.dataset.i, 1); saveSlip(); });
   if (!slip.length) { $('#slipOdds').textContent = ''; $('#slipSum').innerHTML = ''; $('#corr').textContent = ''; return; }
@@ -754,7 +759,7 @@ function renderParlays(P){
         <span class="num">${p.book_odds != null ? fmtOdds(Math.round(p.book_odds)) : '—'} · model ${pct(p.model_prob)} · <b class="${signCls(p.units)}">${p.units != null ? unitsTxt(p.units) : '—'}</b></span></div>
       ${p.legs.map(l => { const [ic, cls, word] = LEG_ICON[l.status] || LEG_ICON.unknown;
         return `<div class="pleg"><span class="badge ${cls}" title="${word}">${ic}</span>
-          <span class="pl">${l.player} <b>${l.side} ${l.line}</b> ${(DATA && DATA.markets[l.market]) || l.market}</span>
+          <span class="pl">${l.player} <b>${l.market === 'player_anytime_td' ? (l.side.toLowerCase() === 'over' ? 'Yes' : 'No') : l.side + ' ' + l.line}</b> ${(DATA && DATA.markets[l.market]) || l.market}</span>
           <span class="num muted">${l.actual != null ? 'actual ' + l.actual : word}${l.price != null ? ' · ' + fmtOdds(l.price) : ''}</span></div>`; }).join('')}
     </div>`).join('')}
     <p class="muted small">Pushes and DNPs drop out of a parlay and it's repaid at the remaining legs' saved prices. Updated ${P.updated ? new Date(P.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}.</p>`;

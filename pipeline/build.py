@@ -50,6 +50,7 @@ MARKETS = {
     "player_pass_yds": ("passing_yards", "Pass Yds", {"QB"}, False),
     "player_pass_tds": ("passing_tds", "Pass TDs", {"QB"}, True),
     "player_pass_attempts": ("attempts", "Pass Att", {"QB"}, True),
+    "player_anytime_td": ("anytime_tds", "Anytime TD", {"RB", "WR", "TE", "QB"}, True),
     "player_rush_yds": ("rushing_yards", "Rush Yds", {"QB", "RB", "WR"}, False),
     "player_rush_attempts": ("carries", "Rush Att", {"RB", "QB"}, True),
     "player_reception_yds": ("receiving_yards", "Rec Yds", {"WR", "TE", "RB"}, False),
@@ -73,8 +74,21 @@ ROLE_SNAP_MIN_EDGE = 0.3   # |edge ÷ σ|; below this the lean is too weak to ma
 
 # Volume stat behind each market, for the "why" breakdown (volume x efficiency).
 VOLUME = {"passing_yards": "attempts", "passing_tds": "attempts", "rushing_yards": "carries",
-          "carries": "carries", "attempts": "attempts", "receiving_yards": "targets", "receptions": "targets"}
-VOLUME_LABEL = {"attempts": "att", "carries": "car", "targets": "tgt"}
+          "carries": "carries", "attempts": "attempts", "receiving_yards": "targets", "receptions": "targets",
+          "anytime_tds": "touches"}
+VOLUME_LABEL = {"attempts": "att", "carries": "car", "targets": "tgt", "touches": "touch"}
+# Anytime TD: a yes/no market (books post "Yes +150", sometimes "No"); treated as over/under 0.5 TDs.
+# Expected TDs (λ) = blend of usage-based xTD (projected carries/targets x league TD rate per carry/target
+# at the position) and the player's own TD rate, shrunk by games played; scaled by the team's implied points;
+# P(scores) = 1 - exp(-λ). Strength uses the probability gap vs the book: edge_sd = (P - fair) / TD_EDGE_SCALE,
+# so Lean/Solid/Strong = 3/6/10 percentage points.
+ANYTIME = "player_anytime_td"
+BINARY_MARKETS = {ANYTIME}
+TD_OWN_K = 8          # own-rate weight = n / (n + 8) games
+# Recalibration λ' = C + M·λ fitted on the weeks 5-9 backtest (615 props): low-usage players score more often
+# than their touches imply (9% predicted -> 21% actual). Fit on wks 5-7, tested on 8-9: Brier .2057 -> .2045.
+TD_CAL_C, TD_CAL_M = 0.12, 0.75
+TD_EDGE_SCALE = 0.10
 LINES_CACHE = ROOT / "pipeline" / "lines_cache.json"   # committed by the workflow; not published
 HISTORY = OUT / "history"          # week_NN.json: every live build's props, for grading
 RESULTS = OUT / "results.json"     # written by --grade
@@ -159,6 +173,9 @@ def load_frames() -> dict[str, pd.DataFrame]:
     frames = {k: pd.read_csv(download(k, u), low_memory=False) for k, u in SOURCES.items()}
     g = frames["games"]
     frames["games"] = g[(g.season == SEASON) & (g.game_type == "REG")].copy()
+    st = frames["stats"]
+    st["anytime_tds"] = st.rushing_tds.fillna(0) + st.receiving_tds.fillna(0)
+    st["touches"] = st.carries.fillna(0) + st.targets.fillna(0)
     return frames
 
 
@@ -345,8 +362,10 @@ def fetch_odds(week_game_list: list[dict], api_key: str) -> tuple[dict, dict]:
                     d = grouped.setdefault(o["description"], {})
                     d[o["name"].lower()] = (o.get("point"), o.get("price"))
                 for player, sides in grouped.items():
-                    over, under = sides.get("over"), sides.get("under")
+                    over, under = sides.get("over") or sides.get("yes"), sides.get("under") or sides.get("no")
                     point = (over or under or (None, None))[0]
+                    if point is None and m["key"] in BINARY_MARKETS:
+                        point = 0.5          # yes/no market == over/under 0.5
                     if point is None:
                         continue
                     lines.setdefault((norm_name(player), m["key"]), []).append({
@@ -370,6 +389,12 @@ def sample_odds(stats: pd.DataFrame, week: int, players_in_week: set[str]) -> di
             if pid not in players_in_week or len(grp) < 4:
                 continue
             avg = grp.sort_values("week")[col].tail(5).mean()
+            if market in BINARY_MARKETS:   # anytime TD: anyone with real usage gets a +150 / -190 sample line
+                if grp.sort_values("week").touches.tail(5).mean() < 4:
+                    continue
+                name = grp.player_display_name.iloc[0]
+                lines[(norm_name(name), market)] = [{"book": "sample", "line": 0.5, "over": 150, "under": -190, "name": name}]
+                continue
             if avg < (1.5 if discrete else 20):
                 continue
             line = math.floor(avg) + 0.5   # nearest x.5 below avg -> edges split both ways
@@ -444,6 +469,19 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
         team_game[g.away_team] = (g.game_id, g.home_team, False)
 
     factors = defense_factors(hist)
+    # anytime-TD inputs: league TD rate per carry / per target by position, team implied points tonight
+    td_rate = {}
+    for pos_, g_ in hist.groupby("position"):
+        c, t = g_.carries.fillna(0).sum(), g_.targets.fillna(0).sum()
+        td_rate[pos_] = (g_.rushing_tds.fillna(0).sum() / c if c else 0.0, g_.receiving_tds.fillna(0).sum() / t if t else 0.0)
+    done = games[games.home_score.notna() & (games.week < week)]
+    league_ppg = float(pd.concat([done.home_score, done.away_score]).mean()) if len(done) else 22.0
+    implied = {}
+    for _, g in this_week.iterrows():
+        if pd.isna(g.total_line) or pd.isna(g.spread_line):
+            continue
+        implied[g.home_team] = (g.total_line + g.spread_line) / 2    # spread_line > 0: home favored
+        implied[g.away_team] = (g.total_line - g.spread_line) / 2
     latest_team = stats.sort_values("week").groupby("player_id").team.last()
 
     inj = injuries[injuries.week == injuries.week.max()]
@@ -536,16 +574,30 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
         line = cons["line"]
         values = [float(v) for v in glog[col].fillna(0)]
         factor = factors.get((opp, pos if pos in ("QB", "RB", "WR", "TE") else "WR", col), 1.0)
-        proj, sd = project(values, factor, discrete)
+        if market == ANYTIME:
+            car = [float(v) for v in glog.carries.fillna(0)]
+            tgt = [float(v) for v in glog.targets.fillna(0)]
+            wa = lambda xs: 0.45 * statistics.fmean(xs[-5:]) + 0.30 * statistics.fmean(xs[-10:]) + 0.25 * statistics.fmean(xs)
+            rr, tr = td_rate.get(pos, (0.0, 0.0))
+            xtd = wa(car) * rr + wa(tgt) * tr
+            w_own = len(values) / (len(values) + TD_OWN_K)
+            lam = w_own * wa(values) + (1 - w_own) * xtd
+            env = implied.get(team, league_ppg) / league_ppg
+            factor = env
+            lam *= 1 + 0.5 * (max(0.7, min(1.3, env)) - 1)          # half-weight, capped
+            lam = TD_CAL_C + TD_CAL_M * lam
+            proj, sd = lam, max(0.1, math.sqrt(lam))
+        else:
+            proj, sd = project(values, factor, discrete)
         proj_raw, sd_raw = proj, sd
-        corr = (corrections or {}).get(market)
+        corr = (corrections or {}).get(market) if market not in BINARY_MARKETS else None   # TD: calibrated on P directly
         if corr:   # learned from backtest + graded weeks (see grade.py); active per market at CORRECTIONS_MIN_N
             proj, sd = proj * corr["proj_mult"], sd * corr["sd_mult"]
 
         # continuity for counts: over a whole-number line L means L+1 or more (L is a push), so
         # compare at L+0.5; a half-point line (1.5) already sits between the integers -- no shift.
         z_line = (line + (0.5 if discrete and float(line).is_integer() else 0)) - proj
-        p_over = 1 - norm_cdf(z_line / sd)
+        p_over = 1 - math.exp(-proj) if market == ANYTIME else 1 - norm_cdf(z_line / sd)
         imp_over = american_to_prob(cons["over"]) if cons["over"] is not None else None
         imp_under = american_to_prob(cons["under"]) if cons["under"] is not None else None
         # strip vig for fair implied probability
@@ -554,7 +606,12 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
         ev_under = ((1 - p_over) * (cons["under"] / 100 if cons["under"] > 0 else 100 / -cons["under"]) - p_over) if cons["under"] is not None else None
 
         glog_ctx = [game_context(r, pname, pid, pos, col) for r in glog.itertuples()]
-        role = role_change(values, line, discrete, [g["snap"] for g in glog_ctx], (proj - line) / sd)
+        edge_sd = ((p_over - fair_over) / TD_EDGE_SCALE if fair_over is not None else 0.0) if market == ANYTIME \
+            else (proj - line) / sd
+        role = role_change(values, line, discrete, [g["snap"] for g in glog_ctx], edge_sd)
+        if market == ANYTIME and role and role["why"] == "line":
+            role = None   # a 0.5 TD "line" says nothing about role
+
         if thin:   # too few games to project honestly: show the line and the games, don't rate it
             role = {"why": "thin", "games": len(values), "dir": "up" if line > statistics.fmean(values) else "down",
                     "z": None, "lo": min(values), "hi": max(values)}
@@ -580,11 +637,12 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
             "over": cons["over"], "over_book": cons["over_book"],
             "under": cons["under"], "under_book": cons["under_book"],
             "books": cons["books"], "line_spread": cons["spread"],
-            "proj": r1(proj),
+            "proj": round(proj, 2) if market == ANYTIME else r1(proj),
             "sd": r1(sd),
-            "edge": r1(proj - line),
-            "proj_raw": r1(proj_raw), "sd_raw": r1(sd_raw),
-            "edge_sd": round((proj - line) / sd, 2),
+            "edge": round(p_over - fair_over, 3) if market == ANYTIME and fair_over is not None else
+                    (0.0 if market == ANYTIME else r1(proj - line)),
+            "proj_raw": round(proj_raw, 3) if market == ANYTIME else r1(proj_raw), "sd_raw": r1(sd_raw),
+            "edge_sd": round(edge_sd, 2),
             "role_change": role,
             "p_over": round(p_over, 3),
             "fair_over": round(fair_over, 3) if fair_over else None,
