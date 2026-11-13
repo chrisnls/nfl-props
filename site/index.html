@@ -257,7 +257,13 @@ async function load(){
   $('#meta').textContent = `${NBA ? DATA.week : 'Week ' + DATA.week} · stats thru ${NBA ? '' : 'wk '}${DATA.stats_through_week} · lines ${new Date(DATA.lines_fetched || DATA.generated).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}` +
     (DATA.mode === 'cached' ? ` (reused · stats updated ${gen.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})})` : '') +
     (DATA.usage && DATA.usage.remaining ? ` · ${DATA.usage.remaining} API credits left` : '');
-  if (DATA.mode === 'sample') $('#banner').innerHTML = `<div class="banner"><b>Sample lines.</b> No Odds API key is configured, so each line is set at the player's recent average. Projections and hit rates are real; edges are not.</div>`;
+  if (DATA.mode === 'sample') {
+    const why = DATA.sample_reason === 'no_key' ? 'No Odds API key is configured, so each line'
+      : DATA.sample_reason === 'api_error' ? `The Odds API pull failed (${(DATA.usage && DATA.usage.error) || 'error'}), so each line`
+      : DATA.sample_reason === 'no_lines' ? `No real lines have been pulled for this ${NBA ? 'slate' : 'week'} yet, so each line`
+      : 'Real lines aren\'t available for this build, so each line';
+    $('#banner').innerHTML = `<div class="banner"><b>Sample lines.</b> ${why} is set at the player's recent average. Projections and hit rates are real; edges are not.</div>`;
+  }
   const mk = $('#marketChips');
   for (const [k, label] of Object.entries(DATA.markets)) {
     const b = document.createElement('button'); b.className = 'chip on'; b.textContent = label; b.dataset.k = k;

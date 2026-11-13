@@ -790,9 +790,21 @@ def main() -> None:
             usage = {**usage, **usage_err}
             mode = "cached"
             log(f"using cached lines from {lines_fetched} (no credits used)")
+        elif api_key and not usage_err:
+            # no lines saved for THIS week yet (e.g. the first build after the week rolls over): pull live
+            log("no cached lines for this week -> pulling live instead of using sample lines")
+            try:
+                lines, usage = fetch_odds(wg, api_key)
+                lines_fetched = dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
+                save_lines_cache(lines, week, usage)
+                mode = "live"
+            except Exception as e:
+                usage_err = {"error": str(e)[:200]}
+    sample_reason = None
     if lines is None:
         log("using sample lines")
         lines, usage, mode = sample_odds(stats, week, players_in_week), usage_err, "sample"
+        sample_reason = "no_key" if not api_key else "api_error" if usage_err else "no_lines"
 
     corrections, corr_info = load_corrections()
     props, defense = build_props(stats, games, frames["injuries"], frames["snaps"], week, lines, corrections)
@@ -802,7 +814,7 @@ def main() -> None:
         "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
         "lines_fetched": lines_fetched,
         "stats_through_week": int(stats.week.max()),
-        "usage": usage,
+        "usage": usage, "sample_reason": sample_reason,
         "markets": {k: v[1] for k, v in MARKETS.items()},
         "games": wg,
         "props": props,

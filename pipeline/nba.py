@@ -877,8 +877,20 @@ def main():
         if c:
             lines, usage, fetched = c
             usage, mode = {**usage, **err}, "cached"
+        elif api_key and not err:
+            # no lines saved for THIS slate yet (e.g. the first build of a new day): a real pull beats sample lines
+            log("nba: no cached lines for this slate -> pulling live instead of using sample lines")
+            try:
+                lines, usage = fetch_odds(games, api_key, team_name_map(sched))
+                fetched = dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
+                save_cache(lines, date, usage)
+                mode = "live"
+            except Exception as e:
+                err = {"error": str(e)[:200]}
+    sample_reason = None
     if lines is None:
         lines, usage, mode = sample_lines(box, date, teams), err, "sample"
+        sample_reason = "no_key" if not api_key else "api_error" if err else "no_lines"
     corr, corr_info = load_corrections()
     injuries = fetch_injuries(team_name_map(sched))
     props, defense, games = build_props(box, sched, date, lines, corr, injuries)
@@ -886,7 +898,7 @@ def main():
     x = dt.date.fromisoformat(date)
     payload = {
         "sport": "nba", "season": SEASON, "week": x.strftime("%a %b ") + str(x.day), "slate": date,
-        "slate_num": int(date.replace("-", "")), "mode": mode,
+        "slate_num": int(date.replace("-", "")), "mode": mode, "sample_reason": sample_reason,
         "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"), "lines_fetched": fetched,
         "stats_through_week": label_date(str(box.date.max())), "usage": usage,
         "markets": {k: v[1] for k, v in MARKETS.items()}, "games": games, "props": props,
