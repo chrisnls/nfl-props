@@ -147,6 +147,9 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
 .badge.pending{background:var(--gold-dim);color:var(--gold2)}
 .pcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;margin:8px 0}
 .phead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;padding-bottom:6px;border-bottom:1px solid var(--line);font-size:13px}
+.pleg.click,.leg.click{cursor:pointer}
+.pleg.click:hover{background:var(--panel2)}
+.leg.click:hover{outline:1px solid var(--line)}
 .pleg{display:flex;gap:6px;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid var(--line)}
 .pleg:last-child{border-bottom:0}
 .pleg .pl{flex:1;min-width:0}
@@ -671,7 +674,9 @@ function renderSlip(){
   $('#conflicts').innerHTML = conflicts.map(c => `<div class="conflict ${c.sev === 'warn' ? 'warn' : ''}">${c.html}</div>`).join('');
   $('#legs').innerHTML = slip.map((l, i) => `<div class="leg"><span>${flagged.has(l.id) ? '<span class="flag" title="See the warning below">⚠</span>' : ''}<b>${l.player}</b> ${l.market === 'player_anytime_td' ? `${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}` : `${l.side} ${l.line} ${l.label}`} <span style="color:var(--ink3)">${fmtOdds(l.price)}</span></span>
     <span><span class="num">${pct(l.prob)}</span> <button class="x" data-i="${i}" aria-label="remove">×</button></span></div>`).join('');
-  $('#legs').querySelectorAll('.x').forEach(b => b.onclick = () => { slip.splice(+b.dataset.i, 1); saveSlip(); });
+  $('#legs').querySelectorAll('.x').forEach(b => b.onclick = e => { e.stopPropagation(); slip.splice(+b.dataset.i, 1); saveSlip(); });
+  $('#legs').querySelectorAll('.leg').forEach((row, i) => { const p = props.find(q => q.id === slip[i].id);
+    if (p) { row.classList.add('click'); row.title = `Open ${p.player}'s details`; row.onclick = () => openDetail(p); } });
   if (!slip.length) { $('#slipOdds').textContent = ''; $('#slipSum').innerHTML = ''; $('#corr').textContent = ''; return; }
   const legsWithPrice = slip.filter(l => l.price != null);
   const d = legsWithPrice.reduce((a, l) => a * dec(l.price), 1);
@@ -979,6 +984,10 @@ function renderBuilder(results){
   $('#bPerGame').onchange = e => { BUILDER.perGame = +e.target.value; try { localStorage.setItem(BKEY, JSON.stringify(BUILDER)); } catch (err) {} };
   $('#bSide').onchange = e => { BUILDER.side = e.target.value; try { localStorage.setItem(BKEY, JSON.stringify(BUILDER)); } catch (err) {} };
   $('#bGo').onclick = () => { window.__built = generateParlays(); renderBuilder(window.__built); };
+  el.querySelectorAll('.pleg.click').forEach(row => {
+    const open = () => { const p = props.find(q => q.id === row.dataset.prop); if (p) openDetail(p); };
+    row.onclick = open; row.onkeydown = e => { if (e.key === 'Enter') open(); };
+  });
   el.querySelectorAll('[data-use]').forEach(b => b.onclick = () => {
     const r = results[+b.dataset.use];
     slip = r.legs.map(legOf); saveSlip(); $('#slip').classList.add('open');
@@ -996,7 +1005,7 @@ function renderBuilt(results){
       <div class="phead"><span><span class="badge ${r.style === 'conservative' ? 'won' : r.style === 'hail' ? 'lost' : 'pending'}">${S.name}</span>
         <b>${r.legs.length}-leg</b>${r.sameGame ? ' · <span class="muted">same-game legs</span>' : ''}${inRange ? '' : ` · <span class="muted" title="Couldn't hit the target odds with the legs available">outside target odds</span>`}</span>
         <span class="num" title="est. = blended probability, legs treated as independent">${fmtOdds(r.american)} · est. ${pct(r.prob)} · EV <b class="${r.ev > 0 ? 'pos' : 'neg'}">${(r.ev * 100).toFixed(0)}%</b> · $10 pays $${(10 * r.dec).toFixed(2)}</span></div>
-      ${r.legs.map(x => `<div class="pleg"><span class="badge ${x.ev >= 0.08 ? 'won' : 'push'}" title="${rating(x.p)} · EV ${(x.ev * 100).toFixed(1)}%">${strength(x.p)}</span>
+      ${r.legs.map(x => `<div class="pleg click" role="button" tabindex="0" data-prop="${x.p.id}" title="Open ${x.p.player}'s details"><span class="badge ${x.ev >= 0.08 ? 'won' : 'push'}" title="${rating(x.p)} · EV ${(x.ev * 100).toFixed(1)}%">${strength(x.p)}</span>
         <span class="pl">${x.p.player} <b>${isTD(x.p) ? `Anytime TD — ${SIDE(x.p, x.side)}` : `${x.side} ${x.p.line} ${x.p.label}`}</b> <span class="muted">${x.p.team} ${x.p.home ? 'vs' : '@'} ${x.p.opp}</span></span>
         <span class="num muted" title="model ${pct(x.model)} · book ${pct(x.book)} · blended ${pct(x.prob)}">${fmtOdds(x.price)} ${BOOK[x.side === 'Over' ? x.p.over_book : x.p.under_book] || ''} · est. ${pct(x.prob)} · EV ${(x.ev * 100).toFixed(0)}%</span></div>`).join('')}
       <div class="btns" style="margin-top:8px"><button class="btn" data-use="${i}">Use this slip</button></div>
