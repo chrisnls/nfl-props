@@ -111,6 +111,12 @@ table.log td:first-child,table.log th:first-child{text-align:left}
 .sum{display:flex;gap:16px;flex-wrap:wrap;margin:10px auto 0;max-width:1180px;font-size:13px;color:var(--ink2)}
 .sum b{color:var(--ink);font-family:var(--mono)}
 .corr{color:var(--warn);font-size:12px;margin-top:6px}
+.btable input{width:64px;text-align:center}
+.btable td{vertical-align:middle}
+.bopts{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:13px;color:var(--ink2)}
+.bopts label{display:flex;gap:6px;align-items:center}
+.bopts .btn{flex:0 0 auto;padding:9px 22px}
+.btn:disabled{opacity:.5;cursor:default}
 .conflicts{max-width:1180px;margin:8px auto 0;display:grid;gap:6px}
 .conflict{background:rgba(232,113,111,.10);border:1px solid rgba(232,113,111,.45);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink2)}
 .conflict b{color:var(--ink)} .conflict .h{color:var(--bad);font-weight:700}
@@ -166,7 +172,7 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
       <div class="meta" id="meta">loading…</div>
     </div>
     <div id="banner"></div>
-    <nav class="tabs" role="tablist"><button class="tab on" data-tab="board">Board</button><button class="tab" data-tab="results">Results</button><button class="tab" data-tab="parlays">Parlays</button></nav>
+    <nav class="tabs" role="tablist"><button class="tab on" data-tab="board">Board</button><button class="tab" data-tab="results">Results</button><button class="tab" data-tab="parlays">Parlays</button><button class="tab" data-tab="builder">Builder</button></nav>
     <div class="filters" data-view="board">
       <div class="chips" id="marketChips"></div>
       <select id="gameSel"><option value="">All games</option></select>
@@ -196,6 +202,7 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
   <div class="board" id="board" data-view="board"></div>
   <div class="view" id="resultsView" data-view="results" hidden></div>
   <div class="view" id="parlaysView" data-view="parlays" hidden></div>
+  <div class="view" id="builderView" data-view="builder" hidden></div>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -684,7 +691,7 @@ function renderSlip(){
 $('#slipBar').onclick = () => $('#slip').classList.toggle('open');
 
 // ---- tabs: Board / Results / Parlays
-const TABS = ['board', 'results', 'parlays'];
+const TABS = ['board', 'results', 'parlays', 'builder'];
 let RESULTS = null, PARLAYS = null;
 async function getJSON(path){
   try { const r = await fetch(path + '?v=' + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; }
@@ -696,6 +703,7 @@ function showTab(t){
   if (location.hash.slice(1) !== t) history.replaceState(null, '', location.pathname + location.search + (t === 'board' ? '' : '#' + t));
   if (t === 'results') loadResults();
   if (t === 'parlays') loadParlays();
+  if (t === 'builder') (async () => { if (!RESULTS) RESULTS = await getJSON(BASE + 'results.json') || {}; renderBuilder(window.__built || null); })();
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
@@ -847,6 +855,153 @@ function renderParlays(P){
           <span class="num muted">${l.actual != null ? 'actual ' + l.actual : word}${l.price != null ? ' · ' + fmtOdds(l.price) : ''}</span></div>`; }).join('')}
     </div>`).join('')}
     <p class="muted small">Pushes and DNPs drop out of a parlay and it's repaid at the remaining legs' saved prices. Updated ${P.updated ? new Date(P.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}.</p>`;
+}
+
+// ---- parlay builder: generate conservative / balanced / hail-mary parlays from +EV legs
+const STYLES = {
+  conservative: {name: 'Conservative', minP: 0.57, minEV: 0.005, minPrice: -250, odds: [80, 400], legs: [2, 3], count: 2, avoidWarn: true,
+                 weight: x => x.prob ** 3 * (1 + x.ev), blurb: 'likeliest legs (est. ≥ 57%) that are still +EV, aiming for +80 to +400'},
+  balanced:     {name: 'Balanced', minP: 0.50, minEV: 0.02, minPrice: -300, odds: [300, 1500], legs: [3, 4], count: 2, avoidWarn: false,
+                 weight: x => (x.ev + 0.01) * x.prob, blurb: 'solid edges (est. ≥ 50%, EV ≥ 2%), aiming for +300 to +1500'},
+  hail:         {name: 'Hail Mary', minP: 0.15, minEV: 0.04, minPrice: -300, odds: [1500, 200000], legs: [5, 7], count: 1, avoidWarn: false,
+                 weight: x => x.ev * x.dec, blurb: 'bigger edges incl. plus-money legs (EV ≥ 4%), aiming for +1500 and up'},
+};
+const BKEY = SK('builder');
+let BUILDER = (() => { try { return JSON.parse(localStorage.getItem(BKEY)) || {}; } catch (e) { return {}; } })();
+const DEF = s => ({count: STYLES[s].count, min: STYLES[s].legs[0], max: STYLES[s].legs[1]});
+const bset = (s, k) => (BUILDER[s] && BUILDER[s][k] != null) ? BUILDER[s][k] : DEF(s)[k];
+const toAmerican = d => d >= 2 ? Math.round((d - 1) * 100) : Math.round(-100 / (d - 1));
+
+function legPool(style){
+  const S = STYLES[style], side = BUILDER.side || '';
+  const out = [];
+  for (const p of props) {
+    if (p.role_change || p.no_bet_side || isThin(p)) continue;
+    if (!state.markets.has(p.market) || (state.game && p.game !== state.game)) continue;
+    const bs = bestSide(p);
+    if (bs.price == null || p.fair_over == null || (side && bs.side !== side)) continue;
+    // estimate = the book's no-vig probability, moved toward the model by the graded blend weight
+    const book = bs.side === 'Over' ? p.fair_over : 1 - p.fair_over;
+    const prob = book + blendW() * (bs.p - book), d = dec(bs.price), ev = prob * d - 1;
+    if (prob < S.minP || ev < S.minEV || bs.price < S.minPrice) continue;
+    out.push({p, side: bs.side, price: bs.price, prob, model: bs.p, book, ev, dec: d});
+  }
+  return out;
+}
+const blendW = () => (RESULTS && RESULTS.blend && RESULTS.blend.w != null) ? RESULTS.blend.w : 0.25;
+const legOf = x => ({id: x.p.id, player: x.p.player, label: x.p.label, market: x.p.market, line: x.p.line, side: x.side,
+  game: x.p.game, team: x.p.team, price: x.price, prob: x.prob});
+
+function pickWeighted(items, w){
+  const tot = items.reduce((s, x) => s + Math.max(w(x), 1e-9), 0);
+  let r = Math.random() * tot;
+  for (const x of items) { r -= Math.max(w(x), 1e-9); if (r <= 0) return x; }
+  return items[items.length - 1];
+}
+
+function buildOne(style, pool, seen){
+  const S = STYLES[style];
+  const lo = Math.max(2, +bset(style, 'min')), hi = Math.max(lo, +bset(style, 'max'));
+  const perGame = Math.max(1, +(BUILDER.perGame || 2));
+  let best = null;
+  for (let attempt = 0; attempt < 400; attempt++) {
+    const n = lo + Math.floor(Math.random() * (hi - lo + 1));
+    const legs = [], players = new Set(), games = {};
+    let cand = pool.slice();
+    while (legs.length < n && cand.length) {
+      const x = pickWeighted(cand, S.weight);
+      cand = cand.filter(y => y !== x);
+      if (players.has(x.p.pid) || (games[x.p.game] || 0) >= perGame) continue;
+      const trial = [...legs, x].map(legOf);
+      const issues = parlayConflicts(trial);
+      if (issues.some(c => c.sev === 'bad' || (S.avoidWarn && c.sev === 'warn'))) continue;
+      legs.push(x); players.add(x.p.pid); games[x.p.game] = (games[x.p.game] || 0) + 1;
+    }
+    if (legs.length < lo) continue;
+    const key = legs.map(x => x.p.id + x.side).sort().join('|');
+    if (seen.has(key)) continue;
+    const d = legs.reduce((a, x) => a * x.dec, 1), am = toAmerican(d);
+    const prob = legs.reduce((a, x) => a * x.prob, 1);
+    const res = {style, legs, dec: d, american: am, prob, ev: prob * d - 1, key,
+                 sameGame: Object.values(games).some(v => v > 1)};
+    const miss = am < S.odds[0] ? S.odds[0] - am : am > S.odds[1] ? am - S.odds[1] : 0;
+    if (!best || miss < best.miss) best = {...res, miss};
+    if (miss === 0) break;
+  }
+  if (best) seen.add(best.key);
+  return best;
+}
+
+function generateParlays(){
+  const seen = new Set(), out = [];
+  for (const style of Object.keys(STYLES)) {
+    const k = Math.max(0, Math.min(10, +bset(style, 'count')));
+    if (!k) continue;
+    const pool = legPool(style);
+    for (let i = 0; i < k; i++) {
+      const r = pool.length >= 2 ? buildOne(style, pool, seen) : null;
+      out.push(r || {style, empty: true, poolSize: pool.length});
+    }
+  }
+  return out;
+}
+
+function renderBuilder(results){
+  const el = $('#builderView');
+  if (!DATA) { el.innerHTML = '<div class="empty">Loading…</div>'; return; }
+  const sample = DATA.mode === 'sample';
+  const row = s => `<tr><td><b>${STYLES[s].name}</b><div class="muted small">${STYLES[s].blurb}</div></td>
+    <td><input type="number" min="0" max="10" data-s="${s}" data-k="count" value="${bset(s, 'count')}"></td>
+    <td><input type="number" min="2" max="10" data-s="${s}" data-k="min" value="${bset(s, 'min')}"></td>
+    <td><input type="number" min="2" max="10" data-s="${s}" data-k="max" value="${bset(s, 'max')}"></td></tr>`;
+  el.innerHTML = `
+    <div class="panel">
+      <h3>Parlay builder</h3>
+      <p class="muted small">Leg probabilities are <b>estimates that blend the book's no-vig price with the model</b> — ${Math.round(blendW() * 100)}% model, ${100 - Math.round(blendW() * 100)}% market${RESULTS && RESULTS.blend && RESULTS.blend.fitted ? `, the mix that best predicted ${RESULTS.blend.n} graded props` : ' until enough props are graded'}. The raw model is overconfident, so its own numbers would wildly overstate parlay EV. Builds only from legs that are <b>+EV at the best available price</b> on that estimate, skips flagged props, and rejects any combo the conflict checker flags (no two overs sharing one job, no inflated roles; no backup overs in Conservative). Uses the markets and game selected on the Board. Different every time you press Generate.</p>
+      <table class="log btable"><tr><th style="text-align:left">Style</th><th>Variations</th><th>Min legs</th><th>Max legs</th></tr>
+        ${Object.keys(STYLES).map(row).join('')}</table>
+      <div class="bopts">
+        <label>Max legs from one game <select id="bPerGame">${[1, 2, 3, 4].map(n => `<option ${(+(BUILDER.perGame || 2)) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label>Sides <select id="bSide"><option value="">Overs &amp; unders</option><option value="Over" ${BUILDER.side === 'Over' ? 'selected' : ''}>Overs only</option><option value="Under" ${BUILDER.side === 'Under' ? 'selected' : ''}>Unders only</option></select></label>
+        <button class="btn gold" id="bGo" ${sample ? 'disabled' : ''}>${results ? 'Generate again' : 'Generate'}</button>
+      </div>
+      ${sample ? '<p class="corr">These are sample lines, so there are no real prices to build from. The builder needs live lines.</p>' : ''}
+    </div>
+    <div id="bOut">${results ? renderBuilt(results) : ''}</div>
+    <p class="muted small">Model probability multiplies the legs as if independent (same-game legs are correlated; books price that in). Parlays multiply the book's margin as well as the edge, so expect long losing streaks even when the edges are real. Save the ones you play; the Parlays tab grades them.</p>`;
+  el.querySelectorAll('input[data-s]').forEach(i => i.onchange = () => {
+    BUILDER[i.dataset.s] = {...(BUILDER[i.dataset.s] || {}), [i.dataset.k]: Math.max(+i.min, Math.min(+i.max, +i.value || 0))};
+    if (i.dataset.k === 'min' && +bset(i.dataset.s, 'max') < +bset(i.dataset.s, 'min')) BUILDER[i.dataset.s].max = bset(i.dataset.s, 'min');
+    if (i.dataset.k === 'max' && +bset(i.dataset.s, 'max') < +bset(i.dataset.s, 'min')) BUILDER[i.dataset.s].min = bset(i.dataset.s, 'max');
+    try { localStorage.setItem(BKEY, JSON.stringify(BUILDER)); } catch (e) {}
+    renderBuilder(results);
+  });
+  $('#bPerGame').onchange = e => { BUILDER.perGame = +e.target.value; try { localStorage.setItem(BKEY, JSON.stringify(BUILDER)); } catch (err) {} };
+  $('#bSide').onchange = e => { BUILDER.side = e.target.value; try { localStorage.setItem(BKEY, JSON.stringify(BUILDER)); } catch (err) {} };
+  $('#bGo').onclick = () => { window.__built = generateParlays(); renderBuilder(window.__built); };
+  el.querySelectorAll('[data-use]').forEach(b => b.onclick = () => {
+    const r = results[+b.dataset.use];
+    slip = r.legs.map(legOf); saveSlip(); $('#slip').classList.add('open');
+    b.textContent = 'Loaded ✓';
+  });
+}
+
+function renderBuilt(results){
+  return results.map((r, i) => {
+    const S = STYLES[r.style];
+    if (r.empty) return `<div class="pcard"><div class="phead"><span><span class="badge pending">${S.name}</span> couldn't build one</span></div>
+      <div class="muted small" style="padding-top:6px">Only ${r.poolSize} leg${r.poolSize === 1 ? '' : 's'} qualify right now (${S.blurb}). Select more markets or games on the Board, loosen the leg limits, or wait for the next pull.</div></div>`;
+    const inRange = r.american >= S.odds[0] && r.american <= S.odds[1];
+    return `<div class="pcard">
+      <div class="phead"><span><span class="badge ${r.style === 'conservative' ? 'won' : r.style === 'hail' ? 'lost' : 'pending'}">${S.name}</span>
+        <b>${r.legs.length}-leg</b>${r.sameGame ? ' · <span class="muted">same-game legs</span>' : ''}${inRange ? '' : ` · <span class="muted" title="Couldn't hit the target odds with the legs available">outside target odds</span>`}</span>
+        <span class="num" title="est. = blended probability, legs treated as independent">${fmtOdds(r.american)} · est. ${pct(r.prob)} · EV <b class="${r.ev > 0 ? 'pos' : 'neg'}">${(r.ev * 100).toFixed(0)}%</b> · $10 pays $${(10 * r.dec).toFixed(2)}</span></div>
+      ${r.legs.map(x => `<div class="pleg"><span class="badge ${x.ev >= 0.08 ? 'won' : 'push'}" title="${rating(x.p)} · EV ${(x.ev * 100).toFixed(1)}%">${strength(x.p)}</span>
+        <span class="pl">${x.p.player} <b>${isTD(x.p) ? `Anytime TD — ${SIDE(x.p, x.side)}` : `${x.side} ${x.p.line} ${x.p.label}`}</b> <span class="muted">${x.p.team} ${x.p.home ? 'vs' : '@'} ${x.p.opp}</span></span>
+        <span class="num muted" title="model ${pct(x.model)} · book ${pct(x.book)} · blended ${pct(x.prob)}">${fmtOdds(x.price)} ${BOOK[x.side === 'Over' ? x.p.over_book : x.p.under_book] || ''} · est. ${pct(x.prob)} · EV ${(x.ev * 100).toFixed(0)}%</span></div>`).join('')}
+      <div class="btns" style="margin-top:8px"><button class="btn" data-use="${i}">Use this slip</button></div>
+    </div>`;
+  }).join('');
 }
 
 // ---- save the current slip to the Parlays sheet

@@ -208,6 +208,30 @@ def corrections(graded: list[dict], backtest: list[dict]) -> dict:
     return out
 
 
+BLEND_DEFAULT_W = 0.25   # until enough graded props exist
+BLEND_MIN_N = 300
+
+
+def fit_blend(rows: list[dict]) -> dict:
+    """How much to trust the model vs the market: P = book_no_vig + w·(model − book_no_vig).
+    w is fitted on graded props that had both sides priced (minimum Brier over a grid). Week 9 alone gave
+    w ≈ 0.2: the model claimed 62% on its picks, the book said 51%, they hit 53.6%. The parlay builder uses it."""
+    pts = []
+    for r in rows:
+        if r.get("role_change") or r["result"] == "push" or r.get("over") is None or r.get("under") is None \
+                or r.get("p_over") is None or r["market"] in getattr(build, "BINARY_MARKETS", ()):
+            continue
+        io, iu = build.american_to_prob(r["over"]), build.american_to_prob(r["under"])
+        pts.append((r["p_over"], io / (io + iu), 1 if r["result"] == "over" else 0))
+    if len(pts) < BLEND_MIN_N:
+        return {"w": BLEND_DEFAULT_W, "n": len(pts), "fitted": False}
+    grid = [i / 20 for i in range(21)]
+    br = {w: statistics.fmean(((b + w * (m - b)) - y) ** 2 for m, b, y in pts) for w in grid}
+    w = min(grid, key=br.get)
+    return {"w": w, "n": len(pts), "fitted": True, "brier_model": round(br[1.0], 4),
+            "brier_market": round(br[0.0], 4), "brier_blend": round(br[w], 4)}
+
+
 def build_results(out: Outcomes, frames: dict) -> dict:
     rows, graded, pending = grade_snapshots(out)
     bt, bt_weeks = backtest_rows(frames, out)
@@ -239,6 +263,7 @@ def build_results(out: Outcomes, frames: dict) -> dict:
         "calibration": calibration(unflagged),
         "by_week": [{"week": w, **record([r for r in unflagged if r["week"] == w])} for w in graded],
         "corrections": corr,
+        "blend": fit_blend(rows),
     }
 
 

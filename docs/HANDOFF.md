@@ -106,6 +106,11 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 
 - `parlayConflicts()` in index.html, prompted by two lost slips: Kalshi (Skattebo 60+ rush+rec **and** Singletary 40+, both NYG RBs) and an SGP (Maluach, PHX's ~20-min backup C, over 6.5 points). Rules: (1) two overs on the same team + position → "compete", with joint-hit history (Skattebo/Singletary: both hit 0 of 3 shared games); (2) last game's share ≥1.4× his median while a position-mate missed it and that mate is on tonight's board → "inflated role"; (3) backup over (NFL <45% snaps vs a ≥55% mate; NBA <22 vs ≥26 min), else part-time (<40% / <22 min). Red warnings need a confirm to save.
 
+### Parlay builder (11/13)
+
+- Builder tab: `STYLES`, `legPool()`, `buildOne()`, `generateParlays()` in index.html. Weighted random sampling per style, one leg per player, per-game cap, conflict checker veto, 400 attempts to land in the style's odds window (closest kept otherwise), no duplicate parlays per run. Settings saved per sport.
+- **Blended probabilities**: `fit_blend()` in grade.py (used by nba.py too) fits w in P = book + w·(model − book) on graded props with both sides priced. NFL week 9 (416 props): Brier model .2599, market .2464, blend (w = .15) .2459. The model adds a little to the market and is badly overconfident alone; the builder uses the blend, so parlay EVs land around +3–8% instead of +70–330%.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.

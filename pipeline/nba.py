@@ -828,6 +828,7 @@ def run_grade(frames):
         "calibration": cal(unflagged),
         "by_week": [{"week": d, "label": label_date(d), **rec([r for r in unflagged if r["week"] == d])} for d in graded],
         "corrections": corr,
+        "blend": nfl_grade.fit_blend(rows),
     }
     RESULTS.write_text(json.dumps(results, separators=(",", ":")))
     log(f"nba results: {len(graded)} graded slates, pending {pending}, backtest {len(bt)} projections, "
