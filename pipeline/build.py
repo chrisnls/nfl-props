@@ -88,7 +88,12 @@ TD_OWN_K = 8          # own-rate weight = n / (n + 8) games
 # Recalibration λ' = C + M·λ fitted on the weeks 5-9 backtest (615 props): low-usage players score more often
 # than their touches imply (9% predicted -> 21% actual). Fit on wks 5-7, tested on 8-9: Brier .2057 -> .2045.
 TD_CAL_C, TD_CAL_M = 0.12, 0.75
+# Tight ends were overpredicted with the shared baseline (32.6% predicted vs 25.9% actual, n=112). A TE-only C
+# fitted on wks 5-7 improved wks 8-9 (Brier .1831 -> .1807); per-position C did NOT help RB/WR/QB out of sample.
+TD_CAL_C_POS = {"TE": 0.02}
 TD_EDGE_SCALE = 0.10
+TD_MIN_TOUCHES = 4    # L5 touches/game; below this the TD calibration is untested -> not rated
+ABSENT_GAMES = 2      # missed his team's last N games -> game log is stale (injury / inactive / benched)
 LINES_CACHE = ROOT / "pipeline" / "lines_cache.json"   # committed by the workflow; not published
 HISTORY = OUT / "history"          # week_NN.json: every live build's props, for grading
 RESULTS = OUT / "results.json"     # written by --grade
@@ -173,9 +178,10 @@ def load_frames() -> dict[str, pd.DataFrame]:
     frames = {k: pd.read_csv(download(k, u), low_memory=False) for k, u in SOURCES.items()}
     g = frames["games"]
     frames["games"] = g[(g.season == SEASON) & (g.game_type == "REG")].copy()
-    st = frames["stats"]
+    st = frames["stats"].copy()
     st["anytime_tds"] = st.rushing_tds.fillna(0) + st.receiving_tds.fillna(0)
     st["touches"] = st.carries.fillna(0) + st.targets.fillna(0)
+    frames["stats"] = st
     return frames
 
 
@@ -469,6 +475,7 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
         team_game[g.away_team] = (g.game_id, g.home_team, False)
 
     factors = defense_factors(hist)
+    team_weeks = {t: sorted(g_.week.unique()) for t, g_ in hist.groupby("team")}
     # anytime-TD inputs: league TD rate per carry / per target by position, team implied points tonight
     td_rate = {}
     for pos_, g_ in hist.groupby("position"):
@@ -585,7 +592,7 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
             env = implied.get(team, league_ppg) / league_ppg
             factor = env
             lam *= 1 + 0.5 * (max(0.7, min(1.3, env)) - 1)          # half-weight, capped
-            lam = TD_CAL_C + TD_CAL_M * lam
+            lam = TD_CAL_C_POS.get(pos, TD_CAL_C) + TD_CAL_M * lam
             proj, sd = lam, max(0.1, math.sqrt(lam))
         else:
             proj, sd = project(values, factor, discrete)
@@ -602,15 +609,31 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
         imp_under = american_to_prob(cons["under"]) if cons["under"] is not None else None
         # strip vig for fair implied probability
         fair_over = imp_over / (imp_over + imp_under) if imp_over and imp_under else imp_over
+        if market == ANYTIME and imp_under is None:
+            # yes-only market: the book's view = the MEDIAN yes price across books (the single best price is an
+            # outlier by construction); still includes vig, so edges here are conservative. EV uses the best price.
+            yes = [american_to_prob(b["over"]) for b in book_lines if b.get("over") is not None]
+            fair_over = statistics.median(yes) if yes else fair_over
         ev_over = (p_over * (cons["over"] / 100 if cons["over"] > 0 else 100 / -cons["over"]) - (1 - p_over)) if cons["over"] is not None else None
         ev_under = ((1 - p_over) * (cons["under"] / 100 if cons["under"] > 0 else 100 / -cons["under"]) - p_over) if cons["under"] is not None else None
 
         glog_ctx = [game_context(r, pname, pid, pos, col) for r in glog.itertuples()]
         edge_sd = ((p_over - fair_over) / TD_EDGE_SCALE if fair_over is not None else 0.0) if market == ANYTIME \
             else (proj - line) / sd
+        no_bet_side = market == ANYTIME and edge_sd < 0 and cons["under"] is None
+        if no_bet_side:
+            edge_sd = 0.0   # model leans "No" but no book posts a No price -> nothing to bet
         role = role_change(values, line, discrete, [g["snap"] for g in glog_ctx], edge_sd)
         if market == ANYTIME and role and role["why"] == "line":
             role = None   # a 0.5 TD "line" says nothing about role
+        tw = [w for w in team_weeks.get(team, []) if w < week][-ABSENT_GAMES:]
+        missed = [w for w in tw if w not in set(glog.week)]
+        if len(tw) == ABSENT_GAMES and len(missed) == ABSENT_GAMES:
+            role = {"why": "absent", "last_week": int(glog.week.max()), "missed": [int(w) for w in missed],
+                    "dir": "down", "z": None, "lo": None, "hi": None}
+        elif market == ANYTIME and statistics.fmean([float(v) for v in glog.touches.fillna(0)][-5:]) < TD_MIN_TOUCHES:
+            role = {"why": "lowuse", "touches": round(statistics.fmean([float(v) for v in glog.touches.fillna(0)][-5:]), 1),
+                    "dir": "down", "z": None, "lo": None, "hi": None}
 
         if thin:   # too few games to project honestly: show the line and the games, don't rate it
             role = {"why": "thin", "games": len(values), "dir": "up" if line > statistics.fmean(values) else "down",
@@ -643,6 +666,7 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
                     (0.0 if market == ANYTIME else r1(proj - line)),
             "proj_raw": round(proj_raw, 3) if market == ANYTIME else r1(proj_raw), "sd_raw": r1(sd_raw),
             "edge_sd": round(edge_sd, 2),
+            "no_bet_side": no_bet_side or None,
             "role_change": role,
             "p_over": round(p_over, 3),
             "fair_over": round(fair_over, 3) if fair_over else None,

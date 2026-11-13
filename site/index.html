@@ -284,7 +284,7 @@ const esd = p => p.edge_sd ?? p.edge / p.sd;
 // normal game-to-game swing (σ). ~1 swing = strong; under a third of a swing = noise.
 const strength = p => { const a = Math.abs(esd(p)); return a >= 1 ? 'Strong' : a >= 0.6 ? 'Solid' : a >= 0.3 ? 'Lean' : 'Thin'; };
 // full rating, e.g. "Solid under" ("Thin" has no side); thin-history props aren't rated
-const rating = p => isThin(p) ? 'Not rated' : strength(p) === 'Thin' ? 'Thin' : `${strength(p)} ${p.edge >= 0 ? 'over' : 'under'}`;   // TD yes/no map onto over/under for sorting
+const rating = p => isThin(p) || (p.role_change && p.role_change.why === 'lowuse') ? 'Not rated' : p.no_bet_side ? 'Thin' : strength(p) === 'Thin' ? 'Thin' : `${strength(p)} ${p.edge >= 0 ? 'over' : 'under'}`;   // TD yes/no map onto over/under for sorting
 // rank for the strength sorts: Strong over 0 … Lean over 2, Thin 3, Lean under 4 … Strong under 6, not rated last
 const RANK = {'Strong over':0, 'Solid over':1, 'Lean over':2, 'Thin':3, 'Lean under':4, 'Solid under':5, 'Strong under':6, 'Not rated':7};
 const strMatch = (p, f) => { if (!f) return true; const r = rating(p);
@@ -300,7 +300,11 @@ const isThin = p => p.role_change && p.role_change.why === 'thin';
 const INJ_ABBR = {'out':'OUT', 'doubtful':'DBT', 'questionable':'Q', 'day-to-day':'GTD', 'probable':'P', 'suspension':'SUSP'};
 const injAbbr = st => INJ_ABBR[String(st).toLowerCase()] || String(st)[0];
 const injCls = st => /questionable|day-to-day|probable/i.test(st) ? 'q' : 'inj';
-const roleWhy = r => r.why === 'injury'
+const roleWhy = r => r.why === 'absent'
+  ? `Hasn't played since week ${r.last_week} — his team played week${r.missed.length > 1 ? 's' : ''} ${r.missed.join(' and ')} without him (injury, inactive or out of the rotation). His game log is stale, so the projection is too`
+  : r.why === 'lowuse'
+  ? `Only ${r.touches} touches a game lately — below the usage range the TD model was tested on, so it isn't rated`
+  : r.why === 'injury'
   ? `Listed ${r.status}${r.injury_type ? ' (' + r.injury_type + ')' : ''} on the injury report. If he sits, this prop is voided; if the line is still up, it's likely stale`
   : r.why === 'minutes'
   ? `The book's ${r.ref} line implies about ${r.implied_min} minutes; the model projects ${r.proj_min}. Books move like this on playing-time news (a minutes limit lifting, a starter back or out) the box scores don't show yet`
@@ -309,7 +313,10 @@ const roleWhy = r => r.why === 'injury'
   : r.why === 'usage'
   ? `${r.metric === 'minutes' ? `Minutes went from ${r.snap_prior} to ${r.snap_recent} a game` : `Snap share went from ${r.snap_prior}% to ${r.snap_recent}%`} over the last 2 games — the season-long game log the model uses hasn't caught up`
   : `Line is ${Math.abs(r.z)}σ ${r.dir === 'up' ? 'above' : 'below'} the player's season average — likely a role change the game log can't see`;
-const roleTag = p => !p.role_change ? '' : p.role_change.why === 'injury' ? '' : isThin(p)
+const roleTag = p => !p.role_change ? '' : p.role_change.why === 'injury' ? ''
+  : p.role_change.why === 'absent' ? `<span class="tag role" title="${roleWhy(p.role_change)}">Hasn't played since wk ${p.role_change.last_week}</span>`
+  : p.role_change.why === 'lowuse' ? `<span class="tag role" title="${roleWhy(p.role_change)}">Low usage · not rated</span>`
+  : isThin(p)
   ? `<span class="tag role" title="${roleWhy(p.role_change)}">Thin history · ${p.role_change.games} g</span>`
   : `<span class="tag role" title="${roleWhy(p.role_change)}">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>`;
 
@@ -351,12 +358,12 @@ function render(){
       <div><span class="k">Over ${fmtOdds(p.over)} · Under ${fmtOdds(p.under)}</span>
         <span class="num" style="color:var(--ink3);font-size:12px">book ${pct(p.fair_over)} over</span></div>`
       : `<div class="num" title="${strTip(p)}"><span class="k">${isTD(p) ? 'xTD' : 'Proj'}</span>${p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
-        <span class="str ${strength(p) === 'Thin' ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}">${strength(p)} ${strength(p) === 'Thin' ? 'edge' : isTD(p) ? (p.edge >= 0 ? 'yes' : 'no') : p.edge >= 0 ? 'over' : 'under'}</span></div>
+        <span class="str ${strength(p) === 'Thin' || p.no_bet_side ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}" ${p.no_bet_side ? `title="The model leans No (book ${pct(p.fair_over)} vs model ${pct(p.p_over)}), but no book posts a No price"` : ''}>${p.no_bet_side ? 'No bet · leans no' : `${strength(p)} ${strength(p) === 'Thin' ? 'edge' : isTD(p) ? (p.edge >= 0 ? 'yes' : 'no') : p.edge >= 0 ? 'over' : 'under'}`}</span></div>
       <div><span class="k">${SIDE(p, bs.side)} ${fmtOdds(bs.price)} ${bs.book ? BOOK[bs.book] || bs.book : ''}</span>
         <span class="num side ${bs.ev > 0 ? 'pos' : ''}">${pct(bs.p)}</span> <span class="num" style="color:var(--ink3);font-size:12px">vs ${pct(bs.side === 'Over' ? p.fair_over : 1 - p.fair_over)}</span></div>`}
       <div class="hits">${[['L5', p.hit_l5], ['L10', p.hit_l10], ['Szn', p.hit_season]].map(([l, v]) => `<span><b><i style="width:${v ?? 0}%"></i></b>${v == null ? '—' : v + '%'}</span>`).join('')}</div>
-      <button class="add" data-id="${p.id}">${isThin(p) ? 'Pick side' : '+ ' + SIDE(p, bs.side)}</button>`;
-    el.onclick = e => { if (e.target.closest('.add') && !isThin(p)) { addLeg(p, bs.side); } else openDetail(p); };
+      <button class="add" data-id="${p.id}">${isThin(p) ? 'Pick side' : p.no_bet_side ? 'Details' : '+ ' + SIDE(p, bs.side)}</button>`;
+    el.onclick = e => { if (e.target.closest('.add') && !isThin(p) && !p.no_bet_side) { addLeg(p, bs.side); } else openDetail(p); };
     el.onkeydown = e => { if (e.key === 'Enter') openDetail(p); };
     board.appendChild(el);
   }
@@ -516,9 +523,10 @@ function openDetail(p){
     ${p.role_change && p.role_change.why === 'usage' ? `<div class="note"><b>Possible role change.</b> His ${p.role_change.metric === 'minutes' ? 'minutes' : 'snap share'} went from ${p.role_change.snap_prior}${p.role_change.metric === 'minutes' ? '' : '%'} to ${p.role_change.snap_recent}${p.role_change.metric === 'minutes' ? ' a game' : '%'} over the last 2 games, but the model still projects off his whole season, so it leans ${p.edge > 0 ? 'over' : 'under'} while his playing time points the other way. Demoted to the bottom of the board — see the breakdown below.</div>` : ''}
     ${isThin(p) ? `<div class="note"><b>Thin history — not rated.</b> ${p.player} has only ${p.role_change.games} game${p.role_change.games === 1 ? '' : 's'} this season (${p.games.map(g => `wk ${g.wk}: ${g.val}`).join(', ')}). That's too few to project honestly — the numbers below are just his average and its spread, not a real forecast. Often this is a backup stepping in for an injured starter, so the book's line reflects a role his games don't show.</div>` : ''}
     ${p.tm_out ? `<div class="note"><b>Teammate out: ${p.tm_out.join(', ')}.</b> Ruled out tonight after playing the last game. Books usually nudge teammates' lines up for this. The model doesn't: in a backtest of 15 nights, teammates of a missing player were already projected without bias, and boosting them made projections worse. These props are graded separately (Results → Teammate out) to see whether the lines overreact.</div>` : ''}
+    ${p.role_change && ['absent', 'lowuse'].includes(p.role_change.why) ? `<div class="note"><b>${p.role_change.why === 'absent' ? 'Stale game log.' : 'Not rated.'}</b> ${roleWhy(p.role_change)}. Demoted to the bottom of the board.</div>` : ''}
     ${p.role_change && p.role_change.why === 'injury' ? `<div class="note"><b>On the injury report: ${p.role_change.status}.</b> ${p.injury && p.injury.note ? p.injury.note + ' ' : ''}${p.injury && p.injury.return ? `Estimated return ${p.injury.return}. ` : ''}Books usually pull these lines; if this one is still up, the model can't price a player who may not play. Demoted to the bottom of the board.</div>` : ''}
     ${p.role_change && p.role_change.why === 'minutes' ? `<div class="note"><b>Playing time doesn't match.</b> ${roleWhy(p.role_change)}. The model projects off recent minutes, so its edge here is probably stale. Check the news. Demoted to the bottom of the board, along with his other props.</div>` : ''}
-    ${p.role_change && !['usage', 'thin', 'minutes', 'injury'].includes(p.role_change.why) ? `<div class="note"><b>Possible role change.</b> The line (${p.line}) is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average of ${p.avg_season} (range ${p.role_change.lo}–${p.role_change.hi}). Books usually move this far only on news — a starter out, a depth-chart change — that the game log doesn't reflect yet, so the edge here is likely the model being stale. Demoted to the bottom of the board.</div>` : ''}
+    ${p.role_change && !['usage', 'thin', 'minutes', 'injury', 'absent', 'lowuse'].includes(p.role_change.why) ? `<div class="note"><b>Possible role change.</b> The line (${p.line}) is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average of ${p.avg_season} (range ${p.role_change.lo}–${p.role_change.hi}). Books usually move this far only on news — a starter out, a depth-chart change — that the game log doesn't reflect yet, so the edge here is likely the model being stale. Demoted to the bottom of the board.</div>` : ''}
     <div class="grid">
       <div class="tile"><span class="k">Line</span><div class="v">${p.line}</div><div class="meta">${p.books.length > 1 ? p.books.length + ' books' : (BOOK[p.books[0]] || '')}${p.line_spread ? ' · ±' + p.line_spread : ''}</div></div>
       ${isThin(p) ? `<div class="tile"><span class="k">Average</span><div class="v">${p.avg_season}</div><div class="meta">${p.games.length} game${p.games.length === 1 ? '' : 's'} · no projection</div></div>`
@@ -675,7 +683,7 @@ function renderResults(R){
     <p class="muted small">If the model is any good, the stronger buckets should hit more often.</p>
 
     <div class="sec">Role-change flagged vs not</div>
-    <table class="log">${recHead('Group')}${recRow('Unflagged (the board)', fv.unflagged)}${recRow('Flagged — all', fv.flagged)}${recRow('· line far from history', fv.flagged_line)}${recRow('· snap-share shift', fv.flagged_usage)}${recRow('· thin history (under 3 games)', fv.flagged_thin)}${fv.flagged_minutes ? recRow('· book implies different minutes', fv.flagged_minutes) : ''}${fv.flagged_injury ? recRow('· listed out / doubtful', fv.flagged_injury) : ''}</table>
+    <table class="log">${recHead('Group')}${recRow('Unflagged (the board)', fv.unflagged)}${recRow('Flagged — all', fv.flagged)}${recRow('· line far from history', fv.flagged_line)}${recRow('· snap-share shift', fv.flagged_usage)}${recRow('· thin history (under 3 games)', fv.flagged_thin)}${fv.flagged_absent ? recRow("· hasn't played lately", fv.flagged_absent) : ''}${fv.flagged_lowuse ? recRow('· low usage (TD)', fv.flagged_lowuse) : ''}${fv.flagged_minutes ? recRow('· book implies different minutes', fv.flagged_minutes) : ''}${fv.flagged_injury ? recRow('· listed out / doubtful', fv.flagged_injury) : ''}</table>
     <p class="muted small">Flagged props are demoted on the board. If their record is worse, the flag is doing its job.</p>
 
     ${R.teammate_out ? `<div class="sec">Teammate out vs not</div>

@@ -233,6 +233,8 @@ def build_results(out: Outcomes, frames: dict) -> dict:
         "flagged_vs_unflagged": {"unflagged": record(unflagged), "flagged": record(flagged),
                                  "flagged_line": record([r for r in flagged if r["role_change"] == "line"]),
                                  "flagged_usage": record([r for r in flagged if r["role_change"] == "usage"]),
+                                 "flagged_absent": record([r for r in flagged if r["role_change"] == "absent"]),
+                                 "flagged_lowuse": record([r for r in flagged if r["role_change"] == "lowuse"]),
                                  "flagged_thin": record([r for r in flagged if r["role_change"] == "thin"])},
         "calibration": calibration(unflagged),
         "by_week": [{"week": w, **record([r for r in unflagged if r["week"] == w])} for w in graded],
