@@ -1,0 +1,911 @@
+https://api.elections.kalshi.com/trade-api/v2/exchange/status -> 200 {'exchange_active': True, 'exchange_index_statuses': [{'description': 'Default', 'exchange_active': True, 'exchange_index': 0, 'intra_exchange_transfers_active': True, 'trading_active': True}, {'descr
+https://trading-api.kalshi.com/trade-api/v2/exchange/status -> 401 API has been moved to https://api.elections.kalshi.com/
+Please check our docs on how to migrate.
+GET /series {'category': 'Sports'} -> 200
+series returned: 4299
+NFL/NBA series: 758
+  KXCITYNBAEXPAND | Cities NBA expand | tags=['Basketball'] | freq=custom
+  KXCOACHOUTNBA | NBA Coach Out | tags=None | freq=custom
+  KXCOACHOUTNBADATE | NBA Coach Out Date | tags=['Basketball'] | freq=custom
+  KXCOACHOUTNFL | NFL Coach Out | tags=['Football'] | freq=custom
+  KXCOACHOUTNFLFIRST | First NFL Coach Out | tags=['Football'] | freq=annual
+  KXFIRSTPICKNBA | NBA first pick | tags=['Basketball'] | freq=annual
+  KXLEADERNBA3PT | NBA 3PG Leader | tags=['Basketball'] | freq=annual
+  KXLEADERNBAAST | NBA APG Leader | tags=['Basketball'] | freq=annual
+  KXLEADERNBABLK | NBA BPG Leader | tags=['Basketball'] | freq=annual
+  KXLEADERNBAPTS | NBA PPG Leader | tags=['Basketball'] | freq=annual
+  KXLEADERNBAREB | NBA RPG Leader | tags=['Basketball'] | freq=annual
+  KXLEADERNBASTL | NBA SPG Leader | tags=['Basketball'] | freq=annual
+  KXLEADERNFLAPYDS | Pro Football All-Purpose Yards Leader | tags=None | freq=custom
+  KXLEADERNFLINT | NFL leader interceptions | tags=['Football'] | freq=annual
+  KXLEADERNFLPINT | Pro Football Pass INT  | tags=None | freq=annual
+  KXLEADERNFLPTDS | NFL leader passing TDs | tags=['Football'] | freq=annual
+  KXLEADERNFLPYDS | NFL leader passing yards | tags=['Football'] | freq=annual
+  KXLEADERNFLRTDS | NFL leader receiving TDs | tags=['Football'] | freq=annual
+  KXLEADERNFLRUSHTDS | NFL leader rushing TDs | tags=['Football'] | freq=annual
+  KXLEADERNFLRUSHYDS | NFL leader rushing yards | tags=['Football'] | freq=annual
+  KXLEADERNFLRYDS | NFL leader receiving yards | tags=['Football'] | freq=annual
+  KXLEADERNFLSACKS | NFL Sacks Leader | tags=['Football'] | freq=annual
+  KXLEADERPINT | Pro Football Passing Interceptions Leader | tags=['Football'] | freq=annual
+  KXNBA | Pro Basketball Champion | tags=['Basketball'] | freq=annual
+  KXNBA1H | NBA 1st Half Winner | tags=['Basketball'] | freq=custom
+  KXNBA1HSPREAD | NBA 1st Half Spread | tags=['Basketball'] | freq=custom
+  KXNBA1HTEAMTOTAL | NBA 1st Half Team Total | tags=['Basketball'] | freq=custom
+  KXNBA1HTOTAL | NBA 1st Half Total | tags=['Basketball'] | freq=custom
+  KXNBA1HWINNER | Pro Baskeball 1st Half Winner | tags=['Basketball'] | freq=custom
+  KXNBA1Q | NBA 1st Quarter Winner | tags=['Basketball'] | freq=custom
+  KXNBA1QSPREAD | NBA 1st Quarter Spread | tags=['Basketball'] | freq=custom
+  KXNBA1QTEAMTOTAL | NBA 1st Quarter Team Total | tags=['Basketball'] | freq=custom
+  KXNBA1QTOTAL | NBA 1st Quarter Total | tags=['Basketball'] | freq=custom
+  KXNBA1QWINNER | NBA 1st Quarter Winner | tags=['Basketball'] | freq=custom
+  KXNBA1STTEAM | All-NBA 1st Team | tags=['Basketball'] | freq=annual
+  KXNBA1STTEAMDEF | NBA All-Defensive 1st Team | tags=['Basketball'] | freq=annual
+  KXNBA2D | NBA Player Double Double | tags=['Basketball'] | freq=custom
+  KXNBA2DPROT | NBA Player Double Double Protected | tags=['Basketball'] | freq=custom
+  KXNBA2H | NBA 2nd Half Winner | tags=['Basketball'] | freq=custom
+  KXNBA2HSPREAD | NBA 2nd Half Spread | tags=['Basketball'] | freq=custom
+  KXNBA2HTEAMTOTAL | NBA 2nd Half Team Total | tags=['Basketball'] | freq=custom
+  KXNBA2HTOTAL | NBA 2nd Half Total | tags=['Basketball'] | freq=custom
+  KXNBA2HWINNER | Pro Basketball 2nd Half Winner | tags=['Basketball'] | freq=custom
+  KXNBA2NDTEAM | All-NBA 2nd Team | tags=['Basketball'] | freq=annual
+  KXNBA2NDTEAMDEF | NBA All-Defensive 2nd Team | tags=['Basketball'] | freq=annual
+  KXNBA2Q | NBA 2nd Quarter Winner | tags=['Basketball'] | freq=custom
+  KXNBA2QSPREAD | NBA 2nd Quarter Spread | tags=['Basketball'] | freq=custom
+  KXNBA2QTEAMTOTAL | NBA 2nd Quarter Team Total | tags=['Basketball'] | freq=custom
+  KXNBA2QTOTAL | NBA 2nd Quarter Total | tags=['Basketball'] | freq=custom
+  KXNBA2QWINNER | NBA 2nd Quarter Winner | tags=['Basketball'] | freq=custom
+  KXNBA30COMEBACK | NBA 3-0 Series Comeback | tags=['Basketball'] | freq=custom
+  KXNBA30PTSTREAK | NBA 30 Point Streak | tags=['Basketball'] | freq=custom
+  KXNBA3D | NBA Player Triple Double | tags=['Basketball'] | freq=custom
+  KXNBA3DPROT | NBA Player Triple Double Protected | tags=['Basketball'] | freq=custom
+  KXNBA3PEAT | Pro Basketball Three-Peat Champion | tags=['Basketball'] | freq=custom
+  KXNBA3PT | NBA Player Threes | tags=['Basketball'] | freq=custom
+  KXNBA3PTALLGAMES | Pro Basketball 3-Pointers in Every Game | tags=['Basketball'] | freq=custom
+  KXNBA3PTCONTEST | NBA 3-Point Contest Winner | tags=['Basketball'] | freq=annual
+  KXNBA3PTPROT | NBA Player Threes Protected | tags=['Basketball'] | freq=custom
+  KXNBA3Q | NBA 3rd Quarter Winner | tags=['Basketball'] | freq=custom
+  KXNBA3QSPREAD | NBA 3rd Quarter Spread | tags=['Basketball'] | freq=custom
+  KXNBA3QTEAMTOTAL | NBA 3rd Quarter Team Total | tags=['Basketball'] | freq=custom
+  KXNBA3QTOTAL | NBA 3rd Quarter Total | tags=['Basketball'] | freq=custom
+  KXNBA3QWINNER | NBA 3rd Quarter Winner | tags=['Basketball'] | freq=custom
+  KXNBA3RDTEAM | All-NBA 3rd Team | tags=['Basketball'] | freq=annual
+  KXNBA4D | Any Player to Record a Quadruple Double | tags=['Basketball'] | freq=custom
+  KXNBA4Q | NBA 4th Quarter Winner | tags=['Basketball'] | freq=custom
+  KXNBA4QSPREAD | NBA 4th Quarter Spread | tags=['Basketball'] | freq=custom
+  KXNBA4QTEAMTOTAL | NBA 4th Quarter Team Total | tags=['Basketball'] | freq=custom
+  KXNBA4QTOTAL | NBA 4th Quarter Total | tags=['Basketball'] | freq=custom
+  KXNBA4QWINNER | NBA 4th Quarter Winner | tags=['Basketball'] | freq=custom
+  KXNBAALLSTAR | NBA All-Star game | tags=['Basketball'] | freq=annual
+  KXNBAALLSTARGAME | NBA All-Star Game Winner | tags=['Basketball'] | freq=annual
+  KXNBAALLSTARMVP | NBA All-Star Game MVP | tags=['Basketball'] | freq=annual
+  KXNBAALLSTARS | NBA All-Stars | tags=['Basketball'] | freq=custom
+  KXNBAAPOLOGY | Pro Basketball Apology | tags=['Basketball'] | freq=custom
+  KXNBAASSTARTERS | NBA All-Star Starters | tags=['Basketball'] | freq=custom
+  KXNBAAST | NBA Player Assists | tags=['Basketball'] | freq=custom
+  KXNBAASTPROT | NBA Player Assists Protected | tags=['Basketball'] | freq=custom
+  KXNBAATLANTIC | Pro Basketball Atlantic Division Winner | tags=['Basketball'] | freq=annual
+  KXNBAAWARDFIN | NBA Award Finalists | tags=['Basketball'] | freq=custom
+  KXNBABENCHPTS | NBA Bench Points | tags=['Basketball'] | freq=custom
+  KXNBABLK | NBA Player Blocks | tags=['Basketball'] | freq=custom
+  KXNBABLKPROT | NBA Player Blocks Protected | tags=['Basketball'] | freq=custom
+  KXNBACELEBRITY3PT | NBA Celebrity 3PT Contest | tags=['Basketball'] | freq=one_off
+  KXNBACELEBRITYGAME | Pro Basketball All-Star Celebrity Game | tags=['Basketball'] | freq=custom
+  KXNBACENTRAL | Pro Basketball Central Division Winner | tags=['Basketball'] | freq=annual
+  KXNBACITYEXPAND | NBA City Franchise Expansion | tags=['Basketball'] | freq=custom
+  KXNBACLUTCH | NBA Clutch Player of the Year | tags=['Basketball'] | freq=annual
+  KXNBACOACHOUT | Pro Basketball Coaches Out | tags=['Basketball'] | freq=custom
+  KXNBACOMPETE | Pro Basketball Player to Compete | tags=['Basketball'] | freq=custom
+  KXNBACONF | NBA Conference to Win the Championship | tags=['Basketball'] | freq=custom
+  KXNBACOTM | NBA Coach of the Month | tags=['Basketball'] | freq=custom
+  KXNBACOY | NBA Coach of the Year | tags=['Basketball'] | freq=annual
+  KXNBACUP | Pro Basketball Cup Champion | tags=['Basketball'] | freq=annual
+  KXNBACUP1STTEAM | NBA Cup All-Tournament Team | tags=['Basketball'] | freq=custom
+  KXNBACUPGROUP | NBA Cup Group Winner | tags=['Basketball'] | freq=custom
+  KXNBACUPGROUPWIN | NBA Cup Group to Win | tags=['Basketball'] | freq=custom
+  KXNBACUPMVP | NBA Cup Tournament MVP | tags=['Basketball'] | freq=annual
+  KXNBACUPQUAL | Pro Basketball Cup Qualifiers | tags=['Basketball'] | freq=custom
+  KXNBADPOTM | NBA Defensive Player of the Month | tags=['Basketball'] | freq=custom
+  KXNBADPOY | NBA Defensive Player of the Year | tags=['Basketball'] | freq=annual
+  KXNBADRAFT1 | NBA Draft First Pick | tags=['Basketball'] | freq=annual
+  KXNBADRAFT10 | NBA Draft Tenth Pick | tags=None | freq=annual
+  KXNBADRAFT2 | NBA Draft Second Pick | tags=None | freq=annual
+  KXNBADRAFT3 | NBA Draft Third Pick | tags=None | freq=annual
+  KXNBADRAFT4 | NBA Draft Fourth Pick | tags=None | freq=annual
+  KXNBADRAFT5 | NBA Draft Fifth Pick | tags=None | freq=annual
+  KXNBADRAFT6 | NBA Draft Sixth Pick | tags=None | freq=annual
+  KXNBADRAFT7 | NBA Draft Seventh Pick | tags=None | freq=annual
+  KXNBADRAFT8 | NBA Draft Eighth Pick | tags=None | freq=annual
+  KXNBADRAFT9 | NBA Draft Ninth Pick | tags=None | freq=annual
+  KXNBADRAFTCAT | Pro Basketball Draft Category | tags=['Basketball'] | freq=custom
+  KXNBADRAFTCOMP | Pro Basketball Draft Comparison | tags=['Basketball'] | freq=custom
+  KXNBADRAFTCONF | Pro Basketball Players Drafted by Conference | tags=['Basketball'] | freq=annual
+  KXNBADRAFTINT | Pro Basketball International Players Drafted | tags=['Basketball'] | freq=custom
+  KXNBADRAFTMATCHUP | Pro Basketball Draft Matchup | tags=['Basketball'] | freq=custom
+  KXNBADRAFTOU | Pro Basketball Players Draft Position | tags=['Basketball'] | freq=custom
+  KXNBADRAFTPICK | Pro Basketball Draft Pick | tags=['Basketball'] | freq=annual
+  KXNBADRAFTTEAM | Pro Basketball Team to Draft | tags=['Basketball'] | freq=custom
+  KXNBADRAFTTOP | Pro Basketball Top Draft | tags=['Basketball'] | freq=annual
+  KXNBADRAFTTOP10 | NBA Draft Top 10 Pick | tags=['Basketball'] | freq=annual
+  KXNBADRAFTTOP15 | NBA Draft Top 15 Pick | tags=['Basketball'] | freq=annual
+  KXNBADRAFTTOP20 | NBA Draft Top 20 Pick | tags=['Basketball'] | freq=annual
+  KXNBADRAFTTOP25 | NBA Draft Top 25 Pick | tags=['Basketball'] | freq=annual
+  KXNBADRAFTTOP30 | NBA Draft Top 30 Pick | tags=['Basketball'] | freq=annual
+  KXNBADRAFTTOP5 | NBA Draft Top 5 Pick | tags=['Basketball'] | freq=annual
+  KXNBADRAFTTRADE | Pro Basketball Draft Trade | tags=['Basketball'] | freq=custom
+  KXNBAEAST | Pro Basketball Eastern Conference Champion | tags=['Basketball'] | freq=annual
+  KXNBAEAST1SEED | NBA Eastern Conference 1 Seed | tags=['Basketball'] | freq=annual
+  KXNBAECFQUAL | NBA Eastern Conference Finals Qualifiers | tags=['Basketball'] | freq=annual
+  KXNBAEFINMVP | NBA Eastern Conference Finals MVP | tags=['Basketball'] | freq=annual
+  KXNBAESCALATOR3PT | NBA Player Threes Escalator | tags=['Basketball'] | freq=custom
+  KXNBAESCALATORPTS | NBA Player Points Escalator | tags=['Basketball'] | freq=custom
+  KXNBAEUROPEANNOUNCE | NBA Europe Inaugural Season Being Announced | tags=['Basketball'] | freq=custom
+  KXNBAEXEC | NBA Executive of the Year | tags=['Basketball'] | freq=custom
+  KXNBAEXTENSION | NBA Player Contract Extension | tags=['Basketball'] | freq=custom
+  KXNBAFINALSEXACT | Pro Basketball Championship Series Score | tags=['Basketball'] | freq=annual
+  KXNBAFINALSMVP | Finals MVP | tags=['Basketball'] | freq=custom
+  KXNBAFINALSOUTCOME | NBA Finals Outcome | tags=['Basketball'] | freq=custom
+  KXNBAFINALSVIEWER | NBA finals viewership | tags=['Basketball'] | freq=custom
+  KXNBAFINALSVIEWERGAME7 | NBA finals viewership | tags=['Basketball'] | freq=custom
+  KXNBAFINBLOWOUT | Pro Basketball Finals Blowout | tags=['Basketball'] | freq=one_off
+  KXNBAFINMVP | NBA Finals MVP | tags=['Basketball'] | freq=annual
+  KXNBAFIRST50PTS | First NBA Player to Score 50 Points | tags=['Basketball'] | freq=custom
+  KXNBAFIRSTBASKET | Pro Basketball First Basket | tags=['Basketball'] | freq=custom
+  KXNBAFIRSTOPPONENT | Pro Basketball First Opponent of the Season | tags=['Basketball'] | freq=custom
+  KXNBAFIRSTTIMECHAMP | NBA First Time Champion | tags=['Basketball'] | freq=custom
+  KXNBAFRANCHISECOST | NBA Franchise Cost | tags=['Basketball'] | freq=custom
+  KXNBAFRANCHISEOWNER | NBA Franchise Owner | tags=['Basketball'] | freq=custom
+  KXNBAFTM | NBA Player Free Throws Made | tags=['Basketball'] | freq=custom
+  KXNBAGAME | NBA Game | tags=['Basketball'] | freq=custom
+  KXNBAGAME7 | NBA Series that Go to a Game 7 | tags=['Basketball'] | freq=one_off
+  KXNBAGAMEHIGHSCORE | NBA Highest Scoring Game of the Season | tags=['Basketball'] | freq=custom
+  KXNBAGAMES | NBA games | tags=['Boxing'] | freq=daily
+  KXNBAGAMESPECIALS | Pro Basketball Game Specials | tags=['Basketball'] | freq=custom
+  KXNBAH2H3PT | NBA Head-to-Head Three Pointers | tags=['Basketball'] | freq=custom
+  KXNBAH2HBENCHPTS | NBA Head-to-Head Bench Points | tags=['Basketball'] | freq=custom
+  KXNBAH2HPRA | NBA Head-to-Head Points, Rebounds and Assists | tags=['Basketball'] | freq=custom
+  KXNBAH2HPTS | NBA Head-to-Head Points | tags=['Basketball'] | freq=custom
+  KXNBAH2HPTSMARGIN | NBA H2H Player Points Bracketed | tags=['Basketball'] | freq=custom
+  KXNBAH2HTEAM3PT | NBA H2H Team Three Pointers | tags=['Basketball'] | freq=custom
+  KXNBAH2HWINS | NBA Head to Head Win Total | tags=['Basketball'] | freq=custom
+  KXNBAHALLOFFAME | Pro Basketball Hall of Fame | tags=['Basketball'] | freq=custom
+  KXNBAHIGHESTSCORING | NBA Player with the Highest Scoring Game | tags=['Basketball'] | freq=custom
+  KXNBAHOMECLINCH | Pro Basketball Series Winner to Clinch at Home | tags=['Basketball'] | freq=custom
+  KXNBAHUSTLE | NBA Hustle Award | tags=['Basketball'] | freq=custom
+  KXNBAJOINCONF | Pro Basketball Join Conference | tags=['Basketball'] | freq=custom
+  KXNBALADDER3PT | NBA Player Threes Ladder | tags=['Basketball'] | freq=custom
+  KXNBALADDERPTS | NBA Player Points Ladder | tags=['Basketball'] | freq=custom
+  KXNBALASTTOLOSE | NBA Last Undefeated Team | tags=['Basketball'] | freq=custom
+  KXNBALASVEGAS | Las Vegas NBA team | tags=['Basketball'] | freq=custom
+  KXNBALOTTERY | NBA Draft Lottery Picks | tags=['Basketball'] | freq=custom
+  KXNBALOTTERYODDS | NBA Lottery Winner Odds | tags=['Basketball'] | freq=custom
+  KXNBAMATCHUP | NBA Matchup | tags=['Basketball'] | freq=custom
+  KXNBAMIMP | NBA Most Improved Player | tags=['Basketball'] | freq=annual
+  KXNBAMOSTWINS | Pro Basketball Highest Win Total | tags=['Basketball'] | freq=custom
+  KXNBAMVP | NBA MVP | tags=['Basketball'] | freq=annual
+  KXNBAMVPCHAMP | MVP to Win the NBA Finals | tags=['Basketball'] | freq=custom
+  KXNBAMVPDPOY | Pro Basketball Player to Win MVP and DPOY | tags=['Basketball'] | freq=custom
+  KXNBANEWCHAMP | NBA First-Time Champion | tags=['Basketball'] | freq=custom
+  KXNBANEWCHAMPION | Pro Basketball New Champion | tags=['Basketball'] | freq=custom
+  KXNBANEXTCONTRACT | Pro Basketball Next Contract Size | tags=['Basketball'] | freq=custom
+  KXNBANEXTGOVERNOR | Pro Basketball Next Governor | tags=['Basketball'] | freq=custom
+  KXNBANEXTTEAM | Pro Basketball Next Team | tags=['Basketball'] | freq=custom
+  KXNBANEXTTEAMCONF | Pro Basketball Next Team Conference | tags=['Basketball'] | freq=custom
+  KXNBANEXTTEAMOUTLET | Pro Basketball Outlet to Announce Next Team | tags=['Basketball'] | freq=custom
+  KXNBANHL | NBA + NHL Champion Combo | tags=['Hockey', 'Basketball'] | freq=custom
+  KXNBANORTHWEST | Pro Basketball Northwest Division Winner | tags=['Basketball'] | freq=annual
+  KXNBAONE3PT | NBA Players to Make One Three | tags=['Basketball'] | freq=custom
+  KXNBAOT | NBA Overtime | tags=['Basketball'] | freq=custom
+  KXNBAOVERTIME | NBA Overtime | tags=['Basketball'] | freq=custom
+  KXNBAPA | Pro Basketball Player Points + Assists | tags=['Basketball'] | freq=custom
+  KXNBAPACIFIC | Pro Basketball Pacific Division Winner | tags=['Basketball'] | freq=annual
+  KXNBAPARTNERSHIP | NBA Player Partnership Deal | tags=['Basketball'] | freq=custom
+  KXNBAPIADVANCE | NBA Play-In Team to Advance | tags=['Basketball'] | freq=custom
+  KXNBAPICKTRADE | Pro Basketball Pick Trade | tags=['Basketball'] | freq=custom
+  KXNBAPLAYERDEAL | Next Pro Basketball Brand Deal | tags=['Basketball'] | freq=custom
+  KXNBAPLAYERHIGHSCORE | NBA Highest Scoring Performance in Regular Season | tags=['Basketball'] | freq=custom
+  KXNBAPLAYERSPECIALS | Pro Basketball Player Specials | tags=['Basketball'] | freq=custom
+  KXNBAPLAYIN | Which Team Will Make the Play-In Tournament | tags=['Basketball'] | freq=annual
+  KXNBAPLAYOFF | Pro Basketball Playoff Qualifier | tags=['Basketball'] | freq=annual
+  KXNBAPLAYOFF3D | NBA Playoff Triple-Double | tags=['Basketball'] | freq=custom
+  KXNBAPLAYOFFHOMEGAMES | NBA Team Home Playoff Games | tags=['Chess'] | freq=one_off
+  KXNBAPLAYOFFHOST | NBA Team Home Playoff Games | tags=['Basketball'] | freq=custom
+  KXNBAPLAYOFFPTS | NBA Playoffs Player Points | tags=['Basketball'] | freq=custom
+  KXNBAPLAYOFFWINS | NBA Playoff Wins by Team | tags=['Basketball'] | freq=custom
+  KXNBAPLAYTOGETHER | Pro Basketball Players to Play Together | tags=None | freq=custom
+  KXNBAPOLOSE | Pro Basketball Playoff Losses | tags=['Basketball'] | freq=custom
+  KXNBAPOSTASREC | NBA Best Record Post-All-Star Break | tags=['Basketball'] | freq=custom
+  KXNBAPOTM | NBA Player of the Month | tags=['Basketball'] | freq=custom
+  KXNBAPR | Pro Basketball Player Points + Rebounds | tags=['Basketball'] | freq=custom
+  KXNBAPRA | NBA Player Points + Rebounds + Assists | tags=['Basketball'] | freq=custom
+  KXNBAPRAPROT | Pts + Reb + Ast Protected | tags=['Basketball'] | freq=custom
+  KXNBAPREPACK2ML | 2 ML Basketball Combo | tags=None | freq=one_off
+  KXNBAPREPACK3ML | 3ML Basketball Combo | tags=None | freq=one_off
+  KXNBAPTS | NBA Player Points | tags=['Basketball'] | freq=custom
+  KXNBAPTSALLGAMES | Pro Basketball Points in Every Game | tags=['Basketball'] | freq=custom
+  KXNBAPTSLEADER | NBA Game Points Leader | tags=['Basketball'] | freq=custom
+  KXNBAPTSPRECISE | NBA Player Points Range | tags=['Basketball'] | freq=custom
+  KXNBAPTSPROT | NBA Player Points Protected | tags=['Basketball'] | freq=custom
+  KXNBARA | Pro Basketball Player Rebounds + Assists | tags=['Basketball'] | freq=custom
+  KXNBARACE | NBA Race to Points | tags=['Basketball'] | freq=custom
+  KXNBAREB | NBA Player Rebounds | tags=['Basketball'] | freq=custom
+  KXNBAREBPROT | NBA Player Rebounds Protected | tags=['Basketball'] | freq=custom
+  KXNBARECORD | Pro Basketball Best/Worst Regular Season Record | tags=['Basketball'] | freq=custom
+  KXNBARELOCATION | Pro Basketball Team Relocation | tags=['Basketball'] | freq=custom
+  KXNBARETIRE | NBA Retirement | tags=['Basketball'] | freq=custom
+  KXNBARETURN | Pro Basketball Player to Return | tags=['Basketball'] | freq=custom
+  KXNBARISINGSTARS | Pro Basketball Rising Stars Tournament | tags=['Basketball'] | freq=annual
+  KXNBAROOKIE1STTEAM | NBA All-Rookie 1st Team | tags=['Basketball'] | freq=custom
+  KXNBAROOKIE2NDTEAM | NBA All-Rookie 2nd Team | tags=['Basketball'] | freq=custom
+  KXNBAROOKIEAS | NBA Rookies to Be an All-Star | tags=['Basketball'] | freq=annual
+  KXNBAROTM | NBA Rookie of the Month | tags=['Basketball'] | freq=custom
+  KXNBAROY | NBA Rookie of the Year | tags=['Basketball'] | freq=annual
+  KXNBARULE | Pro Basketball Rule | tags=['Basketball'] | freq=custom
+  KXNBASEATTLE | Seattle NBA team | tags=['Basketball'] | freq=custom
+  KXNBASEED | NBA Playoff Seed | tags=['Basketball'] | freq=custom
+  KXNBASEEDCHAMP | NBA Seed of Champion | tags=['Basketball'] | freq=custom
+  KXNBASEEDOU | NBA Playoff Seed Over/Unders | tags=['Basketball'] | freq=custom
+  KXNBASERIES | NBA Series Winner | tags=['Basketball'] | freq=custom
+  KXNBASERIES3PMLEADER | Pro Basketball Series 3-Pointers Made Leader | tags=['Basketball'] | freq=custom
+  KXNBASERIESASTLEADER | Pro Basketball Series Assists Leader | tags=['Basketball'] | freq=custom
+  KXNBASERIESCOMEBACK | Pro Basketball Series Comeback | tags=['Basketball'] | freq=custom
+  KXNBASERIESGAMES | NBA Series Total Games | tags=['Basketball'] | freq=custom
+  KXNBASERIESGCOMEBACK | Pro Basketball Series Game Comeback | tags=['Basketball'] | freq=custom
+  KXNBASERIESOT | Pro Basketball Series Overtime | tags=['Basketball'] | freq=custom
+  KXNBASERIESPTS | Pro Basketball Series Player Points | tags=['Basketball'] | freq=custom
+  KXNBASERIESPTSLEADER | Pro Basketball Series Points Leader | tags=['Basketball'] | freq=custom
+  KXNBASERIESPTSSPREAD | Pro Basketball Series Points Spread | tags=['Basketball'] | freq=custom
+  KXNBASERIESREBLEADER | Pro Basketball Series Rebounds Leader | tags=['Basketball'] | freq=custom
+  KXNBASERIESROADWIN | NBA Series 1st Road Win | tags=['Basketball'] | freq=custom
+  KXNBASERIESROADWINS | Pro Basketball Series Total Road Wins | tags=['Basketball'] | freq=custom
+  KXNBASERIESSCORE | NBA Series Exact Score | tags=['Basketball'] | freq=custom
+  KXNBASERIESSPREAD | NBA Series Game Spread | tags=['Basketball'] | freq=custom
+  KXNBASERIESTOTALPTS | Pro Basketball Series Total Points | tags=['Basketball'] | freq=custom
+  KXNBASHOOTINGSTARS | Pro Basketball Shooting Stars Contest | tags=['Basketball'] | freq=one_off
+  KXNBASIXTH | NBA Sixth Man of the Year | tags=['Basketball'] | freq=annual
+  KXNBASJC | NBA Social Justice Champion | tags=['Basketball'] | freq=custom
+  KXNBASLAMDUNK | NBA Slam Dunk Contest Winner | tags=['Basketball'] | freq=annual
+  KXNBASOUTHEAST | Pro Basketball Southeast Division Winner | tags=['Basketball'] | freq=annual
+  KXNBASOUTHWEST | Pro Basketball Southwest Division Winner | tags=['Basketball'] | freq=custom
+  KXNBASPORTSMANSHIP | NBA Sportsmanship Award | tags=['Basketball'] | freq=annual
+  KXNBASPREAD | NBA Spread | tags=['Basketball'] | freq=custom
+  KXNBASTADIUM | NBA Stadium Completion | tags=['Basketball'] | freq=custom
+  KXNBASTAKESALE | NBA Team Ownership Stake Sale Agreement | tags=['Basketball'] | freq=custom
+  KXNBASTARTERS | Pro Basketball Starting Lineup | tags=['Basketball'] | freq=custom
+  KXNBASTATAVG | NBA Player Stat Average | tags=['Basketball'] | freq=custom
+  KXNBASTATLEADER | NBA Regular Season League Leader | tags=['Basketball'] | freq=custom
+  KXNBASTL | NBA Player Steals | tags=['Basketball'] | freq=custom
+  KXNBASTLPROT | NBA Player Steals Protected | tags=['Basketball'] | freq=custom
+  KXNBASTOCK | NBA Player Steals + Blocks | tags=['Basketball'] | freq=custom
+  KXNBASTOCKPROT | NBA Player Steals + Blocks Protected | tags=['Basketball'] | freq=custom
+  KXNBASTOCKS | NBA Player Steals and Blocks | tags=['Basketball'] | freq=custom
+  KXNBASUMMER | Pro Basketball Summer League Champion | tags=['Basketball'] | freq=custom
+  KXNBASUMMER1HSPREAD | Pro Basketball Summer League 1st Half Spread | tags=['Basketball'] | freq=custom
+  KXNBASUMMER1HTOTAL | Pro Basketball Summer League 1st Half Total | tags=['Basketball'] | freq=custom
+  KXNBASUMMER1HWINNER | Pro Basketball Summer League 1st Half Winner | tags=['Basketball'] | freq=custom
+  KXNBASUMMERGAME | Pro Basketball Summer League Game | tags=['Basketball'] | freq=custom
+  KXNBASUMMERMVP | Pro Basketball Summer League MVP | tags=['Basketball'] | freq=custom
+  KXNBASUMMERPTS | Pro Basketball Summer Player Points | tags=['Basketball'] | freq=custom
+  KXNBASUMMERSPREAD | Pro Basketball Summer League Spread | tags=['Basketball'] | freq=custom
+  KXNBASUMMERTOTAL | Pro Basketball Summer League Total | tags=['Basketball'] | freq=custom
+  KXNBASWEEP | NBA Teams to Have a Series Sweep | tags=['Basketball'] | freq=custom
+  KXNBATEAM | NBA team | tags=['Basketball'] | freq=custom
+  KXNBATEAMANNOUNCE | Pro Basketball New Team Announce | tags=['Basketball'] | freq=custom
+  KXNBATEAMMATE | NBA Teammate of the Year | tags=['Basketball'] | freq=custom
+  KXNBATEAMSALE | Pro Basketball Team to be Sold | tags=['Basketball'] | freq=custom
+  KXNBATEAMTOTAL | NBA Team Total | tags=['Basketball'] | freq=custom
+  KXNBATEAMWINSTREAK | NBA Team with the Longest Winning Streak | tags=['Basketball'] | freq=one_off
+  KXNBATOJOINCBA | NBA Players to Join the CBA | tags=['Basketball'] | freq=custom
+  KXNBATOP3 | Pro Basketball Draft Lottery Top 3 | tags=['Basketball'] | freq=annual
+  KXNBATOP5ROTY | Top 5 NBA draft ROTY | tags=['Basketball'] | freq=custom
+  KXNBATOPPICK | Pro Basketball Draft Lottery Winner | tags=['Basketball'] | freq=annual
+  KXNBATOTAL | NBA Total | tags=['Basketball'] | freq=custom
+  KXNBATOTALPRECISE | NBA Total Points Range | tags=['Basketball'] | freq=custom
+  KXNBATRADE | Pro Basketball Trade | tags=['Basketball'] | freq=custom
+  KXNBAUNBEATEN | NBA Playoffs Team to go Undefeated | tags=['Basketball'] | freq=custom
+  KXNBAUPSET | NBA Number of Upsets per Round | tags=['Basketball'] | freq=custom
+  KXNBAWCFQUAL | NBA Western Conference Finals Qualifiers | tags=['Basketball'] | freq=annual
+  KXNBAWEST | Pro Basketball Western Conference Champion | tags=['Basketball'] | freq=annual
+  KXNBAWEST1SEED | NBA Western Conference 1 Seed | tags=['Basketball'] | freq=annual
+  KXNBAWFINMVP | NBA Western Conference Finals MVP | tags=['Basketball'] | freq=annual
+  KXNBAWHATTEND | Pro Basketball White House Attend | tags=['Basketball'] | freq=custom
+  KXNBAWINMARGIN | NBA Win Margin | tags=['Basketball'] | freq=custom
+  KXNBAWINRECORD | OKC NBA Win Record | tags=['Basketball'] | freq=custom
+  KXNBAWINS | Pro Basketball Win Totals | tags=['Basketball'] | freq=custom
+  KXNBAWINSTREAK | NBA Longest Win Streak | tags=['Basketball'] | freq=custom
+  KXNBAXMASOPPONENT | Pro Basketball Christmas Day Opponent | tags=['Basketball'] | freq=custom
+  KXNCAAFDRAFTDECLARE | Players to Declare for the NFL Draft | tags=['Football'] | freq=custom
+  KXNCAAFFFFF | NFL Draft Declare | tags=['Football'] | freq=custom
+  KXNEXTCOACHOUTNBA | Next coach out NBA | tags=None | freq=custom
+  KXNEXTCOACHOUTNFL | Next Coach Out Pro Football | tags=None | freq=custom
+  KXNEXTNBACOACH | Who is the Next NBA Coach of Team | tags=['Basketball'] | freq=custom
+  KXNEXTNFLCOACH | Next Pro Football Coach | tags=['Football'] | freq=custom
+  KXNEXTTEAMNBA | Next NBA Team | tags=['Basketball'] | freq=custom
+  KXNFL1H | Pro Football 1st Half Winner | tags=['Football'] | freq=one_off
+  KXNFL1HFT | 1st Half Fulltime Result | tags=['Football'] | freq=custom
+  KXNFL1HSPREAD | Pro Football 1st Half Spread | tags=['Football'] | freq=custom
+  KXNFL1HTD | 1st Half Touchdown | tags=['Football'] | freq=custom
+  KXNFL1HTEAMTOTAL | Pro Football 1st Half Team Total | tags=['Football'] | freq=custom
+  KXNFL1HTOTAL | Pro Football 1st  Half Total Points | tags=['Football'] | freq=custom
+  KXNFL1HWINNER | NFL 1st Half Winner | tags=['Football'] | freq=custom
+  KXNFL1Q | Pro Football 1st Quarter Winner | tags=['Football'] | freq=custom
+  KXNFL1QBTTS | Pro Football Both Teams to Score in 1st Quarter | tags=['Football'] | freq=custom
+  KXNFL1QSPREAD | Pro Football 1st Quarter Spread | tags=['Football'] | freq=custom
+  KXNFL1QTOTAL | Pro Football 1st Quarter Total | tags=['Football'] | freq=custom
+  KXNFL1QWINNER | Pro Football 1st Quarter Winner | tags=['Football'] | freq=custom
+  KXNFL1SEED | Will team win conference in regular season | tags=['Football'] | freq=custom
+  KXNFL1YDPASS | Seattle 1 Yard Pass | tags=['Football'] | freq=one_off
+  KXNFL2H | Pro Football 2nd Half | tags=['Football'] | freq=custom
+  KXNFL2HSPREAD | Pro Football 2nd Half Spread | tags=['Football'] | freq=custom
+  KXNFL2HTD | 2nd Half Touchdowns | tags=['Football'] | freq=custom
+  KXNFL2HTOTAL | Pro Football 2nd Half Total | tags=['Football'] | freq=custom
+  KXNFL2HWINNER | NFL 2nd Half Winner | tags=['Football'] | freq=custom
+  KXNFL2PTCONV | Pro Football 2-Point Conversions | tags=['Football'] | freq=one_off
+  KXNFL2Q | Pro Football 2nd Quarter Winner | tags=['Football'] | freq=custom
+  KXNFL2QBTTS | Pro Football Both Teams to Score in 2nd Quarter | tags=['Football'] | freq=custom
+  KXNFL2QSPREAD | Pro Football 2nd Quarter Spread | tags=['Football'] | freq=one_off
+  KXNFL2QTOTAL | Pro Football 2nd Quarter Total | tags=['Football'] | freq=one_off
+  KXNFL2QWINNER | Pro Football 2nd Quarter Winner | tags=['Football'] | freq=one_off
+  KXNFL2TD | Pro Football Multiple Touchdowns | tags=['Football'] | freq=custom
+  KXNFL3Q | Pro Football 3rd Quarter Winner | tags=['Football'] | freq=custom
+  KXNFL3QBTTS | Pro Football Both Teams to Score in 3rd Quarter | tags=['Football'] | freq=custom
+  KXNFL3QSPREAD | Pro Football 3rd Quarter Spread | tags=['Football'] | freq=one_off
+  KXNFL3QTOTAL | Pro Football 3rd Quarter Total | tags=['Football'] | freq=one_off
+  KXNFL3QWINNER | Pro Football 3rd Quarter Winner | tags=['Football'] | freq=one_off
+  KXNFL4DCONV | Pro Football 4th Down Conversions | tags=['Football'] | freq=one_off
+  KXNFL4DOWNCONV | Pro Football 4th Down Conversions | tags=['Football'] | freq=custom
+  KXNFL4Q | Pro Football 4th Quarter Winner | tags=['Football'] | freq=custom
+  KXNFL4QBTTS | Pro Football Both Teams to Score in 4th Quarter | tags=['Football'] | freq=custom
+  KXNFL4QSPREAD | Pro Football 4th Quarter Spread | tags=['Football'] | freq=one_off
+  KXNFL4QTOTAL | Pro Football 4th Quarter Total | tags=['Football'] | freq=one_off
+  KXNFL4QWINNER | Pro Football 4th Quarter Winner | tags=['Football'] | freq=custom
+  KXNFL53MAN | Pro Football 53 Man Roster | tags=['Football'] | freq=custom
+  KXNFL60YARDFGS | Pro Football 60+ Yard Field Goals | tags=['Football'] | freq=custom
+  KXNFLAFCCHAMP | American Football Conference Champion | tags=['Football'] | freq=annual
+  KXNFLAFCEAST | American Football Conference East Winner | tags=['Football'] | freq=annual
+  KXNFLAFCNORTH | American Football Conference North Winner | tags=['Football'] | freq=annual
+  KXNFLAFCSOUTH | American Football Conference South Winner | tags=['Football'] | freq=annual
+  KXNFLAFCWEST | American Football Conference West Winner | tags=['Football'] | freq=annual
+  KXNFLALLPRO | Pro Football All-Pro Teams | tags=['Football'] | freq=custom
+  KXNFLALLROOK | NFL All Rookie Team | tags=['Football'] | freq=annual
+  KXNFLANYTD | Pro Football Anytime Touchdown | tags=['Football'] | freq=custom
+  KXNFLASSCOACH | NFL Assistant Coach of the Year | tags=None | freq=annual
+  KXNFLAWARDFIN | Pro Football Award Finalists | tags=['Football'] | freq=custom
+  KXNFLBLOWOUT | Pro Football Biggest Blowout | tags=['Football'] | freq=custom
+  KXNFLBOTH | Pro Football Both Teams to Score Points | tags=['Football'] | freq=custom
+  KXNFLCAREERPASSTDS | NFL Career Passing Touchdowns | tags=['Football'] | freq=custom
+  KXNFLCAREERPASSYDS | NFL Career Passing Yards | tags=['Football'] | freq=custom
+  KXNFLCAREERRECYDS | NFL Career Receiving Yards | tags=['Football'] | freq=custom
+  KXNFLCAREERRSHTDS | NFL Career Rushing Touchdowns | tags=['Football'] | freq=custom
+  KXNFLCAREERRSHYDS | NFL Career Rushing Yards | tags=['Football'] | freq=custom
+  KXNFLCELEBRITYGAME | Pro Football Celebrity Flag Football Game | tags=None | freq=custom
+  KXNFLCHAMPDIVISION | Division of NFL Champion | tags=['Football'] | freq=custom
+  KXNFLCOACH | NFL Coach of the Year | tags=None | freq=annual
+  KXNFLCOACHOUT | NFL Coaches Fired | tags=['Football'] | freq=custom
+  KXNFLCOACHOUTFIRST | First NFL coach out | tags=['Football'] | freq=custom
+  KXNFLCOMBINE | NFL Combine | tags=['Football'] | freq=custom
+  KXNFLCOMBINE40 | Pro Football Combine Fastest 40 Time | tags=['Football'] | freq=custom
+  KXNFLCOMBO | NFL COMBO | tags=['Football'] | freq=one_off
+  KXNFLCOMEBACK | Pro Football Comeback | tags=['Football'] | freq=custom
+  KXNFLCOMPETE | Will an NFL Player Compete in game | tags=['Football'] | freq=custom
+  KXNFLCONTRACTSIZE | Pro Football Next Contract Size | tags=['Football'] | freq=custom
+  KXNFLCOTY | AP Pro Football Coach Of The Year | tags=['Football'] | freq=annual
+  KXNFLCPOTY | AP Pro Football Comeback Player of the Year | tags=['Football'] | freq=annual
+  KXNFLDEBUT | Pro Football Player to Make Debut | tags=['Football'] | freq=custom
+  KXNFLDELAY | NFL Weather Delay | tags=['Football'] | freq=custom
+  KXNFLDEPTHPOSITIONCLEQB2 | QB2 CLE | tags=['Football'] | freq=custom
+  KXNFLDIVISIONORDER | Pro Football Division Exact Order | tags=['Football'] | freq=custom
+  KXNFLDIVISIONWINS | Pro Football Division Total Wins | tags=['Football'] | freq=custom
+  KXNFLDIVLEASTWINS | Pro Football Division with the Most Wins | tags=['Football'] | freq=custom
+  KXNFLDIVMOSTWINS | Pro Football Division with the Least Wins | tags=['Football'] | freq=custom
+  KXNFLDIVUNDEFEATED | Team to go undefeated in division | tags=['Football'] | freq=one_off
+  KXNFLDPOTY | AP Pro Football Defensive Player Of The Year | tags=['Football'] | freq=annual
+  KXNFLDPOY | NFL Defensive Player of the Year | tags=None | freq=annual
+  KXNFLDPOYSPECIALS | NFL Defensive Player of the Year Specials | tags=['Football'] | freq=custom
+  KXNFLDRAFT1 | NFL Draft First Pick | tags=['Football'] | freq=annual
+  KXNFLDRAFT1ST | Make the 1st pick in NFL Draft | tags=['Football'] | freq=annual
+  KXNFLDRAFTCAT | Pro Football Draft Category | tags=['Football'] | freq=custom
+  KXNFLDRAFTCOMPARE | NFL Draft Comparison | tags=['Football'] | freq=custom
+  KXNFLDRAFTDB | Pro Football Defensive Back Drafted | tags=['Football'] | freq=annual
+  KXNFLDRAFTDT | Pro Football Defensive Tackle Drafted | tags=['Football'] | freq=annual
+  KXNFLDRAFTEAMPOS | Will team draft a position across round | tags=['Football'] | freq=one_off
+  KXNFLDRAFTEDGE | Pro Football Edge Drafted | tags=['Football'] | freq=annual
+  KXNFLDRAFTLB | Pro Football Linebacker Drafted | tags=['Football'] | freq=annual
+  KXNFLDRAFTMATCHUP | Pro Football Draft Matchup | tags=['Football'] | freq=custom
+  KXNFLDRAFTOL | Pro Football Offensive Line Drafted  | tags=['Football'] | freq=annual
+  KXNFLDRAFTOU | Will Player be drafted before or after pick? | tags=['Football'] | freq=custom
+  KXNFLDRAFTPICK | NFL Draft Pick | tags=['Football'] | freq=annual
+  KXNFLDRAFTQB | Pro Football Quarterback Drafted | tags=['Football'] | freq=annual
+  KXNFLDRAFTRB | Pro Football Running Back Drafted | tags=['Football'] | freq=annual
+  KXNFLDRAFTSELECT | NFL Draft Exact Selection | tags=['Football'] | freq=custom
+  KXNFLDRAFTTE | Pro Football Tight End Drafted | tags=['Football'] | freq=annual
+  KXNFLDRAFTTEAM | Pro Football Team Draft | tags=['Football'] | freq=custom
+  KXNFLDRAFTTEAMPOS | Which team will draft a quarterback in specific round? | tags=['Football'] | freq=custom
+  KXNFLDRAFTTOP | Pro Football Top Draft | tags=['Football'] | freq=annual
+  KXNFLDRAFTWR | Pro Football Wide Receiver Drafted  | tags=['Football'] | freq=annual
+  KXNFLDROTY | AP Pro Football Defensive Rookie of the Year | tags=['Football'] | freq=annual
+  KXNFLDROY | NFL Defensive Rookie of the Year | tags=None | freq=custom
+  KXNFLDSTTD | Pro Football D/ST Touchdown | tags=['Football'] | freq=custom
+  KXNFLENDSTREAK | When will team end streak | tags=['Football'] | freq=custom
+  KXNFLEQBTTS | Pro Football Both Teams to Score in Every Quarter | tags=['Football'] | freq=custom
+  KXNFLESCALATORREC | Receptions Escalator | tags=['Football'] | freq=custom
+  KXNFLESCALATORRECYDS | Receiving Yards Escalator | tags=['Football'] | freq=custom
+  KXNFLESCALATORRSHYDS | Rushing Yards Escalator | tags=['Football'] | freq=custom
+  KXNFLEVERYWEEKCOMPETE | Pro Football Players to Play in Every Week of the Season | tags=['Football'] | freq=custom
+  KXNFLEXACTWINSARI | Pro football exact wins Arizona | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSATL | Pro football exact wins Atlanta | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSBAL | Pro football exact wins Baltimore | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSBUF | Pro football exact wins Buffalo | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSCAR | Pro football exact wins Carolina | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSCHI | Pro football exact wins Chicago | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSCIN | Pro football exact wins Cincinnati | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSCLE | Pro football exact wins Cleveland | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSDAL | Pro football exact wins Dallas | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSDEN | Pro football exact wins Denver | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSDET | Pro football exact wins Detroit | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSGB | Pro football exact wins Green Bay | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSHOU | Pro football exact wins Houston | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSIND | Pro football exact wins Indianapolis | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSJAC | Pro football exact wins Jacksonville | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSKC | Pro football exact wins Kansas City | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSLA | Pro football exact wins Los Angeles R | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSLAC | Pro football exact wins Los Angeles C | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSLV | Pro football exact wins Las Vegas | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSMIA | Pro football exact wins Miami | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSMIN | Pro football exact wins Minnesota | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSNE | Pro football exact wins New England | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSNO | Pro football exact wins New Orleans | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSNYG | Pro football exact wins New York G | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSNYJ | Pro football exact wins New York J | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSPHI | Pro football exact wins Philadephia | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSPIT | Pro football exact wins Pittsburgh | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSSEA | Pro football exact wins Seattle | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSSF | Pro football exact wins San Francisco | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSTB | Pro football exact wins Tampa Bay | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSTEN | Pro football exact wins Tennessee | tags=['Football'] | freq=annual
+  KXNFLEXACTWINSWAS | Pro football exact wins Washington | tags=['Football'] | freq=annual
+  KXNFLEXECOTY | Pro Football Executive of the Year | tags=['Football'] | freq=custom
+  KXNFLFANTASYMOST | Pro Football Most Fantasy Points | tags=['Football'] | freq=custom
+  KXNFLFF40PTS | Fantasy Football 40 Point Performances | tags=['Football'] | freq=custom
+  KXNFLFF50PTS | Fantasy Football 50 Point Performances | tags=['Football'] | freq=custom
+  KXNFLFFH2H | Weekly Fantasy Football Head-to-Head | tags=['Football'] | freq=weekly
+  KXNFLFFH2HSEASON | Season Fantasy Football Head-to-Head | tags=['Football'] | freq=annual
+  KXNFLFFHIGHSCORE | Fantasy Football Highest Scoring Performance | tags=['Football'] | freq=custom
+  KXNFLFFLEADER | Best in Fantasy By Position | tags=['Football'] | freq=custom
+  KXNFLFFLEADERTOP | Top Fantasy | tags=['Football'] | freq=custom
+  KXNFLFFPLAYERHIGH | Pro Football Player's Highest Scoring Fantasy Performance | tags=['Football'] | freq=custom
+  KXNFLFFPLAYOFFLEADER | Fantasy Football Playoffs Leader | tags=['Football'] | freq=custom
+  KXNFLFFPTS | Pro Football Player Fantasy Points | tags=['Football'] | freq=custom
+  KXNFLFFPTSLADDER | Fantasy Ladder | tags=['Football'] | freq=custom
+  KXNFLFFPTSSEASON | Pro Football Player Fantasy Points | tags=['Football'] | freq=custom
+  KXNFLFFSEASONTOTAL | Pro Football Player's Fantasy Season Total | tags=['Football'] | freq=custom
+  KXNFLFFTOP | Top Fantasy Rank | tags=['Football'] | freq=custom
+  KXNFLFFWEEKLEAD | Weekly Fantasy Football Leader | tags=['Football'] | freq=weekly
+  KXNFLFFWEEKTOP | Weekly Fantasy Football Top Players | tags=['Football'] | freq=weekly
+  KXNFLFG | Pro Football Field Goals | tags=['Football'] | freq=custom
+  KXNFLFIRSTPICK | First Pick in NFL Draft | tags=['Football'] | freq=annual
+  KXNFLFIRSTSTART | Pro Football First Start | tags=['Football'] | freq=custom
+  KXNFLFIRSTTD | Pro Football First Touchdown | tags=['Football'] | freq=custom
+  KXNFLFIRSTTDTEAM | Pro Football First Team to Score a Touchdown | tags=['Football'] | freq=custom
+  KXNFLFIRSTTDTIME | Pro Football First Touchdown Time | tags=['Football'] | freq=custom
+  KXNFLGAME | NFL Game | tags=['Football'] | freq=custom
+  KXNFLGAMEFG | Pro Football Field Goals | tags=['Football'] | freq=one_off
+  KXNFLGAMELOCATION | NFL Game Location | tags=['Football'] | freq=custom
+  KXNFLGAMESACK | Pro Football Sacks | tags=['Football'] | freq=custom
+  KXNFLGAMESPECIALS | Pro Football Game Specials | tags=['Football'] | freq=custom
+  KXNFLGAMETD | Pro Football Touchdowns | tags=['Football'] | freq=one_off
+  KXNFLGAMETO | Pro Football Turnovers | tags=['Football'] | freq=one_off
+  KXNFLGPICKENSCONTRACT | Pro Football George Picken's Next Contract Size | tags=['Football'] | freq=custom
+  KXNFLH2HWINS | Pro Football Head-to-Head Win Totals | tags=['Football'] | freq=custom
+  KXNFLHALLOFFAME | Pro Football Hall of Fame | tags=['Football'] | freq=custom
+  KXNFLHIGHSCORE | Pro Football Highest Scoring Game | tags=['Football'] | freq=custom
+  KXNFLHIGHSCOREQ | Pro Football Highest Scoring Quarter | tags=['Football'] | freq=custom
+  KXNFLHIRECOACH | NFL hire coach | tags=None | freq=custom
+  KXNFLHKANE | Harry Kane Pro Football signing | tags=['Football'] | freq=custom
+  KXNFLHOFINDUCTEES | Pro Football Hall of Fame Inductees | tags=['Football'] | freq=custom
+  KXNFLINT | Pro Football Interceptions | tags=['Football'] | freq=custom
+  KXNFLLADDERREC | Receptions Ladder | tags=['Football'] | freq=custom
+  KXNFLLADDERRECYDS | Receiving Yards Ladder | tags=['Football'] | freq=custom
+  KXNFLLADDERRSHYDS | Rushing Yards Ladder | tags=['Football'] | freq=custom
+  KXNFLLARGELEAD | Pro Football Largest Lead | tags=['Football'] | freq=custom
+  KXNFLLARGESTLEAD | Pro Football Largest Lead | tags=['Football'] | freq=one_off
+  KXNFLLASTPICKPOS | NFL Last Pick of the Draft Position | tags=['Football'] | freq=annual
+  KXNFLLASTTOLOSE | Pro Football Last Undefeated Team | tags=['Football'] | freq=custom
+  KXNFLLASTTOWIN | Pro Football last team to win a game | tags=['Football'] | freq=custom
+  KXNFLLEADCHANGE | Pro Football Lead Changes | tags=['Football'] | freq=one_off
+  KXNFLLEADERPINT | Pro Football P INT Leader | tags=['Football'] | freq=one_off
+  KXNFLLEASTPENALIZED | Pro Football Least Penalized Team | tags=['Football'] | freq=custom
+  KXNFLLONGESTFG | Pro Football Longest Field Goal | tags=['Football'] | freq=custom
+  KXNFLLONGESTPLAY | NFL Longest Touchdown | tags=['Football'] | freq=custom
+  KXNFLLONGESTREC | Longest Reception | tags=['Football'] | freq=custom
+  KXNFLLONGESTTD | Pro Football Longest Touchdown | tags=['Football'] | freq=custom
+  KXNFLLONGFG | Pro Football Team Longest Field Goal | tags=['Football'] | freq=custom
+  KXNFLLONGREC | Longest Reception | tags=['Football'] | freq=custom
+  KXNFLLONGRSH | Longest Rush | tags=['Football'] | freq=custom
+  KXNFLMATCHUP | Pro Football Matchups | tags=['Football'] | freq=custom
+  KXNFLMOSTRECYDS | Pro Football Most Receiving Yards | tags=['Football'] | freq=custom
+  KXNFLMOSTRSHYDS | Pro Football Most Rushing Yards | tags=['Football'] | freq=custom
+  KXNFLMVP | AP Pro Football Regular Season MVP | tags=['Football'] | freq=annual
+  KXNFLMVPSPECIALS | NFL MVP Award Specials | tags=['Football'] | freq=custom
+  KXNFLNBA | NFL and NBA Champion Combo | tags=['Football', 'Basketball'] | freq=custom
+  KXNFLNEXTCOACHOUT | Next NFL Coach Out | tags=['Football'] | freq=custom
+  KXNFLNEXTINT | Pro Football Next Interception | tags=['Football'] | freq=custom
+  KXNFLNEXTTD | Pro Football Next TD scorer | tags=['Football'] | freq=one_off
+  KXNFLNEXTTEAM | Player Next Team | tags=['Football'] | freq=custom
+  KXNFLNFCCHAMP | National Football Conference Champion | tags=['Football'] | freq=annual
+  KXNFLNFCEAST | National Football Conference East Winner | tags=['Football'] | freq=annual
+  KXNFLNFCNORTH | National Football Conference North Winner | tags=['Football'] | freq=annual
+  KXNFLNFCSOUTH | National Football Conference South Winner | tags=['Football'] | freq=annual
+  KXNFLNFCWEST | National Football Conference West Winner | tags=['Football'] | freq=annual
+  KXNFLNONQBPASS | Pro Football Non-QB Passes | tags=['Football'] | freq=custom
+  KXNFLNOSCOREQ | Pro Football Scoreless Quarter | tags=['Football'] | freq=custom
+  KXNFLOPOTY | AP Pro Football Offensive Player Of The Year | tags=['Football'] | freq=annual
+  KXNFLOPOY | NFL Offensive Player of the Year | tags=None | freq=annual
+  KXNFLOPOYSPECIALS | NFL Offensive Player of the Year Specials | tags=['Football'] | freq=custom
+  KXNFLOROTY | AP Pro Football Offensive Rookie of the Year | tags=['Football'] | freq=annual
+  KXNFLOROY | NFL Offensive Rookie of the Y ear | tags=None | freq=annual
+  KXNFLOT | Pro Football Overtime | tags=['Football'] | freq=custom
+  KXNFLOTWIN | Pro Football Overtime Winner | tags=['Football'] | freq=custom
+  KXNFLOWNERSTAKE | Next Pro Football Team to Sell Ownership Stake | tags=['Football'] | freq=custom
+  KXNFLPASSATT | Pro Football Passing Attempts | tags=['Football'] | freq=custom
+  KXNFLPASSCOMP | Pro Football Passing Completions | tags=['Football'] | freq=custom
+  KXNFLPASSINT | Pro Football Passing Interceptions | tags=['Football'] | freq=custom
+  KXNFLPASSINTPROT | Passing Interceptions Protected | tags=['Football'] | freq=custom
+  KXNFLPASSTDS | Pro Football player Passing Touchdowns | tags=['Football'] | freq=custom
+  KXNFLPASSTDSPROT | Passing Touchdowns Protected | tags=['Football'] | freq=custom
+  KXNFLPASSYDS | Pro Football Passing Yards | tags=['Football'] | freq=custom
+  KXNFLPASSYDSH2H | Pro Football Head-to-Head Passing Yards | tags=['Football'] | freq=custom
+  KXNFLPASSYDSPRECISE | Pass Yards Precise | tags=['Football'] | freq=custom
+  KXNFLPASSYDSPROT | Passing Yards Protected | tags=['Football'] | freq=custom
+  KXNFLPLAYOFF | Pro Football Playoff Qualifiers | tags=['Football'] | freq=annual
+  KXNFLPLAYOFFC | Will both teams make the NFL Playoffs | tags=['Football'] | freq=custom
+  KXNFLPLAYOFFHOST | Team to host a playoff game | tags=['Football'] | freq=custom
+  KXNFLPOTM | NFL Player of the Month | tags=['Football'] | freq=custom
+  KXNFLPREPACK | MVE NFL Pre Pack | tags=['Football'] | freq=one_off
+  KXNFLPREPACK1HFT | MVE NFL Pre Pack | tags=None | freq=custom
+  KXNFLPREPACK1Q1H | MVE NFL Pre Pack | tags=None | freq=custom
+  KXNFLPREPACK2ML | MVE NFL Pre Pack | tags=None | freq=one_off
+  KXNFLPREPACK3ML | MVE NFL Pre Pack | tags=None | freq=one_off
+  KXNFLPREPACKSGP | MVE NFL Pre Pack | tags=None | freq=one_off
+  KXNFLPREPACKSGPSPREAD | MVE NFL Pre Pack | tags=None | freq=custom
+  KXNFLPRIMETIME | Pro Football Primetime Games | tags=['Football'] | freq=custom
+  KXNFLPROBOWL | Pro Football Pro Bowl | tags=None | freq=custom
+  KXNFLPROBOWLWIN | Pro Football Pro Bowl Game | tags=None | freq=custom
+  KXNFLPROOTY | Pro Football Protector of the Year | tags=['Football'] | freq=custom
+  KXNFLRACE | Pro Football Race to Points | tags=['Football'] | freq=custom
+  KXNFLREBOOT | Reboot Rules | tags=['Football'] | freq=one_off
+  KXNFLREC | Pro Football Player Receptions | tags=['Football'] | freq=custom
+  KXNFLRECPROT | Receptions Protected | tags=['Football'] | freq=custom
+  KXNFLRECYDS | Pro Football Receiving Yards | tags=['Football'] | freq=custom
+  KXNFLRECYDSH2H | Pro Football Head-to-Head Receiving Yards | tags=['Football'] | freq=custom
+  KXNFLRECYDSPRECISE | Receiving Yards Precise | tags=['Football'] | freq=custom
+  KXNFLRECYDSPROT | Receiving Yards Protected | tags=['Football'] | freq=custom
+  KXNFLRECYDSRECORD | NFL Regular Season Receiving Yards Record | tags=['Football'] | freq=one_off
+  KXNFLREDZONEADS | NFL Redzone ads | tags=None | freq=one_off
+  KXNFLREDZONEBRANDADS | Redzone week 1 brand ads | tags=None | freq=one_off
+  KXNFLRETIRE | NFL Retirement | tags=['Football'] | freq=custom
+  KXNFLRETURN | Pro Football Player to Compete | tags=None | freq=custom
+  KXNFLROLE | Pro Football Role at Event | tags=['Football'] | freq=custom
+  KXNFLROTM | NFL Rookie of the Month | tags=['Football'] | freq=custom
+  KXNFLROUNDQUAL | Pro Football Round Qualifier | tags=['Football'] | freq=custom
+  KXNFLRRYDS | Pro Football Rush and Receiving Yards | tags=['Football'] | freq=custom
+  KXNFLRRYDSPROT | Rushing and Receiving Yards Protected | tags=['Football'] | freq=custom
+  KXNFLRSHATT | Pro Football Rushing Attempts | tags=['Football'] | freq=custom
+  KXNFLRSHYDS | Pro Football Rushing Yards | tags=['Football'] | freq=custom
+  KXNFLRSHYDSH2H | Pro Football Head-to-Head Rushing Yards | tags=['Football'] | freq=custom
+  KXNFLRSHYDSPRECISE | Rushing Yards Precise | tags=['Football'] | freq=custom
+  KXNFLRSHYDSPROT | Rushing Yards Protected | tags=['Football'] | freq=custom
+  KXNFLSACK | Pro Football Sacks | tags=['Football'] | freq=custom
+  KXNFLSACKRECORD | NFL Regular Season Sack Record | tags=['Football'] | freq=custom
+  KXNFLSAFETY | Pro Football Safeties | tags=['Football'] | freq=one_off
+  KXNFLSBMVP | Pro Football Championship MVP | tags=['Football'] | freq=annual
+  KXNFLSBMVPDEF | Defensive Player Championship MVP | tags=['Football'] | freq=annual
+  KXNFLSBMVPPOS | Pro Football Championship MVP Position | tags=['Football'] | freq=custom
+  KXNFLSBMVPQB | Non QB Championship MVP | tags=['Football'] | freq=annual
+  KXNFLSBOUTCOME | NFL Championship Outcome | tags=['Football'] | freq=custom
+  KXNFLSDRAFTTOP | Will player be drafted Top X in Supplemental Draft | tags=['Football'] | freq=custom
+  KXNFLSEASONPASSTDS | Passing Touchdowns | tags=['Football'] | freq=custom
+  KXNFLSEASONPASSYDS | Passing Yards | tags=['Football'] | freq=custom
+  KXNFLSEASONREC | Receptions | tags=['Football'] | freq=custom
+  KXNFLSEASONRECTD | Receiving Touchdowns | tags=['Football'] | freq=custom
+  KXNFLSEASONRECYDS | Receiving Yards | tags=['Football'] | freq=custom
+  KXNFLSEASONRSHTD | Rushing Touchdowns | tags=['Football'] | freq=custom
+  KXNFLSEASONRSHYDS | Rushing Yards | tags=['Football'] | freq=custom
+  KXNFLSEASONRUSHYDS | Rushing Yards | tags=['Football'] | freq=custom
+  KXNFLSEED | NFL Playoff Seed | tags=['Football'] | freq=custom
+  KXNFLSEEDOU | NFL Playoffs Seed Over/Unders | tags=['Football'] | freq=custom
+  KXNFLSELLOUT | Pro Football Sellouts | tags=['Football'] | freq=custom
+  KXNFLSFPRACFIELD | Practice Field Relocation | tags=None | freq=custom
+  KXNFLSFTY | Pro Football Safety | tags=['Football'] | freq=custom
+  KXNFLSHORTESTTD | Pro Football Shortest Touchdown | tags=['Football'] | freq=custom
+  KXNFLSPREAD | Pro Football Spread | tags=['Football'] | freq=custom
+  KXNFLSTADIUM | Will NFL Stadium Project be complete by date | tags=['Football'] | freq=custom
+  KXNFLSTAGEOFELIM | Pro Football Stage of Elimination | tags=['Football'] | freq=custom
+  KXNFLSUPDRAFTPICK | Will Player declare for supplemental draft | tags=['Football'] | freq=custom
+  KXNFLSZNRECORD | Will single season record be broken? | tags=['Football'] | freq=custom
+  KXNFLT100 | Will player be ranked on Pro Football T100 List | tags=['Football'] | freq=custom
+  KXNFLT100TOP | Will player be ranked Top X on NFL 100 | tags=['Football'] | freq=custom
+  KXNFLTD | Pro Football Touchdowns | tags=['Football'] | freq=custom
+  KXNFLTDPROT | Pro Football Touchdowns Protected | tags=['Football'] | freq=custom
+  KXNFLTEAM1POS | What position will Team select with first pick | tags=['Football'] | freq=custom
+  KXNFLTEAM1STDOWNS | Pro Football Team 1st Downs | tags=['Football'] | freq=custom
+  KXNFLTEAMDPTS | Who will allow the least/most points this season | tags=['Football'] | freq=custom
+  KXNFLTEAMFG | Pro Football Field Goals | tags=['Football'] | freq=custom
+  KXNFLTEAMFIRSTTD | Pro Football First Touchdown | tags=['Football'] | freq=custom
+  KXNFLTEAMFIRSTWIN | NFL Team First Win | tags=['Football'] | freq=custom
+  KXNFLTEAMPTS | Who will most/least points in Regular Season | tags=['Football'] | freq=custom
+  KXNFLTEAMSACK | Pro Football Team Sacks | tags=['Football'] | freq=custom
+  KXNFLTEAMTD | Pro Football Team Touchdowns | tags=['Football'] | freq=custom
+  KXNFLTEAMTO | Pro Football Forced Turnovers | tags=['Football'] | freq=custom
+  KXNFLTEAMTOTAL | Pro Football Team Total Points | tags=['Football'] | freq=custom
+  KXNFLTEAMYDS | Pro Football Team Yards | tags=['Football'] | freq=custom
+  KXNFLTIE | NFL Game to Tie | tags=['Football'] | freq=custom
+  KXNFLTIES | Pro Football Ties | tags=None | freq=custom
+  KXNFLTKL | Pro Football Tackles | tags=['Football'] | freq=custom
+  KXNFLTOTAL | Pro Football Total Points | tags=['Football'] | freq=custom
+  KXNFLTOTALPRECISE | Total Precise | tags=['Football'] | freq=custom
+  KXNFLTOTALTD | Pro Football Total Touchdowns | tags=['Football'] | freq=custom
+  KXNFLTRADE | Pro Football Players Traded | tags=['Football'] | freq=custom
+  KXNFLTSPEC | NFL Team Specials | tags=['Football'] | freq=custom
+  KXNFLVIEWERSHIP | Pro Football Game Viewership | tags=['Football'] | freq=custom
+  KXNFLWEEKCOMPETE | NFL Player to Play in Week | tags=None | freq=weekly
+  KXNFLWEEKGAMEHIGH | NFL Week Highest Scoring Game | tags=['Football'] | freq=custom
+  KXNFLWEEKHIGH | NFL Week Highest Scoring Game | tags=['Football'] | freq=custom
+  KXNFLWEEKHIGHSCORE | NFL Highest Scoring Team of the Week | tags=['Football'] | freq=custom
+  KXNFLWEEKMOSTPASSYDS | Weekly Most Passing Yards | tags=['Football'] | freq=weekly
+  KXNFLWEEKMOSTRECYDS | Weekly Most Receiving Yards | tags=['Football'] | freq=weekly
+  KXNFLWEEKMOSTRSHYDS | Weekly Most Rushing Yards | tags=['Football'] | freq=weekly
+  KXNFLWEEKQBSTART | NFL Week QB Starter | tags=['Football'] | freq=custom
+  KXNFLWEEKSTART | NFL Week Starter | tags=['Football'] | freq=custom
+  KXNFLWEEKTIE | NFL Weekly Tie | tags=['Football'] | freq=custom
+  KXNFLWINMARGIN | Pro Football Win Margin | tags=['Football'] | freq=custom
+  KXNFLWINNINGSTREAK | NFL Team Winning Streak | tags=['Football'] | freq=custom
+  KXNFLWINS | Pro Football Wins | tags=['Football'] | freq=custom
+  KXNFLWINS-ANY | Pro football wins any team | tags=['Football'] | freq=custom
+  KXNFLWINS-ARI | Pro football wins Arizona | tags=['Football'] | freq=annual
+  KXNFLWINS-ATL | Pro football wins Atlanta | tags=['Football'] | freq=annual
+  KXNFLWINS-BAL | Pro football wins Baltimore | tags=['Football'] | freq=annual
+  KXNFLWINS-BUF | Pro football wins Buffalo | tags=['Football'] | freq=annual
+  KXNFLWINS-CAR | Pro football wins Carolina | tags=['Football'] | freq=annual
+  KXNFLWINS-CHI | Pro football wins Chicago | tags=['Football'] | freq=annual
+  KXNFLWINS-CIN | Pro football wins Cincinnati | tags=['Football'] | freq=annual
+  KXNFLWINS-CLE | Pro football wins Cleveland | tags=['Football'] | freq=annual
+  KXNFLWINS-DAL | Pro football wins Dallas | tags=['Football'] | freq=annual
+  KXNFLWINS-DEN | Pro football wins Denver | tags=['Football'] | freq=annual
+  KXNFLWINS-DET | Pro football wins Detroit | tags=['Football'] | freq=annual
+  KXNFLWINS-GB | Pro football wins Green Bay | tags=['Football'] | freq=annual
+  KXNFLWINS-HOU | Pro football wins Houston | tags=['Football'] | freq=annual
+  KXNFLWINS-IND | Pro football wins Indianapolis | tags=['Football'] | freq=annual
+  KXNFLWINS-JAC | Pro football wins Jacksonville | tags=['Football'] | freq=annual
+  KXNFLWINS-KC | Pro football wins Kansas City | tags=['Football'] | freq=annual
+  KXNFLWINS-LA | Pro football wins Los Angeles R | tags=['Football'] | freq=annual
+  KXNFLWINS-LAC | Pro football wins Los Angeles C | tags=['Football'] | freq=annual
+  KXNFLWINS-LV | Pro football wins Las Vegas | tags=['Football'] | freq=annual
+  KXNFLWINS-MIA | Pro football wins Miami | tags=['Football'] | freq=annual
+  KXNFLWINS-MIN | Pro football wins Minnesota | tags=['Football'] | freq=annual
+  KXNFLWINS-NE | Pro football wins New England | tags=['Football'] | freq=annual
+  KXNFLWINS-NO | Pro football wins New Orleans | tags=['Football'] | freq=annual
+  KXNFLWINS-NYG | Pro football wins New York G | tags=['Football'] | freq=annual
+  KXNFLWINS-NYJ | Pro football wins New York J | tags=['Football'] | freq=annual
+  KXNFLWINS-PHI | Pro football wins Philadelphia | tags=['Football'] | freq=annual
+  KXNFLWINS-PIT | Pro football wins Pittsburgh | tags=['Football'] | freq=annual
+  KXNFLWINS-SEA | Pro football wins Seattle | tags=['Football'] | freq=annual
+  KXNFLWINS-SF | Pro football wins San Francisco | tags=['Football'] | freq=annual
+  KXNFLWINS-TB | Pro football wins Tampa Bay | tags=['Football'] | freq=annual
+  KXNFLWINS-TEN | Pro football wins Tennessee | tags=['Football'] | freq=annual
+  KXNFLWINS-WAS | Pro football wins Washington | tags=['Football'] | freq=annual
+  KXNFLWINSTREAK | Pro Football Win Streak | tags=['Football'] | freq=custom
+  KXNFLWINSWEEK | NFL wins by week | tags=['Football'] | freq=custom
+  KXNFLWORSTTOFIRST | Pro Football Worst in Division to First | tags=['Football'] | freq=custom
+  KXNFLWPMOTY | Walter Payton Man of the Year | tags=['Football'] | freq=custom
+  KXPLAYEROPTIONNBA | player option nba | tags=None | freq=custom
+  KXRECORDNBABEST | Best Pro Basketball Record | tags=['Basketball'] | freq=annual
+  KXSBHOST | Pro Football Championship Host | tags=['Football'] | freq=custom
+  KXSTARTINGQBWEEK1 | NFL Starting QB Week 1 | tags=['Football'] | freq=custom
+  KXSUPERBOWLWHITEHOUSE | WILL THE WINNERS OF THE PRO FOOTBALL CHAMPIONSHIP GO TO THE WHITE HOUSE?  | tags=['International'] | freq=one_off
+  KXSWIFTATTEND | NFL Attendance Swift | tags=None | freq=custom
+  KXTEAMSINNBAEF | Teams in NBA Eastern Conference Finals | tags=['Basketball'] | freq=custom
+  KXTEAMSINNBAF | Teams in NBA Finals | tags=['Basketball'] | freq=custom
+  KXTEAMSINNBAWF | Teams in NBA Western Conference Finals | tags=['Basketball'] | freq=custom
+  KXTENNCOACH | Tennessee Pro Football Team Next Coach | tags=['Football'] | freq=one_off
+  KXTOP3NBADRAFT | NBA Draft Top 3 | tags=['Basketball'] | freq=custom
+  KXTRADEOFFNBA | Pro basketball trades offseason | tags=['Basketball'] | freq=custom
+  KXTRADEOFFNFL | Pro football trades offseason | tags=None | freq=one_off
+  KXWNBA1H | Women's Pro Basketball 1st Half Winner | tags=['Basketball'] | freq=custom
+  KXWNBA1HSPREAD | Women's Pro Basketball 1st Half Spread | tags=['Basketball'] | freq=custom
+  KXWNBA1HWINNER | Women's Pro Basketball 1st Half Winner | tags=['Basketball'] | freq=custom
+  KXWNBA1QSPREAD | Women's Pro Basketball 1st Quarter Spread | tags=['Basketball'] | freq=custom
+  KXWNBA1QTOTAL | Women's Pro Basketball 1st Quarter Total | tags=['Basketball'] | freq=custom
+  KXWNBA1QWINNER | Women's Pro Basketball 1st Quarter Winner | tags=['Basketball'] | freq=custom
+  KXWNBA1SEED | Women's Pro Basketball #1 Seed | tags=['Basketball'] | freq=annual
+  KXWNBA2H | Women's Pro Basketball 2nd Half Winner | tags=['Basketball'] | freq=custom
+  KXWNBA2HSPREAD | Women's Pro Basketball 2nd Half Spread | tags=['Basketball'] | freq=custom
+  KXWNBA2HTOTAL | Women's Pro Basketball 2nd Half Total | tags=['Basketball'] | freq=custom
+  KXWNBA2HWINNER | Women's Pro Basketball 2nd Half Winner | tags=['Basketball'] | freq=custom
+  KXWNBA2QSPREAD | Women's Pro Basketball 2nd Quarter Spread | tags=['Basketball'] | freq=custom
+  KXWNBA2QTOTAL | Women's Pro Basketball 2nd Quarter Total | tags=['Basketball'] | freq=custom
+  KXWNBA2QWINNER | Women's Pro Basketball 2nd Quarter Winner | tags=['Basketball'] | freq=custom
+  KXWNBA3PT | Women's Pro Basketball Player Threes | tags=['Basketball'] | freq=custom
+  KXWNBA3PTCONTEST | Women's Pro Basketball 3-Point Contest | tags=['Basketball'] | freq=custom
+  KXWNBA3PTCONTESTOU | Women's Pro Basketball 3-Point Contest Threes Made | tags=['Basketball'] | freq=custom
+  KXWNBA3PTROUND | Women's Pro Basketball 3-Point Contest Round Qualifiers | tags=['Basketball'] | freq=custom
+  KXWNBA3QSPREAD | Women's Pro Basketball 3rd Quarter Spread | tags=['Basketball'] | freq=custom
+  KXWNBA3QTOTAL | Women's Pro Basketball 3rd Quarter Total | tags=['Basketball'] | freq=custom
+  KXWNBA3QWINNER | Women's Pro Basketball 3rd Quarter Winner | tags=['Basketball'] | freq=one_off
+  KXWNBA40PTS | Women's Pro Basketball Player to Score 40 Points | tags=['Basketball'] | freq=custom
+  KXWNBA4QSPREAD | Women's Pro Basketball 4th Quarter Spread | tags=['Basketball'] | freq=custom
+  KXWNBA4QTOTAL | Women's Pro Basketball 4th Quarter Total | tags=['Basketball'] | freq=custom
+  KXWNBA4QWINNER | Women's Pro Basketball 4th Quarter Winner | tags=['Basketball'] | freq=custom
+  KXWNBAALLDEFENSE | Women's Pro Basketball All-Defensive Teams | tags=['Basketball'] | freq=custom
+  KXWNBAALLROOKIE | Women's Pro Basketball All-Rookie Team | tags=['Basketball'] | freq=custom
+  KXWNBAALLSTARS | Women's Pro Basketball All-Star Selections | tags=['Basketball'] | freq=custom
+  KXWNBAALLTEAM | Women's Pro Basketball Teams | tags=['Basketball'] | freq=custom
+  KXWNBAAST | Women's Pro Basketball Player Assists | tags=['Basketball'] | freq=custom
+  KXWNBACOMPETE | Women's Pro Basketball Player to Compete | tags=['Basketball'] | freq=custom
+  KXWNBADUNK | Women's Pro Basketball Player to Dunk | tags=['Basketball'] | freq=custom
+  KXWNBAEAST | Women's Pro Basketball Eastern Conference Champion | tags=['Basketball'] | freq=annual
+  KXWNBAEAST1 | Women's Pro Basketball Eastern Conference #1 Seed | tags=['Basketball'] | freq=annual
+  KXWNBAFIRSTTEAM | Women's Pro Basketball First Team | tags=['Basketball'] | freq=custom
+  KXWNBAGAME | Women's Pro Basketball Game | tags=['Basketball'] | freq=custom
+  KXWNBAH2HPRA | Women's Pro Basketball Head to Head Pts + Reb + Ast | tags=['Basketball'] | freq=custom
+  KXWNBAH2HPTS | Women's Pro Basketball Head to Head Points | tags=['Basketball'] | freq=custom
+  KXWNBALAWSUIT | Women's Pro Basketball Lawsuit | tags=['Basketball'] | freq=custom
+  KXWNBANEXTCOMMISH | Women's Pro Basketball Next Commissioner | tags=['Basketball'] | freq=custom
+  KXWNBAOT | Women's Pro Basketball Overtime | tags=['Basketball'] | freq=custom
+  KXWNBAPLAYOFFHOST | Women's Pro Basketball Playoff Home Games | tags=['Basketball'] | freq=custom
+  KXWNBAPTSRECORD | Women's Pro Basketball Single-Game Scoring Record | tags=['Basketball'] | freq=custom
+  KXWNBAREB | Women's Pro Basketball Player Rebounds | tags=['Basketball'] | freq=custom
+  KXWNBAROOKAS | Women's Pro Basketball Rookie to be an All-Star | tags=['Basketball'] | freq=custom
+  KXWNBASECONDTEAM | Women's Pro Basketball Second Team | tags=['Basketball'] | freq=custom
+  KXWNBASPREAD | Women's Pro Basketball Spread | tags=['Basketball'] | freq=custom
+  KXWNBASSTARS | Women's Pro Basketball Shooting Stars Contest | tags=['Basketball'] | freq=custom
+  KXWNBATOTAL | Women's Pro Basketball Total | tags=['Basketball'] | freq=custom
+  KXWNBAWEST | Women's Pro Basketball Western Conference Champion | tags=['Basketball'] | freq=annual
+  KXWNBAWEST1 | Women's Pro Basketball Western Conference #1 Seed | tags=['Basketball'] | freq=annual
+  KXWNBAWORSTREC | Women's Pro Basketball Worst Record | tags=['Basketball'] | freq=custom
+
+prop-looking series: 244
+  KXNFLFIRSTTD: 3 open events (HTTP 200)
+     event KXNFLFIRSTTD-26NOV15NEDET | New England vs Detroit: 1st Touchdown | NE vs DET (Nov 15) | markets=23
+        KXNFLFIRSTTD-26NOV15NEDET-DETDCARTER2 | DeAndre Carter: 1st Touchdown | yes_sub=DeAndre Carter | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFLFIRSTTD-26NOV15NEDET-DETJGIBBS0 | Jahmyr Gibbs: 1st Touchdown | yes_sub=Jahmyr Gibbs | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFLFIRSTTD-26NOV15NEDET-DETJGOFF16 | Jared Goff: 1st Touchdown | yes_sub=Jared Goff | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFLFIRSTTD-26NOV15NEDET-DETSLAPORTA87 | Sam LaPorta: 1st Touchdown | yes_sub=Sam LaPorta | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+     event KXNFLFIRSTTD-26NOV15BUFNYJ | Buffalo vs New York J: 1st Touchdown | BUF vs NYJ (Nov 15) | markets=25
+        KXNFLFIRSTTD-26NOV15BUFNYJ-NYJNYJDST | NY Jets D/ST: 1st Touchdown | yes_sub=NY Jets D/ST | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+        KXNFLFIRSTTD-26NOV15BUFNYJ-BUFBUFDST | BUF Bills D/ST: 1st Touchdown | yes_sub=BUF Bills D/ST | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+        KXNFLFIRSTTD-26NOV15BUFNYJ-NONE | No Touchdown: 1st Touchdown | yes_sub=No Touchdown | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+        KXNFLFIRSTTD-26NOV15BUFNYJ-NYJBALLEN0 | Braelon Allen: 1st Touchdown | yes_sub=Braelon Allen | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+  KXNFLRACE: 3 open events (HTTP 200)
+     event KXNFLRACE-26NOV15NEDET-10 | New England vs Detroit: Race to 10 Points | NE vs DET (Nov 15) | markets=3
+        KXNFLRACE-26NOV15NEDET-10-DET | Will Detroit reach 10 points first? | yes_sub=Detroit | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFLRACE-26NOV15NEDET-10-NE | Will New England reach 10 points first? | yes_sub=New England | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFLRACE-26NOV15NEDET-10-NONE | Will neither team reach 10 points? | yes_sub=Neither team | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+     event KXNFLRACE-26NOV15NEDET-14 | New England vs Detroit: Race to 14 Points | NE vs DET (Nov 15) | markets=3
+        KXNFLRACE-26NOV15NEDET-14-DET | Will Detroit reach 14 points first? | yes_sub=Detroit | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFLRACE-26NOV15NEDET-14-NE | Will New England reach 14 points first? | yes_sub=New England | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFLRACE-26NOV15NEDET-14-NONE | Will neither team reach 14 points? | yes_sub=Neither team | strike=None/structured | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+  KXNFL2HTD: 0 open events (HTTP 200)
+  KXNFL1HTOTAL: 3 open events (HTTP 200)
+     event KXNFL1HTOTAL-26NOV15NEDET | New England vs Detroit: 1st Half Total | NE vs DET (Nov 15) | markets=14
+        KXNFL1HTOTAL-26NOV15NEDET-4 | Will there be over 3.5 1H points scored? | yes_sub=Over 3.5 points | strike=3.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFL1HTOTAL-26NOV15NEDET-8 | Will there be over 7.5 1H points scored? | yes_sub=Over 7.5 points | strike=7.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFL1HTOTAL-26NOV15NEDET-11 | Will there be over 10.5 1H points scored? | yes_sub=Over 10.5 points | strike=10.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFL1HTOTAL-26NOV15NEDET-15 | Will there be over 14.5 1H points scored? | yes_sub=Over 14.5 points | strike=14.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+     event KXNFL1HTOTAL-26NOV15BUFNYJ | Buffalo vs New York J: 1st Half Total | BUF vs NYJ (Nov 15) | markets=14
+        KXNFL1HTOTAL-26NOV15BUFNYJ-4 | Will there be over 3.5 1H points scored? | yes_sub=Over 3.5 points | strike=3.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+        KXNFL1HTOTAL-26NOV15BUFNYJ-8 | Will there be over 7.5 1H points scored? | yes_sub=Over 7.5 points | strike=7.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+        KXNFL1HTOTAL-26NOV15BUFNYJ-11 | Will there be over 10.5 1H points scored? | yes_sub=Over 10.5 points | strike=10.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+        KXNFL1HTOTAL-26NOV15BUFNYJ-15 | Will there be over 14.5 1H points scored? | yes_sub=Over 14.5 points | strike=14.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+  KXNBAPR: 0 open events (HTTP 200)
+  KXNFLOPOTY: 1 open events (HTTP 200)
+     event KXNFLOPOTY-27 | Offensive Player of the Year Winner? | 2026-27 season | markets=69
+        KXNFLOPOTY-27-SBAR | Will Saquon Barkley win the Offensive Player of the Year? | yes_sub=Saquon Barkley | strike=None/structured | yes bid/ask None/None last None | vol None | close 2028-02-08T15:00:00Z
+        KXNFLOPOTY-27-JCHA | Will Ja'Marr Chase win the Offensive Player of the Year? | yes_sub=Ja'Marr Chase | strike=None/structured | yes bid/ask None/None last None | vol None | close 2028-02-08T15:00:00Z
+        KXNFLOPOTY-27-JGIB | Will Jahmyr Gibbs win the Offensive Player of the Year? | yes_sub=Jahmyr Gibbs | strike=None/structured | yes bid/ask None/None last None | vol None | close 2028-02-08T15:00:00Z
+        KXNFLOPOTY-27-DHEN | Will Derrick Henry win the Offensive Player of the Year? | yes_sub=Derrick Henry | strike=None/structured | yes bid/ask None/None last None | vol None | close 2028-02-08T15:00:00Z
+  KXNFLDEBUT: 3 open events (HTTP 200)
+     event KXNFLDEBUT-27CBECK19 | When will Carson Beck start his first Pro Football game? | Carson Beck (2026-27) | markets=7
+        KXNFLDEBUT-27CBECK19-W1W2 | Carson Beck first start: Week 1 to Week 2 | yes_sub=Week 1 to Week 2 | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-09-22T21:15:42Z
+        KXNFLDEBUT-27CBECK19-W3W4 | Carson Beck first start: Week 3 to Week 4 | yes_sub=Week 3 to Week 4 | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-10-05T16:10:35Z
+        KXNFLDEBUT-27CBECK19-W5W7 | Carson Beck first start: Week 5 to Week 7 | yes_sub=Week 5 to Week 7 | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-10-27T18:34:31Z
+        KXNFLDEBUT-27CBECK19-W8W10 | Carson Beck first start: Week 8 to Week 10 | yes_sub=Week 8 to Week 10 | strike=None/custom | yes bid/ask None/None last None | vol None | close 2027-01-19T15:00:00Z
+     event KXNFLDEBUT-27CKLUBNIK10 | When will Cade Klubnik start his first Pro Football game? | Cade Klubnik (2026-27) | markets=6
+        KXNFLDEBUT-27CKLUBNIK10-W1W3 | Cade Klubnik first start: Week 1 to Week 3 | yes_sub=Week 1 to Week 3 | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-10-02T01:35:25Z
+        KXNFLDEBUT-27CKLUBNIK10-W4W6 | Cade Klubnik first start: Week 4 to Week 6 | yes_sub=Week 4 to Week 6 | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-10-18T19:24:59Z
+        KXNFLDEBUT-27CKLUBNIK10-W7W10 | Cade Klubnik first start: Week 7 to Week 10 | yes_sub=Week 7 to Week 10 | strike=None/custom | yes bid/ask None/None last None | vol None | close 2027-01-19T15:00:00Z
+        KXNFLDEBUT-27CKLUBNIK10-W11W14 | Cade Klubnik first start: Week 11 to Week 14 | yes_sub=Week 11 to Week 14 | strike=None/custom | yes bid/ask None/None last None | vol None | close 2027-01-19T15:00:00Z
+  KXNBATOJOINCBA: 1 open events (HTTP 200)
+     event KXNBATOJOINCBA-01OCT27 | Pro Basketball players sign with a CBA team before Oct 1, 2027 | Before Oct 1, 2027 | markets=25
+        KXNBATOJOINCBA-01OCT27-CAMTHOMAS | Cam Thomas to sign with a CBA team before Oct 1, 2027 | yes_sub=Cam Thomas | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-10-08T14:00:00Z
+        KXNBATOJOINCBA-01OCT27-MARKELLEFULTZ | Markelle Fultz to sign with a CBA team before Oct 1, 2027 | yes_sub=Markelle Fultz | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-10-08T14:00:00Z
+        KXNBATOJOINCBA-01OCT27-DALTONKNECHT | Dalton Knecht to sign with a CBA team before Oct 1, 2027 | yes_sub=Dalton Knecht | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-10-08T14:00:00Z
+        KXNBATOJOINCBA-01OCT27-KILLIANHAYES | Killian Hayes to sign with a CBA team before Oct 1, 2027 | yes_sub=Killian Hayes | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-10-08T14:00:00Z
+  KXWNBA3PTCONTESTOU: 0 open events (HTTP 200)
+  KXNFLCAREERRSHTDS: 0 open events (HTTP 200)
+  KXNBABENCHPTS: 0 open events (HTTP 200)
+  KXNFLDIVLEASTWINS: 1 open events (HTTP 200)
+     event KXNFLDIVLEASTWINS-27 | Division with the Least Total Wins | Least Wins (2026-27) | markets=8
+        KXNFLDIVLEASTWINS-27-AFCEAST | Will the teams in the AFC East have the least total wins out of any division in the 2026-27 Pro Football regular season? | yes_sub=AFC East | strike=None/custom | yes bid/ask None/None last None | vol None | close 2027-02-01T04:30:00Z
+        KXNFLDIVLEASTWINS-27-AFCSOUTH | Will the teams in the AFC South have the least total wins out of any division in the 2026-27 Pro Football regular season? | yes_sub=AFC South | strike=None/custom | yes bid/ask None/None last None | vol None | close 2027-02-01T04:30:00Z
+        KXNFLDIVLEASTWINS-27-AFCWEST | Will the teams in the AFC West have the least total wins out of any division in the 2026-27 Pro Football regular season? | yes_sub=AFC West | strike=None/custom | yes bid/ask None/None last None | vol None | close 2027-02-01T04:30:00Z
+        KXNFLDIVLEASTWINS-27-AFCNORTH | Will the teams in the AFC North have the least total wins out of any division in the 2026-27 Pro Football regular season? | yes_sub=AFC North | strike=None/custom | yes bid/ask None/None last None | vol None | close 2027-02-01T04:30:00Z
+  KXNFLT100: 0 open events (HTTP 200)
+  KXNFLCOMBINE40: 0 open events (HTTP 200)
+  KXNFLFF50PTS: 0 open events (HTTP 200)
+  KXNBASTARTERS: 0 open events (HTTP 200)
+  KXLEADERNBAAST: 0 open events (HTTP 429)
+  KXNFLSEASONPASSTDS: 0 open events (HTTP 429)
+  KXNBAESCALATORPTS: 3 open events (HTTP 200)
+     event KXNBAESCALATORPTS-26NOV14DENNOP | Denver vs New Orleans: Points Escalator | DEN vs NOP (Nov 14) | markets=4
+        KXNBAESCALATORPTS-26NOV14DENNOP-NOPZWILLIAMSON1 | Zion Williamson player points escalator | yes_sub=Zion Williamson | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-11-17T00:00:00Z
+        KXNBAESCALATORPTS-26NOV14DENNOP-DENNJOKIC15 | Nikola Jokić player points escalator | yes_sub=Nikola Jokić | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-11-17T00:00:00Z
+        KXNBAESCALATORPTS-26NOV14DENNOP-DENJMURRAY27 | Jamal Murray player points escalator | yes_sub=Jamal Murray | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-11-17T00:00:00Z
+        KXNBAESCALATORPTS-26NOV14DENNOP-DENAGORDON32 | Aaron Gordon player points escalator | yes_sub=Aaron Gordon | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-11-17T00:00:00Z
+     event KXNBAESCALATORPTS-26NOV14DALCLE | Dallas vs Cleveland: Points Escalator | DAL vs CLE (Nov 14) | markets=4
+        KXNBAESCALATORPTS-26NOV14DALCLE-DALCFLAGG32 | Cooper Flagg player points escalator | yes_sub=Cooper Flagg | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-11-17T00:30:00Z
+        KXNBAESCALATORPTS-26NOV14DALCLE-CLEDMITCHELL45 | Donovan Mitchell player points escalator | yes_sub=Donovan Mitchell | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-11-17T00:30:00Z
+        KXNBAESCALATORPTS-26NOV14DALCLE-DALKIRVING11 | Kyrie Irving player points escalator | yes_sub=Kyrie Irving | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-11-17T00:30:00Z
+        KXNBAESCALATORPTS-26NOV14DALCLE-CLEJHARDEN1 | James Harden player points escalator | yes_sub=James Harden | strike=None/custom | yes bid/ask None/None last None | vol None | close 2026-11-17T00:30:00Z
+  KXNBADPOY: 0 open events (HTTP 429)
+  KXNFLLADDERREC: 0 open events (HTTP 429)
+  KXNBASTATAVG: 3 open events (HTTP 200)
+     event KXNBASTATAVG-273PG | Player Three-Pointers Made Per Game (3PG) Season Averages | 3PG (2026-27) | markets=37
+        KXNBASTATAVG-273PG-SCURRY30-4P4 | Stephen Curry: 4.4+ 3PG | yes_sub=Stephen Curry: 4.4+ 3PG | strike=4.4/greater_or_equal | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+        KXNBASTATAVG-273PG-LBALL1-3P8 | LaMelo Ball: 3.8+ 3PG | yes_sub=LaMelo Ball: 3.8+ 3PG | strike=3.8/greater_or_equal | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+        KXNBASTATAVG-273PG-AEDWARDS5-3P6 | Anthony Edwards: 3.6+ 3PG | yes_sub=Anthony Edwards: 3.6+ 3PG | strike=3.6/greater_or_equal | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+        KXNBASTATAVG-273PG-LDONCIC77-3P6 | Luka Doncic: 3.6+ 3PG | yes_sub=Luka Doncic: 3.6+ 3PG | strike=3.6/greater_or_equal | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+     event KXNBASTATAVG-27APG | Player Assists Per Game (APG) Season Averages | APG (2026-27) | markets=35
+        KXNBASTATAVG-27APG-NJOKIC15-9P6 | Nikola Jokic: 9.6+ APG | yes_sub=Nikola Jokic: 9.6+ APG | strike=9.6/greater_or_equal | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+        KXNBASTATAVG-27APG-THALIBURTON0-9P6 | Tyrese Haliburton: 9.6+ APG | yes_sub=Tyrese Haliburton: 9.6+ APG | strike=9.6/greater_or_equal | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+        KXNBASTATAVG-27APG-CCUNNINGHAM2-9P5 | Cade Cunningham: 9.5+ APG | yes_sub=Cade Cunningham: 9.5+ APG | strike=9.5/greater_or_equal | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+        KXNBASTATAVG-27APG-TYOUNG3-9P2 | Trae Young: 9.2+ APG | yes_sub=Trae Young: 9.2+ APG | strike=9.2/greater_or_equal | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+  KXNBASTOCKPROT: 0 open events (HTTP 429)
+  KXWNBAEAST1: 0 open events (HTTP 429)
+  KXNFLDPOTY: 1 open events (HTTP 200)
+     event KXNFLDPOTY-27 | Defensive Player of the Year Winner? | 2026-27 season | markets=74
+        KXNFLDPOTY-27-DLLO | Will Devin Lloyd win the Defensive Player of the Year? | yes_sub=Devin Lloyd | strike=None/structured | yes bid/ask None/None last None | vol None | close 2028-02-08T15:00:00Z
+        KXNFLDPOTY-27-RGAR | Will Rashan Gary win the Defensive Player of the Year? | yes_sub=Rashan Gary | strike=None/structured | yes bid/ask None/None last None | vol None | close 2028-02-08T15:00:00Z
+        KXNFLDPOTY-27-MPAR | Will Micah Parsons win the Defensive Player of the Year? | yes_sub=Micah Parsons | strike=None/structured | yes bid/ask None/None last None | vol None | close 2028-02-08T15:00:00Z
+        KXNFLDPOTY-27-AHUT | Will Aidan Hutchinson win the Defensive Player of the Year? | yes_sub=Aidan Hutchinson | strike=None/structured | yes bid/ask None/None last None | vol None | close 2028-02-08T15:00:00Z
+  KXNFLSEASONRECTD: 0 open events (HTTP 429)
+  KXWNBACOMPETE: 0 open events (HTTP 429)
+  KXNFLPASSINT: 3 open events (HTTP 200)
+     event KXNFLPASSINT-26NOV15NEDET | New England vs Detroit: Passing Interceptions | NE vs DET (Nov 15) | markets=6
+        KXNFLPASSINT-26NOV15NEDET-NEDMAYE10-1 | Drake Maye: 1+ passing interceptions | yes_sub=Drake Maye: 1+ | strike=0.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFLPASSINT-26NOV15NEDET-NEDMAYE10-2 | Drake Maye: 2+ passing interceptions | yes_sub=Drake Maye: 2+ | strike=1.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFLPASSINT-26NOV15NEDET-NEDMAYE10-3 | Drake Maye: 3+ passing interceptions | yes_sub=Drake Maye: 3+ | strike=2.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+        KXNFLPASSINT-26NOV15NEDET-DETJGOFF16-1 | Jared Goff: 1+ passing interceptions | yes_sub=Jared Goff: 1+ | strike=0.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T14:30:00Z
+     event KXNFLPASSINT-26NOV15BUFNYJ | Buffalo vs New York J: Passing Interceptions | BUF vs NYJ (Nov 15) | markets=6
+        KXNFLPASSINT-26NOV15BUFNYJ-NYJGSMITH7-1 | Geno Smith: 1+ passing interceptions | yes_sub=Geno Smith: 1+ | strike=0.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+        KXNFLPASSINT-26NOV15BUFNYJ-NYJGSMITH7-2 | Geno Smith: 2+ passing interceptions | yes_sub=Geno Smith: 2+ | strike=1.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+        KXNFLPASSINT-26NOV15BUFNYJ-NYJGSMITH7-3 | Geno Smith: 3+ passing interceptions | yes_sub=Geno Smith: 3+ | strike=2.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+        KXNFLPASSINT-26NOV15BUFNYJ-BUFJALLEN17-1 | Josh Allen: 1+ passing interceptions | yes_sub=Josh Allen: 1+ | strike=0.5/greater | yes bid/ask None/None last None | vol None | close 2026-11-17T18:00:00Z
+  KXNBAH2H3PT: 0 open events (HTTP 429)
+  KXNFLSUPDRAFTPICK: 0 open events (HTTP 429)
+  KXNFLCAREERPASSTDS: 0 open events (HTTP 429)
+  KXNBAHIGHESTSCORING: 0 open events (HTTP 200)
+  KXNBASERIESREBLEADER: 0 open events (HTTP 429)
+  KXNBAEAST1SEED: 0 open events (HTTP 429)
+  KXNFLWEEKCOMPETE: 0 open events (HTTP 429)
+  KXNBACLUTCH: 1 open events (HTTP 200)
+     event KXNBACLUTCH-27 | Pro Basketball Clutch Player of the Year Winner | 2026-27 season | markets=54
+        KXNBACLUTCH-27-SGILGEOUSALEXANDER2 | Pro Basketball Clutch Player of the Year: Shai Gilgeous-Alexander | yes_sub=Shai Gilgeous-Alexander | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+        KXNBACLUTCH-27-AEDWARDS5 | Pro Basketball Clutch Player of the Year: Anthony Edwards | yes_sub=Anthony Edwards | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+        KXNBACLUTCH-27-JMURRAY27 | Pro Basketball Clutch Player of the Year: Jamal Murray | yes_sub=Jamal Murray | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+        KXNBACLUTCH-27-JBRUNSON11 | Pro Basketball Clutch Player of the Year: Jalen Brunson | yes_sub=Jalen Brunson | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-07-07T14:00:00Z
+  KXNFLSEASONRECYDS: 0 open events (HTTP 429)
+  KXNFLGAMETD: 0 open events (HTTP 429)
+  KXLEADERNFLAPYDS: 1 open events (HTTP 200)
+     event KXLEADERNFLAPYDS-27 | Pro Football All-Purpose Yards Leader | 2026-27 Regular Season | markets=35
+        KXLEADERNFLAPYDS-27-BROBINSON7 | Will Bijan Robinson lead Pro Football in all-purpose yards for the 2026-27 regular season? | yes_sub=Bijan Robinson | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-02-08T15:00:00Z
+        KXLEADERNFLAPYDS-27-JGIBBS0 | Will Jahmyr Gibbs lead Pro Football in all-purpose yards for the 2026-27 regular season? | yes_sub=Jahmyr Gibbs | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-02-08T15:00:00Z
+        KXLEADERNFLAPYDS-27-JTAYLOR28 | Will Jonathan Taylor lead Pro Football in all-purpose yards for the 2026-27 regular season? | yes_sub=Jonathan Taylor | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-02-08T15:00:00Z
+        KXLEADERNFLAPYDS-27-DACHANE28 | Will De'Von Achane lead Pro Football in all-purpose yards for the 2026-27 regular season? | yes_sub=De'Von Achane | strike=None/structured | yes bid/ask None/None last None | vol None | close 2027-02-08T15:00:00Z
+  KXNFLT100TOP: 0 open events (HTTP 429)
+
+market fields: can_close_early, close_time, created_time, custom_strike, early_close_condition, event_ticker, exchange_index, expected_expiration_time, expiration_time, expiration_value, last_price_dollars, latest_expiration_time, market_type, no_ask_dollars, no_bid_dollars, no_sub_title, notional_value_dollars, occurrence_datetime, open_interest_fp, open_time, previous_price_dollars, previous_yes_ask_dollars, previous_yes_bid_dollars, price_level_structure, price_ranges, primary_participant_key, result, rules_primary, rules_secondary, settlement_bounds_type, settlement_timer_seconds, status, strike_type, ticker, title, updated_time, volume_24h_fp, volume_fp, yes_ask_dollars, yes_ask_size_fp, yes_bid_dollars, yes_bid_size_fp, yes_sub_title
+
+GET /multivariate_event_collections -> 200; 3 collections; keys=['multivariate_contracts']
+  KXMVESPORTSMULTIGAMEEXTENDED-R | What will happen across all games? | series=KXMVESPORTSMULTIGAMEEXTENDED | events=3170
+  KXMVECROSSCATEGORY-SHARD1-R | Will multiple conditions be met? | series=KXMVECROSSCATEGORY-SHARD1 | events=3170
+  KXMVECROSSCATEGORY-R | Will multiple conditions be met? | series=KXMVECROSSCATEGORY | events=3170
