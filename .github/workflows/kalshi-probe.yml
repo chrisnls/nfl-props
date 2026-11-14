@@ -18,6 +18,7 @@ jobs:
           python pipeline/kalshi.py --probe nba > pipeline/kalshi_probe/match_nba.txt 2>&1 || true
           python pipeline/kalshi.py --probe nfl > pipeline/kalshi_probe/match_nfl.txt 2>&1 || true
           python pipeline/kalshi_links_probe.py || true
+          python pipeline/news_probe.py || true
       - name: Commit probe output
         run: |
           git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"
