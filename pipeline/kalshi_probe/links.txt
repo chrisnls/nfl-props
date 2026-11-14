@@ -1,0 +1,56 @@
+
+== KXNBAPTS series fields: {"additional_prohibitions": ["Current players, coaches, and staff of the league, association, or organization(s) governing the event. For college leagues/associations specifically, or where otherwise appropriate (as identified by the Exchange), this applies to current players/coaches/staff of the specific sport in <event> rather than the league/association as a whole (e.g., if the Division I Gonzaga Men\u2019s Basketball Team is playing in <event>, this prohibition will restrict trades by current players/coaches/staff on NCAA Basketball, rather than all current players/coaches/staff in any NCAA sport).", "Paid employees of the league and league participants", "Owners of teams and the league", "and household members and immediate family of all above", "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.", "Persons who hold any material, non-p
+event fields: {"category": "Sports", "collateral_return_type": "", "event_ticker": "KXNBAPTS-26NOV14DENNOP", "exchange_index": 3, "last_updated_ts": "2026-11-14T09:01:49.544505Z", "mutually_exclusive": false, "product_metadata": {"competition": "Pro Basketball (M)", "competition_scope": "Player Points"}, "series_ticker": "KXNBAPTS", "settlement_sources": [{"name": "ESPN", "url": "https://www.espn.com"}, {"name": "the Governing League", "url": "https://www.nba.com"}], "strike_period": "", "sub_title": "DEN vs NOP (Nov 14)", "title": "Denver vs New Orleans: Points"}
+market sample: KXNBAPTS-26NOV14DENNOP-NOPZWILLIAMSON1-15 | title: Zion Williamson: 15+ points
+429 https://kalshi.com/markets/kxnbapts
+     -> https://kalshi.com/markets/kxnbapts
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnbapts-26nov14dennop
+     -> https://kalshi.com/markets/kxnbapts-26nov14dennop
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnbapts/kxnbapts-26nov14dennop
+     -> https://kalshi.com/markets/kxnbapts/kxnbapts-26nov14dennop
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnbapts/nba-player-points/kxnbapts-26nov14dennop
+     -> https://kalshi.com/markets/kxnbapts/nba-player-points/kxnbapts-26nov14dennop
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnbapts/x/kxnbapts-26nov14dennop
+     -> https://kalshi.com/markets/kxnbapts/x/kxnbapts-26nov14dennop
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnbapts/nba-player-points/kxnbapts-26nov14dennop-nopzwilliamson1-15
+     -> https://kalshi.com/markets/kxnbapts/nba-player-points/kxnbapts-26nov14dennop-nopzwilliamson1-15
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/events/kxnbapts-26nov14dennop
+     -> https://kalshi.com/events/kxnbapts-26nov14dennop
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnbapts-26nov14dennop-nopzwilliamson1-15
+     -> https://kalshi.com/markets/kxnbapts-26nov14dennop-nopzwilliamson1-15
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+
+== KXNFLREC series fields: {"additional_prohibitions": ["Current players, coaches, and staff of the league, association, or organization(s) governing the event. For college leagues/associations specifically, or where otherwise appropriate (as identified by the Exchange), this applies to current players/coaches/staff of the specific sport in <event> rather than the league/association as a whole (e.g., if the Division I Gonzaga Men\u2019s Basketball Team is playing in <event>, this prohibition will restrict trades by current players/coaches/staff on NCAA Basketball, rather than all current players/coaches/staff in any NCAA sport).", "Paid employees of the league and league participants", "Owners of teams and the league", "and household members and immediate family of all above", "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.", "Persons who hold any material, non-p
+event fields: {"category": "Sports", "collateral_return_type": "", "event_ticker": "KXNFLREC-26NOV15NEDET", "exchange_index": 0, "last_updated_ts": "2026-11-13T23:07:46.368671Z", "mutually_exclusive": false, "product_metadata": {"competition": "Pro Football", "competition_scope": "Receptions"}, "series_ticker": "KXNFLREC", "settlement_sources": [{"name": "the Governing League", "url": "https://www.nfl.com/"}], "strike_period": "", "sub_title": "NE vs DET (Nov 15)", "title": "New England vs Detroit: Receptions"}
+market sample: KXNFLREC-26NOV15NEDET-DETJGIBBS0-2 | title: Jahmyr Gibbs: 2+ receptions
+429 https://kalshi.com/markets/kxnflrec
+     -> https://kalshi.com/markets/kxnflrec
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnflrec-26nov15nedet
+     -> https://kalshi.com/markets/kxnflrec-26nov15nedet
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnflrec/kxnflrec-26nov15nedet
+     -> https://kalshi.com/markets/kxnflrec/kxnflrec-26nov15nedet
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnflrec/pro-football-player-receptions/kxnflrec-26nov15nedet
+     -> https://kalshi.com/markets/kxnflrec/pro-football-player-receptions/kxnflrec-26nov15nedet
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnflrec/x/kxnflrec-26nov15nedet
+     -> https://kalshi.com/markets/kxnflrec/x/kxnflrec-26nov15nedet
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnflrec/pro-football-player-receptions/kxnflrec-26nov15nedet-detjgibbs0-2
+     -> https://kalshi.com/markets/kxnflrec/pro-football-player-receptions/kxnflrec-26nov15nedet-detjgibbs0-2
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/events/kxnflrec-26nov15nedet
+     -> https://kalshi.com/events/kxnflrec-26nov15nedet
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
+429 https://kalshi.com/markets/kxnflrec-26nov15nedet-detjgibbs0-2
+     -> https://kalshi.com/markets/kxnflrec-26nov15nedet-detjgibbs0-2
+     title=Vercel Security Checkpoint | og=None | has_event=False | has_market=False | 404text=False
