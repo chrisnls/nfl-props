@@ -64,11 +64,21 @@ MARKETS = {
     "player_assists": (["assists"], "Assists"),
     "player_threes": (["three_point_field_goals_made"], "Threes"),
     "player_points_rebounds_assists": (["points", "rebounds", "assists"], "PRA"),
+    "player_double_double": (["dd"], "Double-Double"),
+    "player_triple_double": (["td3"], "Triple-Double"),
 }
 # σ floor per market (absolute, fraction of mean)
 SD_FLOOR = {"player_points": (3.0, 0.25), "player_rebounds": (1.2, 0.3), "player_assists": (1.2, 0.3),
             "player_threes": (0.8, 0.4), "player_points_rebounds_assists": (4.0, 0.2)}
 # sample lines: skip players averaging below this (no book would post them)
+# Double-/triple-double: yes/no markets (Yes -> over 0.5). P comes from a game simulation: minutes ~ Normal
+# (projected, his spread), then each of points/rebounds/assists/steals/blocks ~ Poisson(rate x minutes x
+# gamma noise), so categories move together through minutes. DD = 10+ in two categories, TD = three.
+BINARY = {"player_double_double": 2, "player_triple_double": 3}     # market -> categories needed
+DD_CATS = ["points", "rebounds", "assists", "steals", "blocks"]
+DD_SIMS = 4000
+DD_GAMMA_SHAPE = 8.0      # game-to-game noise in per-minute rates beyond Poisson
+DD_MIN_MINUTES = 20       # sample lines (backtest) only for real rotation players
 SAMPLE_MIN = {"player_points": 8, "player_rebounds": 3, "player_assists": 2, "player_threes": 1, "player_points_rebounds_assists": 15}
 
 MIN_GAMES = 3
@@ -136,10 +146,12 @@ def load_frames() -> dict[str, pd.DataFrame]:
     box["played"] = (~box.did_not_play.astype(bool)) & (box.minutes.fillna(0) > 0)
     box["date"] = box.game_date.astype(str)
     box["grp"] = box.athlete_position_abbreviation.fillna("F").str[0].map(lambda x: x if x in "GFC" else "F")
-    for _, (cols, _l) in MARKETS.items():
-        for c in cols:
-            box[c] = box[c].fillna(0)
+    for c in DD_CATS + ["three_point_field_goals_made"]:
+        box[c] = box[c].fillna(0)
     box["pra"] = box.points + box.rebounds + box.assists
+    tens = sum((box[c] >= 10).astype(int) for c in DD_CATS)
+    box["dd"] = (tens >= 2).astype(int)
+    box["td3"] = (tens >= 3).astype(int)
     sched = sched[sched.season_type == 2].copy()
     sched["date"] = sched.game_date.astype(str)
     sched["start"] = pd.to_datetime(sched.start_date, utc=True)
@@ -262,8 +274,10 @@ def fetch_odds(games: list[dict], api_key: str, names: dict[str, str]) -> tuple[
                 for o in m["outcomes"]:
                     grouped.setdefault(o["description"], {})[o["name"].lower()] = (o.get("point"), o.get("price"))
                 for player, sides in grouped.items():
-                    over, under = sides.get("over"), sides.get("under")
+                    over, under = sides.get("over") or sides.get("yes"), sides.get("under") or sides.get("no")
                     point = (over or under or (None, None))[0]
+                    if point is None and m["key"] in BINARY:
+                        point = 0.5          # yes/no market == over/under 0.5
                     if point is None:
                         continue
                     lines.setdefault((norm_name(player), m["key"]), []).append({
@@ -283,6 +297,13 @@ def sample_lines(box: pd.DataFrame, date: str, teams: set[str]) -> dict:
         g = g.sort_values("date")
         name = g.athlete_display_name.iloc[-1]
         for m in MARKETS:
+            if m in BINARY:
+                # a realistic path to 10+ in a second category: 6+ rebounds or 5+ assists lately
+                if float(g.minutes.tail(5).mean()) >= DD_MIN_MINUTES and (
+                        float(g.rebounds.tail(5).mean()) >= 6 or float(g.assists.tail(5).mean()) >= 5):
+                    lines[(norm_name(name), m)] = [{"book": "sample", "line": 0.5, "over": 150 if m == "player_double_double" else 900,
+                                                    "under": -190 if m == "player_double_double" else -2000, "name": name}]
+                continue
             avg = float(stat_of(g, m).tail(5).mean())
             if avg < SAMPLE_MIN[m]:
                 continue
@@ -366,6 +387,22 @@ def defense_profile(team, grp, m, pg_cache, played, scores, memo):
                  "vol_avg": r1(mine.mins.mean()), "lg_vol_avg": r1(g.groupby("opponent_team_abbreviation").mins.mean().mean()),
                  "games": games_out}
     return key
+
+
+def sim_multi_double(glog, proj_min, factors_by_cat, need, seed):
+    """P(10+ in at least `need` of DD_CATS) by simulation; minutes shared across categories."""
+    import numpy as np
+    rng = np.random.default_rng(seed)
+    mins = glog.minutes.astype(float).to_numpy()
+    sd_min = max(3.0, float(np.std(mins))) if len(mins) > 2 else 6.0
+    M = np.clip(rng.normal(proj_min, sd_min, DD_SIMS), 0, 48)
+    tens = np.zeros(DD_SIMS, dtype=int)
+    for c in DD_CATS:
+        vals = glog[c].astype(float).to_numpy()
+        rate = wavg([v / m for v, m in zip(vals, mins) if m > 0]) * factors_by_cat.get(c, 1.0)
+        lam = rate * M * rng.gamma(DD_GAMMA_SHAPE, 1 / DD_GAMMA_SHAPE, DD_SIMS)
+        tens += (rng.poisson(lam) >= 10)
+    return float((tens >= need).mean())
 
 
 def role_change(values, line, mins, edge_sd):
@@ -545,24 +582,48 @@ def build_props(box, sched, date, lines, corrections=None, injuries=None, outs_o
         if boost:
             proj_min = proj_min + boost["min"]
         mean = statistics.fmean(values)
-        a, f = SD_FLOOR[market]
-        sd = (statistics.pstdev(values) if len(values) > 2 else mean * 0.4)
-        sd = max(sd, a, f * mean) * 1.15
-        proj_raw, sd_raw = proj, sd
-        corr = (corrections or {}).get(market)
-        if corr:
-            proj, sd = proj * corr["proj_mult"], sd * corr["sd_mult"]
-        p_over = 1 - norm_cdf(((line + (0.5 if float(line).is_integer() else 0)) - proj) / sd)   # see build.py
+        if market in BINARY:
+            half = lambda m: 1 + 0.5 * (max(0.8, min(1.2, factors.get((opp, grp, m), 1.0))) - 1)
+            fcat = {"points": half("player_points"), "rebounds": half("player_rebounds"), "assists": half("player_assists")}
+            seed = (int(pid) if str(pid).isdigit() else abs(hash(pid))) % (2 ** 32)
+            p_over = sim_multi_double(glog, proj_min, fcat, BINARY[market], seed)
+            proj = sd = None
+            proj_raw, sd_raw = p_over, None
+        else:
+            a, f = SD_FLOOR[market]
+            sd = (statistics.pstdev(values) if len(values) > 2 else mean * 0.4)
+            sd = max(sd, a, f * mean) * 1.15
+            proj_raw, sd_raw = proj, sd
+            corr = (corrections or {}).get(market)
+            if corr:
+                proj, sd = proj * corr["proj_mult"], sd * corr["sd_mult"]
+            p_over = 1 - norm_cdf(((line + (0.5 if float(line).is_integer() else 0)) - proj) / sd)   # see build.py
         imp_o = american_to_prob(cons["over"]) if cons["over"] is not None else None
         imp_u = american_to_prob(cons["under"]) if cons["under"] is not None else None
         fair_over = imp_o / (imp_o + imp_u) if imp_o and imp_u else imp_o
+        if market in BINARY and imp_u is None:   # yes-only market: book view = median Yes price (see build.py)
+            yes = [american_to_prob(b["over"]) for b in book_lines if b.get("over") is not None]
+            fair_over = statistics.median(yes) if yes else fair_over
         dec = lambda p: (p / 100 if p > 0 else 100 / -p)
         ev_over = p_over * dec(cons["over"]) - (1 - p_over) if cons["over"] is not None else None
         ev_under = (1 - p_over) * dec(cons["under"]) - p_over if cons["under"] is not None else None
-        role = role_change(values, line, mins, (proj - line) / sd)
+        if market in BINARY:
+            edge_sd = (p_over - fair_over) / 0.10 if fair_over is not None else 0.0
+            no_bet_side = edge_sd < 0 and cons["under"] is None
+            if no_bet_side:
+                edge_sd = 0.0
+            role = role_change(values, line, mins, edge_sd)
+            if role and role["why"] == "line":
+                role = None
+        else:
+            edge_sd, no_bet_side = (proj - line) / sd, False
+            role = role_change(values, line, mins, edge_sd)
         if thin:
             role = {"why": "thin", "games": len(values), "dir": "up" if line > mean else "down", "z": None,
                     "lo": min(values), "hi": max(values)}
+        elif market == "player_triple_double" and not role:
+            # backtest (1,329 player-games, ~7 triple-doubles) showed no skill over the base rate: show, don't rate
+            role = {"why": "uncal", "dir": "down", "z": None, "lo": None, "hi": None}
         hits = [v > line for v in values]
         rate_pct = lambda n: round(100 * sum(hits[-n:]) / len(hits[-n:])) if hits[-n:] else None
         ctx = []
@@ -579,8 +640,10 @@ def build_props(box, sched, date, lines, corrections=None, injuries=None, outs_o
             "opp": opp, "home": is_home, "game": game_id, "market": market, "label": MARKETS[market][1],
             "line": line, "over": cons["over"], "over_book": cons["over_book"], "under": cons["under"],
             "under_book": cons["under_book"], "books": cons["books"], "line_spread": cons["spread"],
-            "proj": r1(proj), "sd": r1(sd), "edge": r1(proj - line), "edge_sd": round((proj - line) / sd, 2),
-            "proj_raw": r1(proj_raw), "sd_raw": r1(sd_raw), "proj_min": r1(proj_min),
+            "proj": round(p_over, 3) if market in BINARY else r1(proj), "sd": r1(sd),
+            "edge": (round(p_over - fair_over, 3) if fair_over is not None else 0.0) if market in BINARY else r1(proj - line),
+            "edge_sd": round(edge_sd, 2), "no_bet_side": no_bet_side or None,
+            "proj_raw": round(proj_raw, 3) if market in BINARY else r1(proj_raw), "sd_raw": r1(sd_raw), "proj_min": r1(proj_min),
             "p_over": round(p_over, 3), "fair_over": round(fair_over, 3) if fair_over else None,
             "ev_over": round(ev_over, 3) if ev_over is not None else None,
             "ev_under": round(ev_under, 3) if ev_under is not None else None,
@@ -729,12 +792,13 @@ def grade_snapshots(out: Outcomes):
 
 
 def corrections(graded, backtest):
-    saved = nfl_grade.MARKETS
+    saved, saved_bin = nfl_grade.MARKETS, build.BINARY_MARKETS
     nfl_grade.MARKETS = MARKETS          # reuse the same correction math over NBA markets
+    build.BINARY_MARKETS = set(saved_bin) | set(BINARY)   # yes/no markets: no count-style correction
     try:
         return nfl_grade.corrections(graded, backtest)
     finally:
-        nfl_grade.MARKETS = saved
+        nfl_grade.MARKETS, build.BINARY_MARKETS = saved, saved_bin
 
 
 def grade_parlays(out: Outcomes):

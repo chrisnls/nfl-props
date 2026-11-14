@@ -306,7 +306,7 @@ const esd = p => p.edge_sd ?? p.edge / p.sd;
 // normal game-to-game swing (σ). ~1 swing = strong; under a third of a swing = noise.
 const strength = p => { const a = Math.abs(esd(p)); return a >= 1 ? 'Strong' : a >= 0.6 ? 'Solid' : a >= 0.3 ? 'Lean' : 'Thin'; };
 // full rating, e.g. "Solid under" ("Thin" has no side); thin-history props aren't rated
-const rating = p => isThin(p) || (p.role_change && p.role_change.why === 'lowuse') ? 'Not rated' : p.no_bet_side ? 'Thin' : strength(p) === 'Thin' ? 'Thin' : `${strength(p)} ${p.edge >= 0 ? 'over' : 'under'}`;   // TD yes/no map onto over/under for sorting
+const rating = p => isThin(p) || (p.role_change && ['lowuse', 'uncal'].includes(p.role_change.why)) ? 'Not rated' : p.no_bet_side ? 'Thin' : strength(p) === 'Thin' ? 'Thin' : `${strength(p)} ${p.edge >= 0 ? 'over' : 'under'}`;   // TD yes/no map onto over/under for sorting
 // rank for the strength sorts: Strong over 0 … Lean over 2, Thin 3, Lean under 4 … Strong under 6, not rated last
 const RANK = {'Strong over':0, 'Solid over':1, 'Lean over':2, 'Thin':3, 'Lean under':4, 'Solid under':5, 'Strong under':6, 'Not rated':7};
 const strMatch = (p, f) => { if (!f) return true; const r = rating(p);
@@ -314,15 +314,21 @@ const strMatch = (p, f) => { if (!f) return true; const r = rating(p);
   if (f.startsWith('SS ')) return /^(Strong|Solid) /.test(r) && r.endsWith(f.slice(3));
   return r === f; };
 const isTD = p => p.market === 'player_anytime_td';
-const SIDE = (p, side) => isTD(p) ? (side === 'Over' ? 'Yes' : 'No') : side;     // yes/no market wording
+// yes/no markets: anytime TD (NFL), double-double / triple-double (NBA)
+const BIN = {player_anytime_td: 'to score', player_double_double: 'for a double-double', player_triple_double: 'for a triple-double'};
+const isBinM = m => m in BIN;
+const isBin = p => isBinM(p.market);
+const SIDE = (p, side) => isBin(p) ? (side === 'Over' ? 'Yes' : 'No') : side;     // yes/no market wording
 const ptsTxt = x => (x > 0 ? '+' : '') + Math.round(x * 100) + ' pts';
-const gapText = p => isTD(p) ? `${pct(p.p_over)} to score` : p.edge === 0 ? 'right on the line' : `${Math.abs(p.edge)} ${p.edge > 0 ? 'over' : 'under'} the line`;
-const strTip = p => isTD(p) ? `Model gives him ${pct(p.p_over)} to score (expected TDs ${p.proj}); the book's price implies ${pct(p.fair_over)}${p.under == null ? ' (incl. vig — no "No" price posted)' : ''}. Gap ${ptsTxt(p.edge)}. Strong ≥ 10 pts, Solid ≥ 6, Lean ≥ 3.` : `Projection is ${gapText(p)}. That gap is ${Math.abs(esd(p)).toFixed(1)}× this player's normal game-to-game swing (σ ${p.sd}). Strong ≥ 1×, Solid ≥ 0.6×, Lean ≥ 0.3×, Thin below that.`;
+const gapText = p => isTD(p) ? `${pct(p.p_over)} ${BIN[p.market]}` : isBin(p) ? `vs book ${pct(p.fair_over)}` : p.edge === 0 ? 'right on the line' : `${Math.abs(p.edge)} ${p.edge > 0 ? 'over' : 'under'} the line`;
+const strTip = p => isBin(p) ? `Model gives him ${pct(p.p_over)} ${BIN[p.market]}${isTD(p) ? ` (expected TDs ${p.proj})` : ` (simulated from ${p.proj_min} projected minutes)`}; the book's price implies ${pct(p.fair_over)}${p.under == null ? ' (incl. vig — no "No" price posted)' : ''}. Gap ${ptsTxt(p.edge)}. Strong ≥ 10 pts, Solid ≥ 6, Lean ≥ 3.` : `Projection is ${gapText(p)}. That gap is ${Math.abs(esd(p)).toFixed(1)}× this player's normal game-to-game swing (σ ${p.sd}). Strong ≥ 1×, Solid ≥ 0.6×, Lean ≥ 0.3×, Thin below that.`;
 const isThin = p => p.role_change && p.role_change.why === 'thin';
 const INJ_ABBR = {'out':'OUT', 'doubtful':'DBT', 'questionable':'Q', 'day-to-day':'GTD', 'probable':'P', 'suspension':'SUSP'};
 const injAbbr = st => INJ_ABBR[String(st).toLowerCase()] || String(st)[0];
 const injCls = st => /questionable|day-to-day|probable/i.test(st) ? 'q' : 'inj';
-const roleWhy = r => r.why === 'absent'
+const roleWhy = r => r.why === 'uncal'
+  ? `Triple-doubles are too rare to calibrate yet (about 7 in 1,329 player-games this season), and the model showed no skill over the base rate, so this is shown but not rated`
+  : r.why === 'absent'
   ? `Hasn't played since week ${r.last_week} — his team played week${r.missed.length > 1 ? 's' : ''} ${r.missed.join(' and ')} without him (injury, inactive or out of the rotation). His game log is stale, so the projection is too`
   : r.why === 'lowuse'
   ? `Only ${r.touches} touches a game lately — below the usage range the TD model was tested on, so it isn't rated`
@@ -338,6 +344,7 @@ const roleWhy = r => r.why === 'absent'
 const roleTag = p => !p.role_change ? '' : p.role_change.why === 'injury' ? ''
   : p.role_change.why === 'absent' ? `<span class="tag role" title="${roleWhy(p.role_change)}">Hasn't played since wk ${p.role_change.last_week}</span>`
   : p.role_change.why === 'lowuse' ? `<span class="tag role" title="${roleWhy(p.role_change)}">Low usage · not rated</span>`
+  : p.role_change.why === 'uncal' ? `<span class="tag role" title="${roleWhy(p.role_change)}">Not rated yet</span>`
   : isThin(p)
   ? `<span class="tag role" title="${roleWhy(p.role_change)}">Thin history · ${p.role_change.games} g</span>`
   : `<span class="tag role" title="${roleWhy(p.role_change)}">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>`;
@@ -379,8 +386,8 @@ function render(){
         <span class="str thin">Not rated</span></div>
       <div><span class="k">Over ${fmtOdds(p.over)} · Under ${fmtOdds(p.under)}</span>
         <span class="num" style="color:var(--ink3);font-size:12px">book ${pct(p.fair_over)} over</span></div>`
-      : `<div class="num" title="${strTip(p)}"><span class="k">${isTD(p) ? 'xTD' : 'Proj'}</span>${p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
-        <span class="str ${strength(p) === 'Thin' || p.no_bet_side ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}" ${p.no_bet_side ? `title="The model leans No (book ${pct(p.fair_over)} vs model ${pct(p.p_over)}), but no book posts a No price"` : ''}>${p.no_bet_side ? 'No bet · leans no' : `${strength(p)} ${strength(p) === 'Thin' ? 'edge' : isTD(p) ? (p.edge >= 0 ? 'yes' : 'no') : p.edge >= 0 ? 'over' : 'under'}`}</span></div>
+      : `<div class="num" title="${strTip(p)}"><span class="k">${isTD(p) ? 'xTD' : isBin(p) ? 'Model' : 'Proj'}</span>${isBin(p) && !isTD(p) ? pct(p.p_over) : p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
+        <span class="str ${strength(p) === 'Thin' || p.no_bet_side ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}" ${p.no_bet_side ? `title="The model leans No (book ${pct(p.fair_over)} vs model ${pct(p.p_over)}), but no book posts a No price"` : ''}>${p.no_bet_side ? 'No bet · leans no' : `${strength(p)} ${strength(p) === 'Thin' ? 'edge' : isBin(p) ? (p.edge >= 0 ? 'yes' : 'no') : p.edge >= 0 ? 'over' : 'under'}`}</span></div>
       <div><span class="k">${SIDE(p, bs.side)} ${fmtOdds(bs.price)} ${bs.book ? BOOK[bs.book] || bs.book : ''}</span>
         <span class="num side ${bs.ev > 0 ? 'pos' : ''}">${pct(bs.p)}</span> <span class="num" style="color:var(--ink3);font-size:12px">vs ${pct(bs.side === 'Over' ? p.fair_over : 1 - p.fair_over)}</span></div>`}
       <div class="hits">${[['L5', p.hit_l5], ['L10', p.hit_l10], ['Szn', p.hit_season]].map(([l, v]) => `<span><b><i style="width:${v ?? 0}%"></i></b>${v == null ? '—' : v + '%'}</span>`).join('')}</div>
@@ -545,23 +552,24 @@ function openDetail(p){
     ${p.role_change && p.role_change.why === 'usage' ? `<div class="note"><b>Possible role change.</b> His ${p.role_change.metric === 'minutes' ? 'minutes' : 'snap share'} went from ${p.role_change.snap_prior}${p.role_change.metric === 'minutes' ? '' : '%'} to ${p.role_change.snap_recent}${p.role_change.metric === 'minutes' ? ' a game' : '%'} over the last 2 games, but the model still projects off his whole season, so it leans ${p.edge > 0 ? 'over' : 'under'} while his playing time points the other way. Demoted to the bottom of the board — see the breakdown below.</div>` : ''}
     ${isThin(p) ? `<div class="note"><b>Thin history — not rated.</b> ${p.player} has only ${p.role_change.games} game${p.role_change.games === 1 ? '' : 's'} this season (${p.games.map(g => `wk ${g.wk}: ${g.val}`).join(', ')}). That's too few to project honestly — the numbers below are just his average and its spread, not a real forecast. Often this is a backup stepping in for an injured starter, so the book's line reflects a role his games don't show.</div>` : ''}
     ${p.tm_out ? `<div class="note"><b>Teammate out: ${p.tm_out.join(', ')}.</b> Ruled out tonight after playing the last game. Books usually nudge teammates' lines up for this. The model doesn't: in a backtest of 15 nights, teammates of a missing player were already projected without bias, and boosting them made projections worse. These props are graded separately (Results → Teammate out) to see whether the lines overreact.</div>` : ''}
-    ${p.role_change && ['absent', 'lowuse'].includes(p.role_change.why) ? `<div class="note"><b>${p.role_change.why === 'absent' ? 'Stale game log.' : 'Not rated.'}</b> ${roleWhy(p.role_change)}. Demoted to the bottom of the board.</div>` : ''}
+    ${p.role_change && ['absent', 'lowuse', 'uncal'].includes(p.role_change.why) ? `<div class="note"><b>${p.role_change.why === 'absent' ? 'Stale game log.' : 'Not rated.'}</b> ${roleWhy(p.role_change)}. Demoted to the bottom of the board.</div>` : ''}
     ${p.role_change && p.role_change.why === 'injury' ? `<div class="note"><b>On the injury report: ${p.role_change.status}.</b> ${p.injury && p.injury.note ? p.injury.note + ' ' : ''}${p.injury && p.injury.return ? `Estimated return ${p.injury.return}. ` : ''}Books usually pull these lines; if this one is still up, the model can't price a player who may not play. Demoted to the bottom of the board.</div>` : ''}
     ${p.role_change && p.role_change.why === 'minutes' ? `<div class="note"><b>Playing time doesn't match.</b> ${roleWhy(p.role_change)}. The model projects off recent minutes, so its edge here is probably stale. Check the news. Demoted to the bottom of the board, along with his other props.</div>` : ''}
-    ${p.role_change && !['usage', 'thin', 'minutes', 'injury', 'absent', 'lowuse'].includes(p.role_change.why) ? `<div class="note"><b>Possible role change.</b> The line (${p.line}) is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average of ${p.avg_season} (range ${p.role_change.lo}–${p.role_change.hi}). Books usually move this far only on news — a starter out, a depth-chart change — that the game log doesn't reflect yet, so the edge here is likely the model being stale. Demoted to the bottom of the board.</div>` : ''}
+    ${p.role_change && !['usage', 'thin', 'minutes', 'injury', 'absent', 'lowuse', 'uncal'].includes(p.role_change.why) ? `<div class="note"><b>Possible role change.</b> The line (${p.line}) is ${Math.abs(p.role_change.z)}σ ${p.role_change.dir === 'up' ? 'above' : 'below'} the player's season average of ${p.avg_season} (range ${p.role_change.lo}–${p.role_change.hi}). Books usually move this far only on news — a starter out, a depth-chart change — that the game log doesn't reflect yet, so the edge here is likely the model being stale. Demoted to the bottom of the board.</div>` : ''}
     <div class="grid">
       <div class="tile"><span class="k">Line</span><div class="v">${p.line}</div><div class="meta">${p.books.length > 1 ? p.books.length + ' books' : (BOOK[p.books[0]] || '')}${p.line_spread ? ' · ±' + p.line_spread : ''}</div></div>
       ${isThin(p) ? `<div class="tile"><span class="k">Average</span><div class="v">${p.avg_season}</div><div class="meta">${p.games.length} game${p.games.length === 1 ? '' : 's'} · no projection</div></div>`
+        : isBin(p) && !isTD(p) ? `<div class="tile"><span class="k">Projected minutes</span><div class="v">${p.proj_min}</div><div class="meta">simulated 4,000 games</div></div>`
         : isTD(p) ? `<div class="tile"><span class="k">Expected TDs</span><div class="v">${p.proj}</div><div class="meta">usage + his TD rate, game total</div></div>`
         : `<div class="tile"><span class="k">Projection</span><div class="v">${p.proj}</div><div class="meta">σ ${p.sd}</div></div>`}
-      ${isThin(p) ? '' : `<div class="tile"><span class="k">Edge</span><div class="v ${p.edge >= 0 ? 'pos' : 'neg'}">${isTD(p) ? ptsTxt(p.edge) : (p.edge > 0 ? '+' : '') + p.edge}</div><div class="meta" title="${strTip(p)}">${isThin(p) ? 'not rated · too few games' : isTD(p) ? `${strength(p)} · model vs book` : `${strength(p)} · ${Math.abs(esd(p)).toFixed(1)}× normal swing`}</div></div>`}
-      <div class="tile"><span class="k">${isTD(p) ? 'P(scores)' : 'P(over)'}</span><div class="v">${isThin(p) ? '—' : pct(p.p_over)}</div><div class="meta">book ${pct(p.fair_over)}</div></div>
+      ${isThin(p) ? '' : `<div class="tile"><span class="k">Edge</span><div class="v ${p.edge >= 0 ? 'pos' : 'neg'}">${isBin(p) ? ptsTxt(p.edge) : (p.edge > 0 ? '+' : '') + p.edge}</div><div class="meta" title="${strTip(p)}">${isThin(p) ? 'not rated · too few games' : isBin(p) ? `${strength(p)} · model vs book` : `${strength(p)} · ${Math.abs(esd(p)).toFixed(1)}× normal swing`}</div></div>`}
+      <div class="tile"><span class="k">${isTD(p) ? 'P(scores)' : isBin(p) ? 'P(' + p.label.toLowerCase() + ')' : 'P(over)'}</span><div class="v">${isThin(p) ? '—' : pct(p.p_over)}</div><div class="meta">book ${pct(p.fair_over)}</div></div>
       <div class="tile"><span class="k">${SIDE(p, 'Over')}</span><div class="v">${fmtOdds(p.over)}</div><div class="meta">${BOOK[p.over_book] || ''} · EV ${p.ev_over == null || isThin(p) ? '—' : (p.ev_over * 100).toFixed(1) + '%'}</div></div>
       <div class="tile"><span class="k">${SIDE(p, 'Under')}</span><div class="v">${fmtOdds(p.under)}</div><div class="meta">${BOOK[p.under_book] || ''} · EV ${p.ev_under == null || isThin(p) ? '—' : (p.ev_under * 100).toFixed(1) + '%'}</div></div>
     </div>
-    <div class="btns"><button class="btn ${bs.side === 'Over' && !isThin(p) ? 'gold' : ''}" id="addO">${isTD(p) ? 'Add Yes (scores)' : 'Add Over ' + p.line}</button><button class="btn ${bs.side === 'Under' && !isThin(p) ? 'gold' : ''}" id="addU" ${isTD(p) && p.under == null ? 'disabled title="No \'No\' price posted"' : ''}>${isTD(p) ? 'Add No' : 'Add Under ' + p.line}</button></div>
+    <div class="btns"><button class="btn ${bs.side === 'Over' && !isThin(p) ? 'gold' : ''}" id="addO">${isTD(p) ? 'Add Yes (scores)' : isBin(p) ? 'Add Yes' : 'Add Over ' + p.line}</button><button class="btn ${bs.side === 'Under' && !isThin(p) ? 'gold' : ''}" id="addU" ${isBin(p) && p.under == null ? 'disabled title="No \'No\' price posted"' : ''}>${isBin(p) ? 'Add No' : 'Add Under ' + p.line}</button></div>
 
-    <div class="sec">${isTD(p) ? 'TDs by game · gold = scored' : 'Game log vs line · gold = over'}</div>
+    <div class="sec">${isTD(p) ? 'TDs by game · gold = scored' : isBin(p) ? p.label + 's by game · gold = got one' : 'Game log vs line · gold = over'}</div>
     <svg class="chart" viewBox="0 0 ${W} ${H}" id="chart">
       <line x1="${padL}" x2="${W}" y1="${y(p.line)}" y2="${y(p.line)}" stroke="var(--ink2)" stroke-dasharray="4 4"/>
       <text x="0" y="${y(p.line) + 4}" font-size="11" fill="var(--ink2)">${p.line}</text>
@@ -573,7 +581,7 @@ function openDetail(p){
       <div class="tile"><span class="k">L10 avg</span><div class="v">${p.avg_l10}</div></div>
       <div class="tile"><span class="k">Season</span><div class="v">${p.avg_season}</div><div class="meta">median ${p.median}</div></div>
       ${isTD(p) ? `<div class="tile"><span class="k">${p.team} implied pts</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league avg points (spread + total), half-weighted</div></div>` : ''}
-      <div class="tile" ${isTD(p) ? 'hidden' : ''}><span class="k">${p.opp} D vs ${p.pos}</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league ${p.def_basis === 'mean' ? 'avg' : p.def_basis === 'per-minute' ? 'per-minute rate' : 'typical game'} allowed${p.def_factor > 1.2 || p.def_factor < 0.8 ? ' · model caps at ±20%' : ''}</div></div>
+      <div class="tile" ${isBin(p) ? 'hidden' : ''}><span class="k">${p.opp} D vs ${p.pos}</span><div class="v ${p.def_factor > 1.05 ? 'pos' : p.def_factor < 0.95 ? 'neg' : ''}">${Math.round(p.def_factor * 100)}%</div><div class="meta">of league ${p.def_basis === 'mean' ? 'avg' : p.def_basis === 'per-minute' ? 'per-minute rate' : 'typical game'} allowed${p.def_factor > 1.2 || p.def_factor < 0.8 ? ' · model caps at ±20%' : ''}</div></div>
       ${p.snaps ? `<div class="tile"><span class="k">Snap % L5</span><div class="v" style="font-size:15px">${p.snaps.join(' · ')}</div></div>` : ''}
     </div>
     <table class="log"><tr><th>${NBA ? 'Date' : 'Wk'}</th><th>Opp</th><th>${p.label}</th>${p.vol_label && !/^(Rush|Pass) Att$/.test(p.label) ? `<th>${p.vol_label}</th>` : ''}${NBA ? '' : '<th>Snap%</th>'}<th>Score</th><th>vs line</th></tr>
@@ -612,7 +620,7 @@ const shareOf = g => NBA ? g.vol : g.snap;
 const shareTxt = x => x == null ? '—' : NBA ? `${Math.round(x)} min` : `${Math.round(x)}% of snaps`;
 const median = xs => { const a = xs.filter(x => x != null).sort((x, y) => x - y); return a.length ? a[Math.floor((a.length - 1) / 2)] : null; };
 const avgOf2 = xs => { const a = xs.filter(x => x != null); return a.length ? a.reduce((s, x) => s + x, 0) / a.length : null; };
-const VOLUME_MKTS = /pass_yds|pass_attempts|rush|reception|points|rebounds|assists|threes|anytime/;
+const VOLUME_MKTS = /pass_yds|pass_attempts|rush|reception|points|rebounds|assists|threes|anytime|double/;
 const legHits = (l, g) => l.side === 'Over' ? g.val > l.line : g.val < l.line;
 function propFor(l){ return props.find(p => p.id === l.id); }
 // one prop per player, to find a player's position-mates on tonight's board
@@ -672,7 +680,7 @@ function renderSlip(){
   const conflicts = parlayConflicts(slip), flagged = new Set(conflicts.flatMap(c => c.ids));
   if (conflicts.length) $('#slipCount').textContent += ` · ⚠ ${conflicts.length} warning${conflicts.length === 1 ? '' : 's'}`;
   $('#conflicts').innerHTML = conflicts.map(c => `<div class="conflict ${c.sev === 'warn' ? 'warn' : ''}">${c.html}</div>`).join('');
-  $('#legs').innerHTML = slip.map((l, i) => `<div class="leg"><span>${flagged.has(l.id) ? '<span class="flag" title="See the warning below">⚠</span>' : ''}<b>${l.player}</b> ${l.market === 'player_anytime_td' ? `${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}` : `${l.side} ${l.line} ${l.label}`} <span style="color:var(--ink3)">${fmtOdds(l.price)}</span></span>
+  $('#legs').innerHTML = slip.map((l, i) => `<div class="leg"><span>${flagged.has(l.id) ? '<span class="flag" title="See the warning below">⚠</span>' : ''}<b>${l.player}</b> ${isBinM(l.market) ? `${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}` : `${l.side} ${l.line} ${l.label}`} <span style="color:var(--ink3)">${fmtOdds(l.price)}</span></span>
     <span><span class="num">${pct(l.prob)}</span> <button class="x" data-i="${i}" aria-label="remove">×</button></span></div>`).join('');
   $('#legs').querySelectorAll('.x').forEach(b => b.onclick = e => { e.stopPropagation(); slip.splice(+b.dataset.i, 1); saveSlip(); });
   $('#legs').querySelectorAll('.leg').forEach((row, i) => { const p = props.find(q => q.id === slip[i].id);
@@ -856,7 +864,7 @@ function renderParlays(P){
         <span class="num">${p.book_odds != null ? fmtOdds(Math.round(p.book_odds)) : '—'} · model ${pct(p.model_prob)} · <b class="${signCls(p.units)}">${p.units != null ? unitsTxt(p.units) : '—'}</b></span></div>
       ${p.legs.map(l => { const [ic, cls, word] = LEG_ICON[l.status] || LEG_ICON.unknown;
         return `<div class="pleg"><span class="badge ${cls}" title="${word}">${ic}</span>
-          <span class="pl">${l.player} <b>${l.market === 'player_anytime_td' ? (l.side.toLowerCase() === 'over' ? 'Yes' : 'No') : l.side + ' ' + l.line}</b> ${(DATA && DATA.markets[l.market]) || l.market}</span>
+          <span class="pl">${l.player} <b>${isBinM(l.market) ? (l.side.toLowerCase() === 'over' ? 'Yes' : 'No') : l.side + ' ' + l.line}</b> ${(DATA && DATA.markets[l.market]) || l.market}</span>
           <span class="num muted">${l.actual != null ? 'actual ' + l.actual : word}${l.price != null ? ' · ' + fmtOdds(l.price) : ''}</span></div>`; }).join('')}
     </div>`).join('')}
     <p class="muted small">Pushes and DNPs drop out of a parlay and it's repaid at the remaining legs' saved prices. Updated ${P.updated ? new Date(P.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}.</p>`;
@@ -1006,7 +1014,7 @@ function renderBuilt(results){
         <b>${r.legs.length}-leg</b>${r.sameGame ? ' · <span class="muted">same-game legs</span>' : ''}${inRange ? '' : ` · <span class="muted" title="Couldn't hit the target odds with the legs available">outside target odds</span>`}</span>
         <span class="num" title="est. = blended probability, legs treated as independent">${fmtOdds(r.american)} · est. ${pct(r.prob)} · EV <b class="${r.ev > 0 ? 'pos' : 'neg'}">${(r.ev * 100).toFixed(0)}%</b> · $10 pays $${(10 * r.dec).toFixed(2)}</span></div>
       ${r.legs.map(x => `<div class="pleg click" role="button" tabindex="0" data-prop="${x.p.id}" title="Open ${x.p.player}'s details"><span class="badge ${x.ev >= 0.08 ? 'won' : 'push'}" title="${rating(x.p)} · EV ${(x.ev * 100).toFixed(1)}%">${strength(x.p)}</span>
-        <span class="pl">${x.p.player} <b>${isTD(x.p) ? `Anytime TD — ${SIDE(x.p, x.side)}` : `${x.side} ${x.p.line} ${x.p.label}`}</b> <span class="muted">${x.p.team} ${x.p.home ? 'vs' : '@'} ${x.p.opp}</span></span>
+        <span class="pl">${x.p.player} <b>${isBin(x.p) ? `${x.p.label} — ${SIDE(x.p, x.side)}` : `${x.side} ${x.p.line} ${x.p.label}`}</b> <span class="muted">${x.p.team} ${x.p.home ? 'vs' : '@'} ${x.p.opp}</span></span>
         <span class="num muted" title="model ${pct(x.model)} · book ${pct(x.book)} · blended ${pct(x.prob)}">${fmtOdds(x.price)} ${BOOK[x.side === 'Over' ? x.p.over_book : x.p.under_book] || ''} · est. ${pct(x.prob)} · EV ${(x.ev * 100).toFixed(0)}%</span></div>`).join('')}
       <div class="btns" style="margin-top:8px"><button class="btn" data-use="${i}">Use this slip</button></div>
     </div>`;

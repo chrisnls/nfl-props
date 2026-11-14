@@ -111,6 +111,12 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 - Builder tab: `STYLES`, `legPool()`, `buildOne()`, `generateParlays()` in index.html. Weighted random sampling per style, one leg per player, per-game cap, conflict checker veto, 400 attempts to land in the style's odds window (closest kept otherwise), no duplicate parlays per run. Settings saved per sport.
 - **Blended probabilities**: `fit_blend()` in grade.py (used by nba.py too) fits w in P = book + w·(model − book) on graded props with both sides priced. NFL week 9 (416 props): Brier model .2599, market .2464, blend (w = .15) .2459. The model adds a little to the market and is badly overconfident alone; the builder uses the blend, so parlay EVs land around +3–8% instead of +70–330%.
 
+### NBA double-double / triple-double (11/14)
+
+- `player_double_double`, `player_triple_double` in nba.py `MARKETS`/`BINARY`; derived `dd`/`td3` box columns (10+ in 2/3 of pts/reb/ast/stl/blk). `sim_multi_double()`: minutes ~ N(proj, max(3, sd)), each category Poisson(rate × min × Gamma(8, 1/8)), 4,000 sims, seeded per player. Matchup half-weight on pts/reb/ast. Sample/backtest lines only for 20+ min players with 6+ reb or 5+ ast (L5).
+- Backtest: DD n=625, Brier .1318 vs base .1561, a bit high in 10–25% (16.7% → 10.7%); a Platt recalibration didn't hold up out of sample in both directions → raw. TD3: no skill → role `uncal` (shown, not rated, excluded from the builder). Corrections skip these markets.
+- UI: generic yes/no handling (`BIN`, `isBin`) shared with anytime TD; DD panel shows projected minutes. Conflict checker treats two DD yeses on same-position teammates as competing.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.
