@@ -853,6 +853,8 @@ def grade_parlays(out: Outcomes):
             continue
         wk = str(row.get("week") or "").split(".")[0]
         date = f"{wk[:4]}-{wk[4:6]}-{wk[6:8]}" if len(wk) == 8 else None
+        if date:
+            nfl_grade.fill_teams(legs, HISTORY / f"{date}.json")
         graded = []
         for l in legs:
             g = dict(l)

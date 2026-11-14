@@ -387,6 +387,16 @@ const roleTag = p => !p.role_change ? '' : p.role_change.why === 'injury' ? ''
   : `<span class="tag role" title="${roleWhy(p.role_change)}">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>`;
 
 const KAL = () => state.venue === 'kalshi';
+// "DAL @ CLE" for a leg: stored on the leg, else from this slate's props (older saved legs have no team)
+function legTeam(l){
+  let team = l.team, opp = l.opp, home = l.home;
+  if (!team || !opp) {
+    const id = l.id || l.prop_id || '', pid = id.split(':').slice(-2, -1)[0];
+    const p = props.find(q => q.id === id) || props.find(q => String(q.pid) === pid);
+    if (p) { team = team || p.team; opp = opp || p.opp; home = home ?? p.home; }
+  }
+  return team ? `<span class="muted">${team}${opp ? (home === true ? ' vs ' : ' @ ') + opp : ''}</span>` : '';
+}
 // a side's price at the selected venue: the best sportsbook, or Kalshi (fee included, as American odds)
 function quote(p, side){
   const o = side === 'Over';
@@ -662,7 +672,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(
 // ---- parlay slip
 function addLeg(p, side){
   slip = slip.filter(l => l.id !== p.id);
-  slip.push({id: p.id, player: p.player, label: p.label, market: p.market, line: p.line, side, game: p.game, team: p.team,
+  slip.push({id: p.id, player: p.player, label: p.label, market: p.market, line: p.line, side, game: p.game, team: p.team, opp: p.opp, home: p.home,
     price: quote(p, side).price, book: quote(p, side).book, prob: side === 'Over' ? p.p_over : 1 - p.p_over});
   saveSlip(); $('#slip').classList.add('open');
 }
@@ -733,7 +743,7 @@ function renderSlip(){
   const conflicts = parlayConflicts(slip), flagged = new Set(conflicts.flatMap(c => c.ids));
   if (conflicts.length) $('#slipCount').textContent += ` · ⚠ ${conflicts.length} warning${conflicts.length === 1 ? '' : 's'}`;
   $('#conflicts').innerHTML = conflicts.map(c => `<div class="conflict ${c.sev === 'warn' ? 'warn' : ''}">${c.html}</div>`).join('');
-  $('#legs').innerHTML = slip.map((l, i) => `<div class="leg"><span>${flagged.has(l.id) ? '<span class="flag" title="See the warning below">⚠</span>' : ''}<b>${l.player}</b> ${isBinM(l.market) ? `${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}` : `${l.side} ${l.line} ${l.label}`} <span style="color:var(--ink3)">${fmtOdds(l.price)}</span></span>
+  $('#legs').innerHTML = slip.map((l, i) => `<div class="leg"><span>${flagged.has(l.id) ? '<span class="flag" title="See the warning below">⚠</span>' : ''}<b>${l.player}</b> ${legTeam(l)} ${isBinM(l.market) ? `${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}` : `${l.side} ${l.line} ${l.label}`} <span style="color:var(--ink3)">${fmtOdds(l.price)}</span></span>
     <span><span class="num">${pct(l.prob)}</span> <button class="x" data-i="${i}" aria-label="remove">×</button></span></div>`).join('');
   $('#legs').querySelectorAll('.x').forEach(b => b.onclick = e => { e.stopPropagation(); slip.splice(+b.dataset.i, 1); saveSlip(); });
   $('#legs').querySelectorAll('.leg').forEach((row, i) => { const p = props.find(q => q.id === slip[i].id);
@@ -944,7 +954,7 @@ function renderParlays(P){
         <span class="num">${p.book_odds != null ? fmtOdds(Math.round(p.book_odds)) : '—'} · model ${pct(p.model_prob)} · <b class="${signCls(p.units)}">${p.units != null ? unitsTxt(p.units) : '—'}</b></span></div>
       ${p.legs.map(l => { const [ic, cls, word] = LEG_ICON[l.status] || LEG_ICON.unknown;
         return `<div class="pleg"><span class="badge ${cls}" title="${word}">${ic}</span>
-          <span class="pl">${l.player} <b>${isBinM(l.market) ? (l.side.toLowerCase() === 'over' ? 'Yes' : 'No') : l.side + ' ' + l.line}</b> ${(DATA && DATA.markets[l.market]) || l.market}</span>
+          <span class="pl">${l.player} <b>${isBinM(l.market) ? (l.side.toLowerCase() === 'over' ? 'Yes' : 'No') : l.side + ' ' + l.line}</b> ${(DATA && DATA.markets[l.market]) || l.market} ${legTeam(l)}</span>
           <span class="num muted">${l.actual != null ? 'actual ' + l.actual : word}${l.price != null ? ' · ' + fmtOdds(l.price) : ''}</span></div>`; }).join('')}
     </div>`).join('')}
     <p class="muted small">Pushes and DNPs drop out of a parlay and it's repaid at the remaining legs' saved prices. Updated ${P.updated ? new Date(P.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}.</p>`;
@@ -983,7 +993,7 @@ function legPool(style){
 }
 const blendW = () => (RESULTS && RESULTS.blend && RESULTS.blend.w != null) ? RESULTS.blend.w : 0.25;
 const legOf = x => ({id: x.p.id, player: x.p.player, label: x.p.label, market: x.p.market, line: x.p.line, side: x.side,
-  game: x.p.game, team: x.p.team, price: x.price, book: x.venue, prob: x.prob});
+  game: x.p.game, team: x.p.team, opp: x.p.opp, home: x.p.home, price: x.price, book: x.venue, prob: x.prob});
 
 function pickWeighted(items, w){
   const tot = items.reduce((s, x) => s + Math.max(w(x), 1e-9), 0);
@@ -1107,7 +1117,7 @@ async function saveParlay(btn){
   const bad = parlayConflicts(slip).filter(c => c.sev === 'bad');
   if (bad.length && !confirm(`This slip has ${bad.length} warning${bad.length === 1 ? '' : 's'} — legs that work against each other:\n\n` +
       bad.map(c => '• ' + c.html.replace(/<[^>]+>/g, '')).join('\n\n') + '\n\nSave it anyway?')) return;
-  const legs = slip.map(l => ({prop_id: l.id, player: l.player, market: l.market || l.id.split(':')[1], line: l.line,
+  const legs = slip.map(l => ({prop_id: l.id, player: l.player, team: l.team || null, opp: l.opp || null, home: l.home ?? null, market: l.market || l.id.split(':')[1], line: l.line,
     side: l.side, price: l.price ?? null, model_prob: l.prob != null ? +l.prob.toFixed(4) : null}));
   const priced = slip.every(l => l.price != null);
   const d = slip.reduce((a, l) => a * (l.price != null ? dec(l.price) : 1), 1);

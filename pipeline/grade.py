@@ -316,6 +316,26 @@ def grade_leg(leg: dict, week: int | None, out: Outcomes) -> dict:
     return g
 
 
+def fill_teams(legs: list[dict], snap_path) -> list[dict]:
+    """Older saved legs have no team: take it (and the opponent) from that slate's snapshot."""
+    if all(l.get("team") for l in legs):
+        return legs
+    try:
+        props = json.loads(Path(snap_path).read_text()).get("props", [])
+    except Exception:
+        return legs
+    by_id = {p.get("id"): p for p in props}
+    by_pid = {str(p.get("pid")): p for p in props}
+    for l in legs:
+        if l.get("team"):
+            continue
+        pid = str(l.get("prop_id", "")).rsplit(":", 1)[0].split(":")[-1]
+        p = by_id.get(l.get("prop_id")) or by_pid.get(pid)
+        if p:
+            l["team"], l["opp"] = p.get("team"), p.get("opp")
+    return legs
+
+
 def grade_parlays(out: Outcomes) -> dict:
     url = os.environ.get("PARLAY_SHEET_CSV_URL", "").strip()
     base = {"updated": now_iso(), "configured": bool(url), "parlays": [],
@@ -344,6 +364,8 @@ def grade_parlays(out: Outcomes) -> dict:
         if any(str(l.get("prop_id", "")).startswith("nba:") for l in legs):
             continue   # NBA parlay -- graded by nba.py
         week = int(float(row["week"])) if row.get("week") else None
+        if week:
+            fill_teams(legs, HISTORY / f"week_{int(week):02d}.json")
         graded = [grade_leg(l, week, out) for l in legs]
         st = [l["status"] for l in graded]
         book = float(row["book_odds"]) if row.get("book_odds") else None
