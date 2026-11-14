@@ -19,6 +19,16 @@
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.4}
 a{color:var(--gold2)}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.gpick{position:relative}
+.gbtn{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 30px 8px 10px;color:var(--ink);min-width:150px;text-align:left;white-space:nowrap;position:relative}
+.gbtn::after{content:'';position:absolute;right:11px;top:50%;margin-top:-3px;border:5px solid transparent;border-top-color:var(--ink2)}
+.gbtn.on{border-color:var(--gold);color:var(--gold2)}
+.gpanel{position:absolute;z-index:12;top:calc(100% + 4px);left:0;min-width:280px;max-height:60vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.gtools{display:flex;gap:6px;margin-bottom:6px}
+.gopt{display:flex;gap:8px;align-items:center;padding:6px 6px;border-radius:6px;font-size:13px;color:var(--ink2);cursor:pointer}
+.gopt:hover{background:var(--panel2)}
+.gopt input{accent-color:var(--gold);width:16px;height:16px;padding:0}
+.gopt b{color:var(--ink);font-weight:600}
 input,select{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 input:focus,select:focus{outline:2px solid var(--gold);outline-offset:1px}
 .wrap{max-width:1180px;margin:0 auto;padding:0 16px 80px}
@@ -181,7 +191,13 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
     <nav class="tabs" role="tablist"><button class="tab on" data-tab="board">Board</button><button class="tab" data-tab="results">Results</button><button class="tab" data-tab="parlays">Parlays</button><button class="tab" data-tab="builder">Builder</button></nav>
     <div class="filters" data-view="board">
       <div class="chips" id="marketChips"></div>
-      <select id="gameSel"><option value="">All games</option></select>
+      <div class="gpick" id="gpick">
+        <button type="button" class="gbtn" id="gameBtn" aria-haspopup="true" aria-expanded="false">All games</button>
+        <div class="gpanel" id="gamePanel" hidden>
+          <div class="gtools"><button type="button" class="chip" id="gAll">All games</button><button type="button" class="chip" id="gNone">Clear</button></div>
+          <div id="gameList"></div>
+        </div>
+      </div>
       <select id="sortSel">
         <option value="edge">Sort: strongest edge</option>
         <option value="ev">Sort: best EV</option>
@@ -257,7 +273,7 @@ const kickoffText = s => { const t = kickoffDate(s);
   return t.toLocaleDateString([], {weekday:'short', month:'numeric', day:'numeric'}) + ' · ' + t.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); };
 let KICK = {};
 
-let DATA, props = [], state = {markets:new Set(), game:'', sort:'edge', min:5, q:'', sel:null, side:'', str:''};
+let DATA, props = [], state = {markets:new Set(), games:new Set(), sort:'edge', min:5, q:'', sel:null, side:'', str:''};
 // remember the over/under choice between visits
 try { state.side = localStorage.getItem('side') || ''; state.str = localStorage.getItem('strength') || ''; state.sort = localStorage.getItem('sort') || 'edge'; } catch (e) {}
 let slip = JSON.parse(localStorage.getItem(SK('slip')) || '[]');
@@ -285,13 +301,26 @@ async function load(){
     mk.appendChild(b);
   }
   KICK = Object.fromEntries(DATA.games.map(g => [g.id, g.kickoff]));
-  const gs = $('#gameSel');
-  for (const g of DATA.games.filter(g => !g.played)) {
-    const o = document.createElement('option'); o.value = g.id;
-    o.textContent = `${g.away} @ ${g.home} · ${kickoffText(g.kickoff)}`;
-    gs.appendChild(o);
-  }
-  gs.onchange = e => { state.game = e.target.value; render(); };
+  // games: pick any number (none picked = all games)
+  const upcoming = DATA.games.filter(g => !g.played);
+  $('#gameList').innerHTML = upcoming.map(g => `<label class="gopt"><input type="checkbox" value="${g.id}"><span><b>${g.away} @ ${g.home}</b> · ${kickoffText(g.kickoff)}</span></label>`).join('');
+  const gameLabel = () => {
+    const n = state.games.size, b = $('#gameBtn');
+    b.classList.toggle('on', n > 0);
+    if (!n) return b.textContent = 'All games';
+    const g = upcoming.find(x => state.games.has(x.id));
+    b.textContent = n === 1 && g ? `${g.away} @ ${g.home}` : `${n} games`;
+  };
+  const syncChecks = () => $('#gameList').querySelectorAll('input').forEach(i => i.checked = state.games.has(i.value));
+  $('#gameList').querySelectorAll('input').forEach(i => i.onchange = () => {
+    i.checked ? state.games.add(i.value) : state.games.delete(i.value); gameLabel(); render(); });
+  $('#gAll').onclick = () => { state.games.clear(); syncChecks(); gameLabel(); render(); };
+  $('#gNone').onclick = () => { state.games.clear(); syncChecks(); gameLabel(); render(); };
+  const panel = $('#gamePanel');
+  $('#gameBtn').onclick = e => { e.stopPropagation(); panel.hidden = !panel.hidden; $('#gameBtn').setAttribute('aria-expanded', String(!panel.hidden)); };
+  panel.onclick = e => e.stopPropagation();
+  document.addEventListener('click', () => { panel.hidden = true; $('#gameBtn').setAttribute('aria-expanded', 'false'); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') panel.hidden = true; });
   $('#sortSel').onchange = e => { state.sort = e.target.value; try { localStorage.setItem('sort', state.sort); } catch (err) {} render(); };
   $('#sideSel').value = state.side;
   $('#strSel').value = state.str;
@@ -359,7 +388,7 @@ function bestSide(p){
 }
 
 function render(){
-  let list = props.filter(p => state.markets.has(p.market) && (!state.side || bestSide(p).side === state.side) && strMatch(p, state.str) && (!state.game || p.game === state.game) && (p.games.length >= state.min || isThin(p)) &&
+  let list = props.filter(p => state.markets.has(p.market) && (!state.side || bestSide(p).side === state.side) && strMatch(p, state.str) && (!state.games.size || state.games.has(p.game)) && (p.games.length >= state.min || isThin(p)) &&
     (!state.q || (p.player + ' ' + p.team + ' ' + p.opp).toLowerCase().includes(state.q)));
   const key = {
     edge: p => -Math.abs(esd(p)), ev: p => -(bestSide(p).ev ?? -9), hit: p => -(p.hit_l5 ?? 0),
@@ -918,7 +947,7 @@ function legPool(style){
   const out = [];
   for (const p of props) {
     if (p.role_change || p.no_bet_side || isThin(p)) continue;
-    if (!state.markets.has(p.market) || (state.game && p.game !== state.game)) continue;
+    if (!state.markets.has(p.market) || (state.games.size && !state.games.has(p.game))) continue;
     const bs = bestSide(p);
     if (bs.price == null || p.fair_over == null || (side && bs.side !== side)) continue;
     // estimate = the book's no-vig probability, moved toward the model by the graded blend weight
@@ -998,7 +1027,7 @@ function renderBuilder(results){
   el.innerHTML = `
     <div class="panel">
       <h3>Parlay builder</h3>
-      <p class="muted small">Leg probabilities are <b>estimates that blend the book's no-vig price with the model</b> — ${Math.round(blendW() * 100)}% model, ${100 - Math.round(blendW() * 100)}% market${RESULTS && RESULTS.blend && RESULTS.blend.fitted ? `, the mix that best predicted ${RESULTS.blend.n} graded props` : ' until enough props are graded'}. The raw model is overconfident, so its own numbers would wildly overstate parlay EV. Builds only from legs that are <b>+EV at the best available price</b> on that estimate, skips flagged props, and rejects any combo the conflict checker flags (no two overs sharing one job, no inflated roles; no backup overs in Conservative). Uses the markets and game selected on the Board. Different every time you press Generate.</p>
+      <p class="muted small">Leg probabilities are <b>estimates that blend the book's no-vig price with the model</b> — ${Math.round(blendW() * 100)}% model, ${100 - Math.round(blendW() * 100)}% market${RESULTS && RESULTS.blend && RESULTS.blend.fitted ? `, the mix that best predicted ${RESULTS.blend.n} graded props` : ' until enough props are graded'}. The raw model is overconfident, so its own numbers would wildly overstate parlay EV. Builds only from legs that are <b>+EV at the best available price</b> on that estimate, skips flagged props, and rejects any combo the conflict checker flags (no two overs sharing one job, no inflated roles; no backup overs in Conservative). Uses the markets and games selected on the Board. Different every time you press Generate.</p>
       <table class="log btable"><tr><th style="text-align:left">Style</th><th>Variations</th><th>Min legs</th><th>Max legs</th></tr>
         ${Object.keys(STYLES).map(row).join('')}</table>
       <div class="bopts">
