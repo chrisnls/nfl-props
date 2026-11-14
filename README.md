@@ -108,6 +108,10 @@ python pipeline/nba.py --lines sample      # or live / cached
 python pipeline/nba.py --grade
 ```
 
+## Kalshi prices
+
+Every build also reads Kalshi's public player-prop markets (free, no key, read-only) and attaches them to the matching props: Kalshi's "25+" contract is the same bet as Over 24.5. On the Board, set **Prices → Kalshi prices** to price everything (board, EV sort, slip, Builder) at Kalshi after its fee. **Copy for Kalshi** in the slip copies the legs in Kalshi's naming. Nothing is ever traded from this site.
+
 ## Layout
 
 ```

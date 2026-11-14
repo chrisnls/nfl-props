@@ -61,6 +61,7 @@ header{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 85%,
 .tag.q{background:rgba(242,182,92,.15);color:var(--warn)}
 .tag.tmout{background:rgba(111,207,151,.12);color:var(--good)}
 .tag.role{background:rgba(125,122,114,.2);color:var(--ink2)}
+.tag.kal{background:rgba(92,170,242,.14);color:#7cc0ff}
 .row.demoted{opacity:.55}
 .sig{color:var(--ink3);font-size:12px}
 .str{display:block;font-family:var(--font);font-size:12px;font-weight:600;margin-top:1px}
@@ -215,6 +216,7 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
         <option value="SS over">Strong + Solid overs</option><option value="SS under">Strong + Solid unders</option><option value="SS">Strong + Solid (either side)</option>
       </select>
       <select id="sideSel" title="Only show props where the model leans this way"><option value="">Overs &amp; unders</option><option value="Over">Overs only</option><option value="Under">Unders only</option></select>
+      <select id="venueSel" title="Price the board and the builder at the best sportsbook, or at Kalshi only"><option value="">Best book price</option><option value="kalshi">Kalshi prices</option></select>
       <select id="minGames"><option value="3">3+ games</option><option value="5" selected>5+ games</option><option value="7">7+ games</option></select>
       <input type="search" id="q" placeholder="Search player or team">
     </div>
@@ -259,7 +261,7 @@ const $ = s => document.querySelector(s);
 const fmtOdds = o => o == null ? '—' : (o > 0 ? '+' + o : '' + o);
 const pct = p => p == null ? '—' : Math.round(p * 100) + '%';
 const dec = o => o > 0 ? 1 + o / 100 : 1 + 100 / -o;
-const BOOK = {draftkings:'DK',fanduel:'FD',betmgm:'MGM',caesars:'CZR',espnbet:'ESPN',fanatics:'FAN',sample:'sample'};
+const BOOK = {draftkings:'DK',fanduel:'FD',betmgm:'MGM',caesars:'CZR',espnbet:'ESPN',fanatics:'FAN',sample:'sample',kalshi:'Kalshi'};
 
 // nflverse kickoff times are US Eastern wall-clock ("2026-11-08T13:00"); convert to a real
 // instant so it displays in the viewer's own time zone.
@@ -273,9 +275,9 @@ const kickoffText = s => { const t = kickoffDate(s);
   return t.toLocaleDateString([], {weekday:'short', month:'numeric', day:'numeric'}) + ' · ' + t.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); };
 let KICK = {};
 
-let DATA, props = [], state = {markets:new Set(), games:new Set(), sort:'edge', min:5, q:'', sel:null, side:'', str:''};
+let DATA, props = [], state = {markets:new Set(), games:new Set(), sort:'edge', min:5, q:'', sel:null, side:'', str:'', venue:''};
 // remember the over/under choice between visits
-try { state.side = localStorage.getItem('side') || ''; state.str = localStorage.getItem('strength') || ''; state.sort = localStorage.getItem('sort') || 'edge'; } catch (e) {}
+try { state.side = localStorage.getItem('side') || ''; state.str = localStorage.getItem('strength') || ''; state.sort = localStorage.getItem('sort') || 'edge'; state.venue = localStorage.getItem('venue') || ''; } catch (e) {}
 let slip = JSON.parse(localStorage.getItem(SK('slip')) || '[]');
 
 async function load(){
@@ -293,6 +295,7 @@ async function load(){
       : 'Real lines aren\'t available for this build, so each line';
     $('#banner').innerHTML = `<div class="banner"><b>Sample lines.</b> ${why} is set at the player's recent average. Projections and hit rates are real; edges are not.</div>`;
   }
+  if (state.venue === 'kalshi' && !(DATA.kalshi && DATA.kalshi.ok)) $('#banner').innerHTML += `<div class="banner"><b>No Kalshi prices in this build.</b> ${DATA.kalshi && DATA.kalshi.error && DATA.kalshi.error !== 'skipped' ? 'The Kalshi pull failed; the next hourly build retries.' : 'Kalshi prices load with live lines.'} Switch Prices back to "Best book price" to see the board.</div>`;
   const mk = $('#marketChips');
   for (const [k, label] of Object.entries(DATA.markets)) {
     const b = document.createElement('button'); b.className = 'chip on'; b.textContent = label; b.dataset.k = k;
@@ -327,6 +330,8 @@ async function load(){
   $('#strSel').onchange = e => { state.str = e.target.value; try { localStorage.setItem('strength', state.str); } catch (err) {} render(); };
   $('#sortSel').value = state.sort;
   $('#sideSel').onchange = e => { state.side = e.target.value; try { localStorage.setItem('side', state.side); } catch (err) {} render(); };
+  $('#venueSel').value = state.venue;
+  $('#venueSel').onchange = e => { state.venue = e.target.value; try { localStorage.setItem('venue', state.venue); } catch (err) {} render(); renderSlip(); if (window.__built) renderBuilder(null); };
   $('#minGames').onchange = e => { state.min = +e.target.value; render(); };
   $('#q').oninput = e => { state.q = e.target.value.toLowerCase(); render(); };
   render(); renderSlip();
@@ -381,14 +386,27 @@ const roleTag = p => !p.role_change ? '' : p.role_change.why === 'injury' ? ''
   ? `<span class="tag role" title="${roleWhy(p.role_change)}">Thin history · ${p.role_change.games} g</span>`
   : `<span class="tag role" title="${roleWhy(p.role_change)}">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>`;
 
+const KAL = () => state.venue === 'kalshi';
+// a side's price at the selected venue: the best sportsbook, or Kalshi (fee included, as American odds)
+function quote(p, side){
+  const o = side === 'Over';
+  if (KAL()) { const k = p.kalshi || {};
+    return {price: o ? k.over : k.under, book: 'kalshi', ev: o ? k.ev_over : k.ev_under, cents: o ? k.over_c : k.under_c}; }
+  return {price: o ? p.over : p.under, book: o ? p.over_book : p.under_book, ev: o ? p.ev_over : p.ev_under};
+}
+const kalTxt = (p, side) => { const k = p.kalshi; const c = k && (side === 'Over' ? k.over_c : k.under_c);
+  return c == null ? '' : `${isBin(p) || side === 'Over' ? 'Yes' : 'No'} ${c}¢`; };
+// Kalshi's name for the contract: Over 24.5 = "25+" (Yes), Under 24.5 = No on "25+"
+const kalName = (l) => isBinM(l.market) ? `${l.player}: ${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}` : `${l.player}: ${Math.round(l.line + 0.5)}+ ${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}`;
+
 function bestSide(p){
-  // which side the model likes, and that side's EV
-  const over = p.edge > 0;
-  return {side: over ? 'Over' : 'Under', ev: over ? p.ev_over : p.ev_under, price: over ? p.over : p.under, book: over ? p.over_book : p.under_book, p: over ? p.p_over : 1 - p.p_over};
+  // which side the model likes, and that side's price/EV at the selected venue
+  const over = p.edge > 0, side = over ? 'Over' : 'Under', q = quote(p, side);
+  return {side, ev: q.ev, price: q.price, book: q.book, cents: q.cents, p: over ? p.p_over : 1 - p.p_over};
 }
 
 function render(){
-  let list = props.filter(p => state.markets.has(p.market) && (!state.side || bestSide(p).side === state.side) && strMatch(p, state.str) && (!state.games.size || state.games.has(p.game)) && (p.games.length >= state.min || isThin(p)) &&
+  let list = props.filter(p => state.markets.has(p.market) && (!KAL() || (p.kalshi && bestSide(p).price != null)) && (!state.side || bestSide(p).side === state.side) && strMatch(p, state.str) && (!state.games.size || state.games.has(p.game)) && (p.games.length >= state.min || isThin(p)) &&
     (!state.q || (p.player + ' ' + p.team + ' ' + p.opp).toLowerCase().includes(state.q)));
   const key = {
     edge: p => -Math.abs(esd(p)), ev: p => -(bestSide(p).ev ?? -9), hit: p => -(p.hit_l5 ?? 0),
@@ -420,7 +438,7 @@ function render(){
         <span class="num" style="color:var(--ink3);font-size:12px">book ${pct(p.fair_over)} over</span></div>`
       : `<div class="num" title="${strTip(p)}"><span class="k">${isTD(p) ? 'xTD' : isBin(p) ? 'Model' : 'Proj'}</span>${isBin(p) && !isTD(p) ? pct(p.p_over) : p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
         <span class="str ${strength(p) === 'Thin' || p.no_bet_side ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}" ${p.no_bet_side ? `title="The model leans No (book ${pct(p.fair_over)} vs model ${pct(p.p_over)}), but no book posts a No price"` : ''}>${p.no_bet_side ? 'No bet · leans no' : `${strength(p)} ${strength(p) === 'Thin' ? 'edge' : isBin(p) ? (p.edge >= 0 ? 'yes' : 'no') : p.edge >= 0 ? 'over' : 'under'}`}</span></div>
-      <div><span class="k">${SIDE(p, bs.side)} ${fmtOdds(bs.price)} ${bs.book ? BOOK[bs.book] || bs.book : ''}</span>
+      <div><span class="k">${SIDE(p, bs.side)} ${fmtOdds(bs.price)} ${bs.book ? BOOK[bs.book] || bs.book : ''}${KAL() && bs.cents != null ? ` · ${bs.cents}¢` : !KAL() && p.kalshi && kalTxt(p, bs.side) ? ` <span class="tag kal" title="Kalshi: ${kalTxt(p, bs.side)} = ${fmtOdds(p.kalshi[bs.side === 'Over' ? 'over' : 'under'])} after the fee">K ${kalTxt(p, bs.side)}</span>` : ''}</span>
         <span class="num side ${bs.ev > 0 ? 'pos' : ''}">${pct(bs.p)}</span> <span class="num" style="color:var(--ink3);font-size:12px">vs ${pct(bs.side === 'Over' ? p.fair_over : 1 - p.fair_over)}</span></div>`}
       <div class="hits">${[['L5', p.hit_l5], ['L10', p.hit_l10], ['Szn', p.hit_season]].map(([l, v]) => `<span><b><i style="width:${v ?? 0}%"></i></b>${v == null ? '—' : v + '%'}</span>`).join('')}</div>
       <button class="add" data-id="${p.id}">${isThin(p) ? 'Pick side' : p.no_bet_side ? 'Details' : '+ ' + SIDE(p, bs.side)}</button>`;
@@ -599,6 +617,9 @@ function openDetail(p){
       <div class="tile"><span class="k">${SIDE(p, 'Over')}</span><div class="v">${fmtOdds(p.over)}</div><div class="meta">${BOOK[p.over_book] || ''} · EV ${p.ev_over == null || isThin(p) ? '—' : (p.ev_over * 100).toFixed(1) + '%'}</div></div>
       <div class="tile"><span class="k">${SIDE(p, 'Under')}</span><div class="v">${fmtOdds(p.under)}</div><div class="meta">${BOOK[p.under_book] || ''} · EV ${p.ev_under == null || isThin(p) ? '—' : (p.ev_under * 100).toFixed(1) + '%'}</div></div>
     </div>
+    ${p.kalshi ? `<div class="grid">${['Over', 'Under'].map(sd => { const k = p.kalshi, o = sd === 'Over', c = o ? k.over_c : k.under_c, ev = o ? k.ev_over : k.ev_under;
+      return `<div class="tile"><span class="k">Kalshi ${isBin(p) ? (o ? 'Yes' : 'No') : (o ? 'Yes' : 'No') + ' · ' + Math.round(p.line + 0.5) + '+'}</span><div class="v">${c == null ? '—' : c + '¢'}</div><div class="meta">${c == null ? 'no offer' : fmtOdds(o ? k.over : k.under) + ' after fee · EV ' + (ev == null || isThin(p) ? '—' : (ev * 100).toFixed(1) + '%')}</div></div>`; }).join('')}
+      <div class="tile"><span class="k">Kalshi volume</span><div class="v">${p.kalshi.vol == null ? '0' : Math.round(p.kalshi.vol)}</div><div class="meta">contracts traded · ${p.kalshi.ticker}</div></div></div>` : ''}
     <div class="btns"><button class="btn ${bs.side === 'Over' && !isThin(p) ? 'gold' : ''}" id="addO">${isTD(p) ? 'Add Yes (scores)' : isBin(p) ? 'Add Yes' : 'Add Over ' + p.line}</button><button class="btn ${bs.side === 'Under' && !isThin(p) ? 'gold' : ''}" id="addU" ${isBin(p) && p.under == null ? 'disabled title="No \'No\' price posted"' : ''}>${isBin(p) ? 'Add No' : 'Add Under ' + p.line}</button></div>
 
     <div class="sec">${isTD(p) ? 'TDs by game · gold = scored' : isBin(p) ? p.label + 's by game · gold = got one' : 'Game log vs line · gold = over'}</div>
@@ -642,7 +663,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(
 function addLeg(p, side){
   slip = slip.filter(l => l.id !== p.id);
   slip.push({id: p.id, player: p.player, label: p.label, market: p.market, line: p.line, side, game: p.game, team: p.team,
-    price: side === 'Over' ? p.over : p.under, prob: side === 'Over' ? p.p_over : 1 - p.p_over});
+    price: quote(p, side).price, book: quote(p, side).book, prob: side === 'Over' ? p.p_over : 1 - p.p_over});
   saveSlip(); $('#slip').classList.add('open');
 }
 function saveSlip(){ localStorage.setItem(SK('slip'), JSON.stringify(slip)); renderSlip(); }
@@ -725,8 +746,10 @@ function renderSlip(){
   const ev = prob * (d - 1) - (1 - prob);
   const american = d >= 2 ? '+' + Math.round((d - 1) * 100) : '' + Math.round(-100 / (d - 1));
   $('#slipOdds').textContent = legsWithPrice.length === slip.length ? american : '';
-  $('#slipSum').innerHTML = `<span>Book odds <b>${american}</b></span><span>Model prob <b>${pct(prob)}</b></span><span>Fair odds <b>${fair >= 2 ? '+' + Math.round((fair - 1) * 100) : Math.round(-100 / (fair - 1))}</b></span><span>EV <b class="${ev > 0 ? 'pos' : 'neg'}">${(ev * 100).toFixed(1)}%</b></span><span>$10 pays <b>$${(10 * d).toFixed(2)}</b></span><button class="chip" id="clear">clear</button><button class="chip gold" id="saveParlay">${savedSig === slipSig() ? 'Saved ✓' : 'Save parlay'}</button>`;
+  $('#slipSum').innerHTML = `<span>${slip.every(l => l.book === 'kalshi') ? 'Kalshi odds' : 'Book odds'} <b>${american}</b></span><span>Model prob <b>${pct(prob)}</b></span><span>Fair odds <b>${fair >= 2 ? '+' + Math.round((fair - 1) * 100) : Math.round(-100 / (fair - 1))}</b></span><span>EV <b class="${ev > 0 ? 'pos' : 'neg'}">${(ev * 100).toFixed(1)}%</b></span><span>$10 pays <b>$${(10 * d).toFixed(2)}</b></span><button class="chip" id="clear">clear</button><button class="chip" id="copyKal" title="Copy the legs the way Kalshi names them (Over 24.5 = Yes on 25+), to build the combo in Kalshi's app">Copy for Kalshi</button><button class="chip gold" id="saveParlay">${savedSig === slipSig() ? 'Saved ✓' : 'Save parlay'}</button>`;
   $('#clear').onclick = () => { slip = []; saveSlip(); };
+  $('#copyKal').onclick = e => { e.stopPropagation(); const b = e.currentTarget, txt = slip.map(kalName).join('\n');
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => { b.textContent = 'Copied ✓'; }, () => { prompt('Copy these legs:', txt); }); };
   $('#saveParlay').disabled = savedSig === slipSig();
   $('#saveParlay').onclick = e => { e.stopPropagation(); saveParlay(e.currentTarget); };
   const games = {}; slip.forEach(l => (games[l.game] = games[l.game] || []).push(l));
@@ -954,13 +977,13 @@ function legPool(style){
     const book = bs.side === 'Over' ? p.fair_over : 1 - p.fair_over;
     const prob = book + blendW() * (bs.p - book), d = dec(bs.price), ev = prob * d - 1;
     if (prob < S.minP || ev < S.minEV || bs.price < S.minPrice) continue;
-    out.push({p, side: bs.side, price: bs.price, prob, model: bs.p, book, ev, dec: d});
+    out.push({p, side: bs.side, price: bs.price, venue: bs.book, prob, model: bs.p, book, ev, dec: d});
   }
   return out;
 }
 const blendW = () => (RESULTS && RESULTS.blend && RESULTS.blend.w != null) ? RESULTS.blend.w : 0.25;
 const legOf = x => ({id: x.p.id, player: x.p.player, label: x.p.label, market: x.p.market, line: x.p.line, side: x.side,
-  game: x.p.game, team: x.p.team, price: x.price, prob: x.prob});
+  game: x.p.game, team: x.p.team, price: x.price, book: x.venue, prob: x.prob});
 
 function pickWeighted(items, w){
   const tot = items.reduce((s, x) => s + Math.max(w(x), 1e-9), 0);
@@ -1027,7 +1050,7 @@ function renderBuilder(results){
   el.innerHTML = `
     <div class="panel">
       <h3>Parlay builder</h3>
-      <p class="muted small">Leg probabilities are <b>estimates that blend the book's no-vig price with the model</b> — ${Math.round(blendW() * 100)}% model, ${100 - Math.round(blendW() * 100)}% market${RESULTS && RESULTS.blend && RESULTS.blend.fitted ? `, the mix that best predicted ${RESULTS.blend.n} graded props` : ' until enough props are graded'}. The raw model is overconfident, so its own numbers would wildly overstate parlay EV. Builds only from legs that are <b>+EV at the best available price</b> on that estimate, skips flagged props, and rejects any combo the conflict checker flags (no two overs sharing one job, no inflated roles; no backup overs in Conservative). Uses the markets and games selected on the Board. Different every time you press Generate.</p>
+      <p class="muted small">Leg probabilities are <b>estimates that blend the book's no-vig price with the model</b> — ${Math.round(blendW() * 100)}% model, ${100 - Math.round(blendW() * 100)}% market${RESULTS && RESULTS.blend && RESULTS.blend.fitted ? `, the mix that best predicted ${RESULTS.blend.n} graded props` : ' until enough props are graded'}. The raw model is overconfident, so its own numbers would wildly overstate parlay EV. Builds only from legs that are <b>+EV at the best available price</b> on that estimate, skips flagged props, and rejects any combo the conflict checker flags (no two overs sharing one job, no inflated roles; no backup overs in Conservative). Uses the markets, games and <b>Prices</b> setting selected on the Board${KAL() ? ' — <b>pricing every leg at Kalshi</b> (fee included), using only props Kalshi lists' : ''}. Different every time you press Generate.</p>
       <table class="log btable"><tr><th style="text-align:left">Style</th><th>Variations</th><th>Min legs</th><th>Max legs</th></tr>
         ${Object.keys(STYLES).map(row).join('')}</table>
       <div class="bopts">
@@ -1038,7 +1061,7 @@ function renderBuilder(results){
       ${sample ? '<p class="corr">These are sample lines, so there are no real prices to build from. The builder needs live lines.</p>' : ''}
     </div>
     <div id="bOut">${results ? renderBuilt(results) : ''}</div>
-    <p class="muted small">Model probability multiplies the legs as if independent (same-game legs are correlated; books price that in). Parlays multiply the book's margin as well as the edge, so expect long losing streaks even when the edges are real. Save the ones you play; the Parlays tab grades them.</p>`;
+    <p class="muted small">${KAL() ? 'Kalshi prices a combo as its own contract, so its quote for these legs together can differ from the product shown here. Check it in Kalshi before buying. ' : ''}Model probability multiplies the legs as if independent (same-game legs are correlated; books price that in). Parlays multiply the book's margin as well as the edge, so expect long losing streaks even when the edges are real. Save the ones you play; the Parlays tab grades them.</p>`;
   el.querySelectorAll('input[data-s]').forEach(i => i.onchange = () => {
     BUILDER[i.dataset.s] = {...(BUILDER[i.dataset.s] || {}), [i.dataset.k]: Math.max(+i.min, Math.min(+i.max, +i.value || 0))};
     if (i.dataset.k === 'min' && +bset(i.dataset.s, 'max') < +bset(i.dataset.s, 'min')) BUILDER[i.dataset.s].max = bset(i.dataset.s, 'min');
@@ -1072,7 +1095,7 @@ function renderBuilt(results){
         <span class="num" title="est. = blended probability, legs treated as independent">${fmtOdds(r.american)} · est. ${pct(r.prob)} · EV <b class="${r.ev > 0 ? 'pos' : 'neg'}">${(r.ev * 100).toFixed(0)}%</b> · $10 pays $${(10 * r.dec).toFixed(2)}</span></div>
       ${r.legs.map(x => `<div class="pleg click" role="button" tabindex="0" data-prop="${x.p.id}" title="Open ${x.p.player}'s details"><span class="badge ${x.ev >= 0.08 ? 'won' : 'push'}" title="${rating(x.p)} · EV ${(x.ev * 100).toFixed(1)}%">${strength(x.p)}</span>
         <span class="pl">${x.p.player} <b>${isBin(x.p) ? `${x.p.label} — ${SIDE(x.p, x.side)}` : `${x.side} ${x.p.line} ${x.p.label}`}</b> <span class="muted">${x.p.team} ${x.p.home ? 'vs' : '@'} ${x.p.opp}</span></span>
-        <span class="num muted" title="model ${pct(x.model)} · book ${pct(x.book)} · blended ${pct(x.prob)}">${fmtOdds(x.price)} ${BOOK[x.side === 'Over' ? x.p.over_book : x.p.under_book] || ''} · est. ${pct(x.prob)} · EV ${(x.ev * 100).toFixed(0)}%</span></div>`).join('')}
+        <span class="num muted" title="model ${pct(x.model)} · book ${pct(x.book)} · blended ${pct(x.prob)}">${fmtOdds(x.price)} ${BOOK[x.venue] || ''} · est. ${pct(x.prob)} · EV ${(x.ev * 100).toFixed(0)}%</span></div>`).join('')}
       <div class="btns" style="margin-top:8px"><button class="btn" data-use="${i}">Use this slip</button></div>
     </div>`;
   }).join('');

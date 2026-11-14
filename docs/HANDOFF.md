@@ -123,6 +123,14 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 - Fix: hourly crons (NFL `7 13-23,0-3`, NBA `17 14-23,0-3` UTC) + `--lines auto` in build.py/nba.py (`auto_mode()`): live if no cache for the week/slate, cache ≥24h (NFL) / ≥8h (NBA), or next kickoff/tip ≤2h and cache ≥1.5h; else cached. props.json is only committed on live runs (Pages deploys the working tree, so free rebuilds still publish).
 - If GitHub keeps dropping runs, the next step is an external trigger (an Apps Script time trigger or cron-job.org calling workflow_dispatch with a fine-grained token).
 
+### Kalshi prices (11/14)
+- `pipeline/kalshi.py` reads Kalshi's **public** market data (no key, nothing traded) on every build, cached ones included, so the prices refresh hourly for free. Series map: NFL KXNFLPASSYDS/PASSTDS/PASSATT/RSHYDS/RSHATT/RECYDS/REC/ANYTD, NBA KXNBAPTS/REB/AST/3PT/PRA/2D/3D.
+- Kalshi's "25+" contract has strike 24.5 (`strike_type` greater), the same as a book's Over 24.5: Yes = Over, No = Under. Props match on (market, normalized name, line, game date). First run matched 157 NBA and 254 NFL props.
+- Each matched prop gets `kalshi: {over_c, under_c (ask ¢), over, under (American odds after the 0.07·P·(1−P) taker fee), ev_over, ev_under, vol, oi, ticker}`. props.json gets `kalshi: {ok, matched, ...}`. Never fails the build; `KALSHI=0` skips it.
+- Site: **Prices** select (Best book price / Kalshi prices) re-prices the board, the EV sort, slip legs and the Builder at Kalshi. Book mode shows a blue `K Yes 45¢` tag. The drawer has Kalshi Yes/No/volume tiles. The slip has **Copy for Kalshi** (Over 24.5 → "Player: 25+ Points — Yes").
+- Not done (needs the user's go-ahead): placing orders. That needs a private backend that holds a Kalshi API key, plus a confirmation for every order. Never put the key in this public repo or site.
+- `kalshi-probe.yml` (manual) writes `pipeline/kalshi_probe/match_{nba,nfl}.txt` to check the mapping.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.
