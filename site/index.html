@@ -111,6 +111,9 @@ table.log td:first-child,table.log th:first-child{text-align:left}
 .sum{display:flex;gap:16px;flex-wrap:wrap;margin:10px auto 0;max-width:1180px;font-size:13px;color:var(--ink2)}
 .sum b{color:var(--ink);font-family:var(--mono)}
 .corr{color:var(--warn);font-size:12px;margin-top:6px}
+.sgrid td,.sgrid th{text-align:center}
+.sgrid td:first-child{text-align:left}
+.sgrid tr.tot td{border-top:1px solid var(--ink3);font-weight:600}
 .btable input{width:64px;text-align:center}
 .btable td{vertical-align:middle}
 .bopts{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:13px;color:var(--ink2)}
@@ -736,6 +739,29 @@ async function loadResults(){
   wireCalibration();
 }
 
+// record grid: rows (markets or sides) x strength ratings; color only once a cell has 5+ decided picks
+function strengthGrid(title, rows){
+  if (!rows || !Object.keys(rows).length) return '';
+  const cols = Object.keys(Object.values(rows)[0]);
+  const short = b => b.split(' ')[0];
+  const cell = r => {
+    if (!r || !r.n) return '<td class="num muted">—</td>';
+    const dec = r.w + r.l, small = dec < 5;
+    const cls = small ? 'muted' : r.hit_pct >= 55 ? 'pos' : r.hit_pct <= 48 ? 'neg' : '';
+    return `<td class="num ${cls}" title="${r.n} props · ${unitsTxt(r.units)} at -110${small ? ' · small sample' : ''}">${r.w}–${r.l}${r.p ? '–' + r.p : ''}${dec ? ` <span class="small">(${Math.round(r.hit_pct)}%)</span>` : ''}</td>`;
+  };
+  // totals row per column
+  const tot = {};
+  for (const c of cols) { const t = {w: 0, l: 0, p: 0, n: 0, units: 0};
+    for (const r of Object.values(rows)) { const x = r[c] || {}; t.w += x.w || 0; t.l += x.l || 0; t.p += x.p || 0; t.n += x.n || 0; t.units += x.units || 0; }
+    t.hit_pct = t.w + t.l ? 100 * t.w / (t.w + t.l) : null; tot[c] = t; }
+  return `<div class="sec">${title}</div>
+    <table class="log sgrid"><tr><th style="text-align:left"></th>${cols.map(c => `<th title="${c}">${short(c)}</th>`).join('')}</tr>
+      ${Object.entries(rows).map(([name, r]) => `<tr><td>${name}</td>${cols.map(c => cell(r[c])).join('')}</tr>`).join('')}
+      <tr class="tot"><td>All</td>${cols.map(c => cell(tot[c])).join('')}</tr></table>
+    <p class="muted small">Green = 55%+ hit, red = 48% or lower (52.4% breaks even at -110). Grey cells have fewer than 5 decided picks — too few to read. Hover a cell for units.</p>`;
+}
+
 function correctionsHTML(R){
   const bw = (R.backtest_weeks || []).filter(w => typeof w !== 'number' || w >= 5);
   const rows = Object.entries(R.corrections || {}).map(([m, c]) => `<tr><td>${(DATA && DATA.markets[m]) || m}</td>
@@ -778,6 +804,8 @@ function renderResults(R){
     <div class="sec">By strength rating <span class="nc">(the board's Thin / Lean / Solid / Strong)</span></div>
     <table class="log">${recHead('Edge')}${(R.by_edge || []).map(b => recRow(b.bucket, b)).join('')}</table>
     <p class="muted small">If the model is any good, the stronger buckets should hit more often.</p>
+    ${strengthGrid('By market and rating', R.by_market_strength)}
+    ${strengthGrid('Overs vs unders by rating', R.by_side_strength && {Overs: R.by_side_strength.over, Unders: R.by_side_strength.under})}
 
     <div class="sec">Role-change flagged vs not</div>
     <table class="log">${recHead('Group')}${recRow('Unflagged (the board)', fv.unflagged)}${recRow('Flagged — all', fv.flagged)}${recRow('· line far from history', fv.flagged_line)}${recRow('· snap-share shift', fv.flagged_usage)}${recRow('· thin history (under 3 games)', fv.flagged_thin)}${fv.flagged_absent ? recRow("· hasn't played lately", fv.flagged_absent) : ''}${fv.flagged_lowuse ? recRow('· low usage (TD)', fv.flagged_lowuse) : ''}${fv.flagged_minutes ? recRow('· book implies different minutes', fv.flagged_minutes) : ''}${fv.flagged_injury ? recRow('· listed out / doubtful', fv.flagged_injury) : ''}</table>

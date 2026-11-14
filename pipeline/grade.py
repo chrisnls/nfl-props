@@ -233,6 +233,19 @@ def fit_blend(rows: list[dict]) -> dict:
             "brier_market": round(br[0.0], 4), "brier_blend": round(br[w], 4)}
 
 
+def strength_tables(unflagged: list[dict], markets: dict) -> dict:
+    """Market x strength-rating and side x strength-rating records (same cut points as the board)."""
+    def buck(rs, lo, hi):
+        return [r for r in rs if lo <= abs(r.get("edge_sd") or 0) < hi]
+    return {
+        "by_market_strength": {markets[m][1]: {b: record(buck([r for r in unflagged if r["market"] == m], lo, hi))
+                                               for b, lo, hi in EDGE_BUCKETS}
+                               for m in markets if any(r["market"] == m for r in unflagged)},
+        "by_side_strength": {side: {b: record(buck([r for r in unflagged if r["pick"] == side], lo, hi))
+                                    for b, lo, hi in EDGE_BUCKETS} for side in ("over", "under")},
+    }
+
+
 def build_results(out: Outcomes, frames: dict) -> dict:
     rows, graded, pending = grade_snapshots(out)
     bt, bt_weeks = backtest_rows(frames, out)
@@ -255,6 +268,7 @@ def build_results(out: Outcomes, frames: dict) -> dict:
         "overall": record(unflagged),
         "by_market": {MARKETS[m][1]: record([r for r in unflagged if r["market"] == m]) for m in MARKETS},
         "by_edge": [{"bucket": b, **record(bucket(unflagged, lo, hi))} for b, lo, hi in EDGE_BUCKETS],
+        **strength_tables(unflagged, MARKETS),
         "flagged_vs_unflagged": {"unflagged": record(unflagged), "flagged": record(flagged),
                                  "flagged_line": record([r for r in flagged if r["role_change"] == "line"]),
                                  "flagged_usage": record([r for r in flagged if r["role_change"] == "usage"]),

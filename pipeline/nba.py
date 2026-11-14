@@ -887,6 +887,7 @@ def run_grade(frames):
         "overall": rec(unflagged),
         "by_market": {MARKETS[m][1]: rec([r for r in unflagged if r["market"] == m]) for m in MARKETS},
         "by_edge": [{"bucket": b, **rec(bucket(unflagged, lo, hi))} for b, lo, hi in nfl_grade.EDGE_BUCKETS],
+        **nfl_grade.strength_tables(unflagged, MARKETS),
         "flagged_vs_unflagged": {"unflagged": rec(unflagged), "flagged": rec(flagged),
                                  "flagged_line": rec([r for r in flagged if r["role_change"] == "line"]),
                                  "flagged_usage": rec([r for r in flagged if r["role_change"] == "usage"]),
