@@ -1,0 +1,23 @@
+name: Kalshi probe
+# One-off, manual: reads Kalshi's PUBLIC market data (no key, nothing traded) and commits a summary
+# to pipeline/kalshi_probe/ so the market structure can be inspected. Safe to delete afterwards.
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install requests
+      - run: python pipeline/kalshi_probe.py
+      - name: Commit probe output
+        run: |
+          git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"
+          git add pipeline/kalshi_probe
+          git diff --cached --quiet || git commit -m "kalshi probe $(date -u +%FT%H%MZ)"
+          git pull --rebase origin main || true
+          git push || echo "push skipped"
