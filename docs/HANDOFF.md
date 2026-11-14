@@ -129,6 +129,8 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 - Each matched prop gets `kalshi: {over_c, under_c (ask ¢), over, under (American odds after the 0.07·P·(1−P) taker fee), ev_over, ev_under, vol, oi, ticker}`. props.json gets `kalshi: {ok, matched, ...}`. Never fails the build; `KALSHI=0` skips it.
 - Site: **Prices** select (Best book price / Kalshi prices) re-prices the board, the EV sort, slip legs and the Builder at Kalshi. Book mode shows a blue `K Yes 45¢` tag. The drawer has Kalshi Yes/No/volume tiles. The slip has **Copy for Kalshi** (Over 24.5 → "Player: 25+ Points — Yes").
 - Not done (needs the user's go-ahead): placing orders. That needs a private backend that holds a Kalshi API key, plus a confirmation for every order. Never put the key in this public repo or site.
+- Kalshi links (`p.kalshi.url` = kalshi.com/markets/<series>/<title-slug>/<event>) appear in the slip, Builder legs, pending saved legs, the drawer and the Copy for Kalshi text. kalshi.com blocks bots (Vercel checkpoint), so the URL format is unverified from CI.
+- Every leg shows its team (`DAL @ CLE`) in the slip, Builder and Parlays tab. New saves store team/opp; older saved legs get them from the slate's history snapshot at grading (`grade.fill_teams`), or from the current board in the browser.
 - `kalshi-probe.yml` (manual) writes `pipeline/kalshi_probe/match_{nba,nfl}.txt` to check the mapping.
 
 ## Open ideas

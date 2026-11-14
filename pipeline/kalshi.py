@@ -40,6 +40,16 @@ SERIES = {
         "player_double_double": "KXNBA2D", "player_triple_double": "KXNBA3D",
     },
 }
+# series titles as Kalshi lists them; the web URL is kalshi.com/markets/<series>/<title-slug>/<event>
+TITLES = {
+    "KXNFLPASSYDS": "Pro Football Passing Yards", "KXNFLPASSTDS": "Pro Football player Passing Touchdowns",
+    "KXNFLPASSATT": "Pro Football Passing Attempts", "KXNFLRSHYDS": "Pro Football Rushing Yards",
+    "KXNFLRSHATT": "Pro Football Rushing Attempts", "KXNFLRECYDS": "Pro Football Receiving Yards",
+    "KXNFLREC": "Pro Football Player Receptions", "KXNFLANYTD": "Pro Football Anytime Touchdown",
+    "KXNBAPTS": "NBA Player Points", "KXNBAREB": "NBA Player Rebounds", "KXNBAAST": "NBA Player Assists",
+    "KXNBA3PT": "NBA Player Threes", "KXNBAPRA": "NBA Player Points + Rebounds + Assists",
+    "KXNBA2D": "NBA Player Double Double", "KXNBA3D": "NBA Player Triple Double",
+}
 FEE_RATE = 0.07          # Kalshi taker fee per contract = 0.07 * P * (1 - P), rounded up to the cent per order
 MIN_PRICE, MAX_PRICE = 0.02, 0.98   # ignore 1¢/99¢ asks: no real liquidity, and the fee math breaks down
 MONTHS = {m: i for i, m in enumerate(["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"], 1)}
@@ -128,6 +138,12 @@ def parse_market(m: dict, binary: bool):
     return None
 
 
+def web_url(event_ticker: str) -> str:
+    series = (event_ticker or "").split("-")[0]
+    slug = re.sub(r"[^a-z0-9]+", "-", TITLES.get(series, series).lower()).strip("-")
+    return f"https://kalshi.com/markets/{series.lower()}/{slug}/{(event_ticker or '').lower()}"
+
+
 def cost_with_fee(price: float) -> float:
     return price + math.ceil(FEE_RATE * price * (1 - price) * 100 - 1e-9) / 100
 
@@ -186,7 +202,7 @@ def attach(props: list[dict], games: list[dict], sport: str) -> dict:
         q = quote_for(p, idx, day_of.get(p.get("game")))
         if not q:
             continue
-        k = {"ticker": q["ticker"], "vol": q["vol"], "oi": q["oi"], "over_c": None, "under_c": None,
+        k = {"ticker": q["ticker"], "url": web_url(q["event"]), "vol": q["vol"], "oi": q["oi"], "over_c": None, "under_c": None,
              "over": None, "under": None, "ev_over": None, "ev_under": None}
         pov = p.get("p_over")
         for side, price in (("over", q["yes"]), ("under", q["no"])):
