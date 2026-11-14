@@ -775,7 +775,7 @@ function renderResults(R){
     <div class="sec">By market</div>
     <table class="log">${recHead('Market')}${Object.entries(R.by_market || {}).map(([m, r]) => recRow(m, r)).join('')}</table>
 
-    <div class="sec">By edge strength <span class="nc">(|edge ÷ σ|)</span></div>
+    <div class="sec">By strength rating <span class="nc">(the board's Thin / Lean / Solid / Strong)</span></div>
     <table class="log">${recHead('Edge')}${(R.by_edge || []).map(b => recRow(b.bucket, b)).join('')}</table>
     <p class="muted small">If the model is any good, the stronger buckets should hit more often.</p>
 

@@ -32,7 +32,8 @@ from build import (BACKTEST_CACHE, CORRECTIONS_MIN_N, HISTORY, MARKETS, OUT, RES
 
 PARLAYS = OUT / "parlays.json"
 JUICE_WIN = 100 / 110            # profit per 1u staked at -110
-EDGE_BUCKETS = [("<0.5σ", 0, 0.5), ("0.5–1σ", 0.5, 1.0), (">1σ", 1.0, math.inf)]
+# same cut points as the board's strength labels (index.html strength()): Thin / Lean / Solid / Strong
+EDGE_BUCKETS = [("Thin (<0.3σ)", 0, 0.3), ("Lean (0.3–0.6σ)", 0.3, 0.6), ("Solid (0.6–1σ)", 0.6, 1.0), ("Strong (≥1σ)", 1.0, math.inf)]
 # corrections: need this many graded (unflagged) projections in a market before suggesting one;
 # they auto-apply at CORRECTIONS_MIN_N. Each is shrunk toward 1.0 by n / (n + CORR_SHRINK_K).
 CORR_MIN_N = 30
