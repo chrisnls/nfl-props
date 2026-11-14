@@ -168,6 +168,12 @@ def stat_of(df_or_row, market: str):
 def current_slate(sched: pd.DataFrame, forced: str | None) -> str:
     if forced:
         return forced
+    # the next day that still has a game to tip: once tonight's games have all started, that's tomorrow
+    # (pulling lines for a slate that's already underway returns nothing pregame)
+    now = pd.Timestamp.now(tz="UTC")
+    upcoming = sched[(~sched.status_type_completed.astype(bool)) & (sched.start > now)]
+    if len(upcoming):
+        return str(upcoming.date.min())
     open_ = sched[~sched.status_type_completed.astype(bool)]
     return str(open_.date.min()) if len(open_) else str(sched.date.max())
 
@@ -930,7 +936,10 @@ def main():
     lines, usage, err, fetched, mode = None, {}, {}, None, want
     if want == "live":
         try:
-            lines, usage = fetch_odds(games, api_key, team_name_map(sched))
+            got, got_usage = fetch_odds(games, api_key, team_name_map(sched))
+            if not got:
+                raise RuntimeError("live pull returned no lines (props not posted yet, or every game has started)")
+            lines, usage = got, got_usage
             fetched = dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
             save_cache(lines, date, usage)
             mode = "live"
@@ -946,7 +955,10 @@ def main():
             # no lines saved for THIS slate yet (e.g. the first build of a new day): a real pull beats sample lines
             log("nba: no cached lines for this slate -> pulling live instead of using sample lines")
             try:
-                lines, usage = fetch_odds(games, api_key, team_name_map(sched))
+                got, got_usage = fetch_odds(games, api_key, team_name_map(sched))
+                if not got:
+                    raise RuntimeError("live pull returned no lines (props not posted yet, or every game has started)")
+                lines, usage = got, got_usage
                 fetched = dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
                 save_cache(lines, date, usage)
                 mode = "live"

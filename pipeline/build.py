@@ -775,7 +775,10 @@ def main() -> None:
         want = "cached"
     if want == "live":
         try:
-            lines, usage = fetch_odds(wg, api_key)
+            got, got_usage = fetch_odds(wg, api_key)
+            if not got:
+                raise RuntimeError("live pull returned no lines (props not posted yet, or every game has started)")
+            lines, usage = got, got_usage
             lines_fetched = dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
             save_lines_cache(lines, week, usage)
             mode = "live"
@@ -794,7 +797,10 @@ def main() -> None:
             # no lines saved for THIS week yet (e.g. the first build after the week rolls over): pull live
             log("no cached lines for this week -> pulling live instead of using sample lines")
             try:
-                lines, usage = fetch_odds(wg, api_key)
+                got, got_usage = fetch_odds(wg, api_key)
+                if not got:
+                    raise RuntimeError("live pull returned no lines (props not posted yet, or every game has started)")
+                lines, usage = got, got_usage
                 lines_fetched = dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
                 save_lines_cache(lines, week, usage)
                 mode = "live"
