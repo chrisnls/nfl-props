@@ -8,20 +8,12 @@ on:
         options: [cached, live, sample]
         default: cached
   schedule:
-    # Times are UTC; Central (CST) = UTC-6 for the rest of the season. Minutes are off the hour
-    # because GitHub delays top-of-hour schedules most. Live pulls skip games that have already
-    # kicked off, so later pulls in a day cost less. ~520 credits/week (~2,200/month).
-    - cron: "7 15 * * 3"    # Wed  9:07am CT  first look once player props are posted
-    - cron: "7 15 * * 4"    # Thu  9:07am CT  full refresh
-    - cron: "37 23 * * 4"   # Thu  5:37pm CT  TNF, right before kickoff
-    - cron: "7 14 * * 6"    # Sat  8:07am CT  after Friday's final injury reports
-    - cron: "7 13 * * 0"    # Sun  7:07am CT  morning lines
-    - cron: "7 16 * * 0"    # Sun 10:07am CT  morning line moves
-    - cron: "17 17 * * 0"   # Sun 11:17am CT  after noon-game inactives (posted ~10:30)
-    - cron: "37 20 * * 0"   # Sun  2:37pm CT  after late-game inactives (posted ~2:35)
-    - cron: "37 0 * * 1"    # Sun  6:37pm CT  SNF (Mon 00:37 UTC)
-    - cron: "37 23 * * 1"   # Mon  5:37pm CT  MNF
-    - cron: "7 15 * * 2"    # Tue  9:07am CT  stats + grading only; cached lines, no credits
+    # Hourly, 7am-9pm CT (UTC-6). GitHub's scheduler is best-effort (week 10: 3 of 11 scheduled runs started,
+    # each 4-6h late), so every run checks whether a live pull is due (build.py --lines auto): no lines yet for
+    # the week, lines 24h+ old, or a kickoff within 2h and lines 90+ min old. Most runs are free rebuilds that
+    # still refresh stats, injuries and grading.
+    - cron: "7 13-23 * * *"
+    - cron: "7 0-3 * * *"
 permissions:
   contents: write
   pages: write
@@ -50,21 +42,21 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           LINES_INPUT: ${{ inputs.lines }}
         run: |
-          # Manual runs default to cached lines (free). Scheduled: Tue = cached, Thu/Sat/Sun = live.
+          # Manual runs default to cached lines (free). Scheduled runs use auto (live only when a pull is due).
           # A live pull is skipped automatically (falls back to cached) if credits can't cover the slate.
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             MODE="${LINES_INPUT:-cached}"
-          elif [ "$(date -u +%u)" = "2" ]; then   # Tuesday UTC = the 9:07am CT grading run
-            MODE=cached
           else
-            MODE=live
+            MODE=auto
           fi
           echo "lines mode: $MODE"
           python pipeline/build.py --lines "$MODE"
       - name: Commit data
         run: |
           git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"
-          git add site/data/props.json site/data/results.json site/data/parlays.json site/data/history pipeline/lines_cache.json pipeline/backtest_cache.json
+          # the board file is only committed when the lines changed (live pull); free rebuilds still deploy below
+          git add site/data/results.json site/data/parlays.json site/data/history pipeline/lines_cache.json pipeline/backtest_cache.json
+          if [ "$(python -c "import json;print(json.load(open('site/data/props.json'))['mode'])")" = "live" ]; then git add site/data/props.json; fi
           git diff --cached --quiet || git commit -m "data: week $(python -c "import json;print(json.load(open('site/data/props.json'))['week'])") $(date -u +%F)"
           git pull --rebase origin main || true
           git push || echo "push skipped"

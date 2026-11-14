@@ -117,6 +117,12 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 - Backtest: DD n=625, Brier .1318 vs base .1561, a bit high in 10–25% (16.7% → 10.7%); a Platt recalibration didn't hold up out of sample in both directions → raw. TD3: no skill → role `uncal` (shown, not rated, excluded from the builder). Corrections skip these markets.
 - UI: generic yes/no handling (`BIN`, `isBin`) shared with anytime TD; DD panel shows projected minutes. Conflict checker treats two DD yeses on same-position teammates as competing.
 
+### Reliable scheduling (11/14)
+
+- GitHub cron for this repo: week 10 had 3 of 11 scheduled NFL runs start, each 4–6h late (Sun 7:07 → 12:16 PM, which explains the 78-credit in-game pull on 11/8; Tue 9:07 → 3:10 PM; Thu 5:37 → 9:32 PM, after kickoff); Wed/Thu/Sat mornings never ran. NBA's Sat 10:07 never ran either.
+- Fix: hourly crons (NFL `7 13-23,0-3`, NBA `17 14-23,0-3` UTC) + `--lines auto` in build.py/nba.py (`auto_mode()`): live if no cache for the week/slate, cache ≥24h (NFL) / ≥8h (NBA), or next kickoff/tip ≤2h and cache ≥1.5h; else cached. props.json is only committed on live runs (Pages deploys the working tree, so free rebuilds still publish).
+- If GitHub keeps dropping runs, the next step is an external trigger (an Apps Script time trigger or cron-job.org calling workflow_dispatch with a fine-grained token).
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.

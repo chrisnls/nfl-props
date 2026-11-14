@@ -8,10 +8,11 @@ on:
         options: [cached, live, sample]
         default: cached
   schedule:
-    # Times are UTC; Central (CST) = UTC-6. Each run grades finished slates first (free), then pulls
-    # today's lines. Live pulls skip games that have tipped. ~5 credits/game/pull -> ~100/day.
-    - cron: "7 16 * * *"    # 10:07am CT  morning lines (and grades last night's games)
-    - cron: "7 23 * * *"    #  5:07pm CT  ~1h before most tips; catches late scratches / line moves
+    # Hourly, 8am-9pm CT (UTC-6). GitHub's scheduler is best-effort (runs arrive hours late or get dropped),
+    # so instead of a few exact times every run checks whether a live pull is due (nba.py --lines auto):
+    # no lines yet for the slate, lines 8h+ old, or a tip within 2h and lines 90+ min old. Most runs are free.
+    - cron: "17 14-23 * * *"
+    - cron: "17 0-3 * * *"
 permissions:
   contents: write
   pages: write
@@ -36,13 +37,15 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           LINES_INPUT: ${{ inputs.lines }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then MODE="${LINES_INPUT:-cached}"; else MODE=live; fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then MODE="${LINES_INPUT:-cached}"; else MODE=auto; fi
           echo "lines mode: $MODE"
           python pipeline/nba.py --lines "$MODE"
       - name: Commit data
         run: |
           git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"
-          for f in site/data/nba pipeline/nba_lines_cache.json pipeline/nba_backtest_cache.json; do [ -e "$f" ] && git add "$f"; done
+          # the board file is only committed when the lines changed (live pull); free rebuilds still deploy below
+          for f in site/data/nba/history site/data/nba/results.json site/data/nba/parlays.json pipeline/nba_lines_cache.json pipeline/nba_backtest_cache.json; do [ -e "$f" ] && git add "$f"; done
+          if [ "$(python -c "import json;print(json.load(open('site/data/nba/props.json'))['mode'])")" = "live" ]; then git add site/data/nba/props.json; fi
           git diff --cached --quiet || git commit -m "data: nba $(python -c "import json;print(json.load(open('site/data/nba/props.json'))['slate'])") $(date -u +%FT%H%MZ)"
           git pull --rebase origin main || true
           git push || echo "push skipped"

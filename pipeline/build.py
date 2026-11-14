@@ -743,10 +743,33 @@ def load_corrections() -> tuple[dict, dict]:
     return corr, {"active": True, "by_market": corr, "from": r.get("updated")}
 
 
+# Scheduled runs fire hourly (GitHub's scheduler is best-effort -- in week 10 it started 3 of 11 scheduled
+# runs, each 4-6h late), and each run decides whether a live pull is due; most runs are free rebuilds.
+AUTO_STALE_H = 24       # refresh lines at least daily
+AUTO_WINDOW_H = 2.0     # ...and shortly before each kickoff window (inactives ~90 min before)
+AUTO_MIN_AGE_H = 1.5
+
+
+def auto_mode(week: int, wg: list[dict]) -> str:
+    now = dt.datetime.now(dt.timezone.utc)
+    c = load_lines_cache(week)
+    if not c:
+        log("auto: no lines yet for this week -> live")
+        return "live"
+    age = (now - dt.datetime.fromisoformat(c[2])).total_seconds() / 3600
+    nxt = min((kickoff_utc(g["kickoff"]) for g in wg if not g["played"] and kickoff_utc(g["kickoff"]) > now), default=None)
+    soon = nxt is not None and (nxt - now).total_seconds() / 3600 <= AUTO_WINDOW_H
+    if age >= AUTO_STALE_H or (soon and age >= AUTO_MIN_AGE_H):
+        log(f"auto: lines are {age:.1f}h old{' and a kickoff is under ' + str(AUTO_WINDOW_H) + 'h away' if soon else ''} -> live")
+        return "live"
+    log(f"auto: lines are {age:.1f}h old -> cached (free)")
+    return "cached"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--week", type=int)
-    ap.add_argument("--lines", choices=["live", "cached", "sample"], default="live",
+    ap.add_argument("--lines", choices=["auto", "live", "cached", "sample"], default="live",
                     help="live: pull from the Odds API (~6 credits/game); cached: reuse the last live "
                          "pull for this week (free); sample: synthesize lines at recent averages (free)")
     ap.add_argument("--sample", action="store_true", help="same as --lines sample")
@@ -769,6 +792,8 @@ def main() -> None:
     teams_this_week = {g["home"] for g in wg} | {g["away"] for g in wg}
     players_in_week = set(stats[stats.team.isin(teams_this_week)].player_id)
     want = "sample" if args.sample else args.lines
+    if want == "auto":
+        want = auto_mode(week, wg) if api_key else "cached"
     lines, usage, usage_err, lines_fetched = None, {}, {}, None
     if want == "live" and not api_key:
         log("no ODDS_API_KEY -> trying cached lines")

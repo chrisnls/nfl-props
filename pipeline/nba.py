@@ -709,6 +709,30 @@ def inj_of(pid, name, team, injuries):
             "return": i.get("return")} if i else None
 
 
+# Scheduled runs fire hourly (GitHub's scheduler is best-effort: runs arrive hours late or not at all), and
+# each one decides whether a live pull is actually due, so most runs are free rebuilds.
+AUTO_STALE_H = 8        # refresh lines at least this often
+AUTO_WINDOW_H = 2.0     # ...and once more shortly before the first tip still to come
+AUTO_MIN_AGE_H = 1.5
+
+
+def auto_mode(date, games) -> str:
+    now = dt.datetime.now(dt.timezone.utc)
+    c = load_cache(date)
+    if not c:
+        log("nba auto: no lines yet for this slate -> live")
+        return "live"
+    age = (now - dt.datetime.fromisoformat(c[2])).total_seconds() / 3600
+    tips = [dt.datetime.fromisoformat(g["start_utc"]) for g in games if not g["played"]]
+    nxt = min((t for t in tips if t > now), default=None)
+    soon = nxt is not None and (nxt - now).total_seconds() / 3600 <= AUTO_WINDOW_H
+    if age >= AUTO_STALE_H or (soon and age >= AUTO_MIN_AGE_H):
+        log(f"nba auto: lines are {age:.1f}h old{' and a tip is under ' + str(AUTO_WINDOW_H) + 'h away' if soon else ''} -> live")
+        return "live"
+    log(f"nba auto: lines are {age:.1f}h old -> cached (free)")
+    return "cached"
+
+
 def write_snapshot(props, games, date, fetched):
     HISTORY.mkdir(parents=True, exist_ok=True)
     path = HISTORY / f"{date}.json"
@@ -920,7 +944,9 @@ def load_corrections():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", help="slate date YYYY-MM-DD (default: next unfinished)")
-    ap.add_argument("--lines", choices=["live", "cached", "sample"], default="live")
+    ap.add_argument("--lines", choices=["auto", "live", "cached", "sample"], default="live",
+                    help="auto (scheduled runs): live only when a pull is due -- no lines yet for this slate, lines "
+                         "older than AUTO_STALE_H, or a tip within AUTO_WINDOW_H with lines older than AUTO_MIN_AGE_H")
     ap.add_argument("--grade", action="store_true")
     args = ap.parse_args()
     frames = load_frames()
@@ -933,7 +959,9 @@ def main():
     log(f"nba slate {date}: {len(games)} games, box scores through {box.date.max()}")
     teams = {g["home"] for g in games} | {g["away"] for g in games}
     api_key = os.environ.get("ODDS_API_KEY", "").strip()
-    want = args.lines if api_key or args.lines != "live" else "cached"
+    want = args.lines if api_key or args.lines not in ("live", "auto") else "cached"
+    if want == "auto":
+        want = auto_mode(date, games)
     lines, usage, err, fetched, mode = None, {}, {}, None, want
     if want == "live":
         try:
