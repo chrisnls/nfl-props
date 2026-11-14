@@ -743,8 +743,8 @@ def grade_parlays(out: Outcomes):
     url = os.environ.get("PARLAY_SHEET_CSV_URL", "").strip()
     base = {"updated": nfl_grade.now_iso(), "configured": bool(url), "parlays": [],
             "summary": {"n": 0, "w": 0, "l": 0, "p": 0, "pending": 0, "units": 0.0}}
-    if not url:
-        return base
+    if not url:   # local run: keep the last graded file instead of blanking it
+        return json.loads(PARLAYS.read_text()) if PARLAYS.exists() else base
     try:
         df = nfl_grade.load_parlay_sheet(url)
     except Exception as e:

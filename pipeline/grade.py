@@ -306,6 +306,11 @@ def grade_parlays(out: Outcomes) -> dict:
     base = {"updated": now_iso(), "configured": bool(url), "parlays": [],
             "summary": {"n": 0, "w": 0, "l": 0, "p": 0, "pending": 0, "units": 0.0}}
     if not url:
+        # local runs don't have the sheet URL (only the workflow does): keep the last graded file rather than
+        # overwriting it with an empty "not configured" one
+        if PARLAYS.exists():
+            log("parlays: PARLAY_SHEET_CSV_URL not set; keeping the existing parlays.json")
+            return json.loads(PARLAYS.read_text())
         log("parlays: PARLAY_SHEET_CSV_URL not set; skipping")
         return base
     try:
