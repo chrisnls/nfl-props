@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       lines:
-        description: "Prop lines: cached = reuse today's last pull (FREE), live = new pull (~5 credits per game), sample = fake lines"
+        description: "Prop lines: cached = reuse today's last pull (FREE), auto = live only if a pull is due (what scheduled runs do), live = new pull (~7 credits per game), sample = fake lines"
         type: choice
-        options: [cached, live, sample]
+        options: [cached, auto, live, sample]
         default: cached
   schedule:
     # Hourly, 8am-9pm CT (UTC-6). GitHub's scheduler is best-effort (runs arrive hours late or get dropped),
