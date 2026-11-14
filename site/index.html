@@ -137,6 +137,28 @@ table.log td:first-child,table.log th:first-child{text-align:left}
 .conflict b{color:var(--ink)} .conflict .h{color:var(--bad);font-weight:700}
 .conflict.warn{background:rgba(242,182,92,.08);border-color:rgba(242,182,92,.4)} .conflict.warn .h{color:var(--warn)}
 .leg .flag{color:var(--bad);font-weight:700;margin-right:4px}
+@media (max-width:1099px){ .slip.open{max-height:80vh;overflow-y:auto} }
+/* wide screens: the slip is a left sidebar that pushes the board over instead of covering it */
+@media (min-width:1100px){
+  body{padding-left:48px;transition:padding-left .22s}
+  body.slip-open{padding-left:380px}
+  .slip{top:0;bottom:0;left:0;right:auto;width:48px;transform:none;border-top:0;border-right:1px solid var(--line);
+    padding:0;overflow:hidden;transition:width .22s;display:flex;flex-direction:column}
+  .slip.open{width:380px}
+  .slip .bar{height:auto;padding:16px 14px 10px;flex:0 0 auto;gap:8px}
+  .slip:not(.open) .bar{writing-mode:vertical-rl;padding:16px 12px;height:100%;justify-content:flex-start;gap:14px}
+  .slip:not(.open) .legs,.slip:not(.open) .sum,.slip:not(.open) .corr,.slip:not(.open) .conflicts{display:none}
+  .slip.open .bar::after{content:'«';color:var(--ink3);font-size:18px;margin-left:6px}
+  .slip:not(.open) .bar::before{content:'»';color:var(--ink3);font-size:18px}
+  .slip .legs,.slip .sum,.slip .conflicts{max-width:none;margin-left:14px;margin-right:14px}
+  .slip .legs{overflow-y:auto;flex:0 1 auto;margin-top:0;padding-bottom:2px}
+  .slip .leg{flex-wrap:wrap;align-items:flex-start}
+  .slip .leg > span:first-child{flex:1 1 220px;line-height:1.45}
+  .slip .sum{gap:8px 14px;padding-top:10px;border-top:1px solid var(--line)}
+  .slip .corr{margin:6px 14px 0}
+  .slip .conflicts{overflow-y:auto;flex:0 1 auto;padding-bottom:14px}
+  .wrap{padding-bottom:30px}
+}
 
 /* tabs + results/parlays views */
 .sports{display:flex;gap:4px}
@@ -677,7 +699,7 @@ function addLeg(p, side){
   slip = slip.filter(l => l.id !== p.id);
   slip.push({id: p.id, player: p.player, label: p.label, market: p.market, line: p.line, side, game: p.game, team: p.team, opp: p.opp, home: p.home,
     price: quote(p, side).price, book: quote(p, side).book, prob: side === 'Over' ? p.p_over : 1 - p.p_over});
-  saveSlip(); $('#slip').classList.add('open');
+  saveSlip(); setSlipOpen(true);
 }
 function saveSlip(){ localStorage.setItem(SK('slip'), JSON.stringify(slip)); renderSlip(); }
 // ---- parlay conflict checks: legs that work against each other
@@ -769,7 +791,13 @@ function renderSlip(){
   const sg = Object.values(games).filter(g => g.length > 1);
   $('#corr').textContent = sg.length ? `⚠ ${sg.map(g => g.length).join('+')} legs share a game — the model prob treats legs as independent; same-game legs are correlated and books price that in.` : '';
 }
-$('#slipBar').onclick = () => $('#slip').classList.toggle('open');
+// open/closed is remembered; on wide screens the open slip is a sidebar that pushes the board right
+function setSlipOpen(on){
+  $('#slip').classList.toggle('open', on); document.body.classList.toggle('slip-open', on);
+  try { localStorage.setItem('slipOpen', on ? '1' : '0'); } catch (e) {}
+}
+$('#slipBar').onclick = () => setSlipOpen(!$('#slip').classList.contains('open'));
+try { if (localStorage.getItem('slipOpen') === '1') setSlipOpen(true); } catch (e) {}
 
 // ---- tabs: Board / Results / Parlays
 const TABS = ['board', 'results', 'parlays', 'builder'];
@@ -1091,7 +1119,7 @@ function renderBuilder(results){
   });
   el.querySelectorAll('[data-use]').forEach(b => b.onclick = () => {
     const r = results[+b.dataset.use];
-    slip = r.legs.map(legOf); saveSlip(); $('#slip').classList.add('open');
+    slip = r.legs.map(legOf); saveSlip(); setSlipOpen(true);
     b.textContent = 'Loaded ✓';
   });
 }

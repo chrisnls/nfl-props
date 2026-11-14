@@ -133,6 +133,9 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 - Every leg shows its team (`DAL @ CLE`) in the slip, Builder and Parlays tab. New saves store team/opp; older saved legs get them from the slate's history snapshot at grading (`grade.fill_teams`), or from the current board in the browser.
 - `kalshi-probe.yml` (manual) writes `pipeline/kalshi_probe/match_{nba,nfl}.txt` to check the mapping.
 
+### Slip sidebar (11/14)
+- On screens 1100px+ the parlay slip is a left sidebar (380px open, 48px rail closed) that pushes the board over instead of covering it; the player drawer stays on the right, so both fit. Open/closed is remembered (`localStorage.slipOpen`). Below 1100px it stays a bottom sheet, capped at 80% height and scrollable.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.
