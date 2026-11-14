@@ -49,6 +49,9 @@ jobs:
           git diff --cached --quiet || git commit -m "data: nba $(python -c "import json;print(json.load(open('site/data/nba/props.json'))['slate'])") $(date -u +%FT%H%MZ)"
           git pull --rebase origin main || true
           git push || echo "push skipped"
+      - name: Keep the other sport's live board
+        # this run only rebuilt its own sport; don't roll the other board back to its last committed copy
+        run: python pipeline/keep_live.py site/data/props.json https://chrisnls.github.io/nfl-props/data/props.json
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
   deploy:

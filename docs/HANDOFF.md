@@ -143,6 +143,8 @@ Prompted by Anthony Gould (IND): his line jumped from his backup history to 1.5 
 - **New team** (`why = "newteam"`): roster team ≠ the team in his last game, so the log is from another offense. This also fixed a bug: traded players' props were placed in their old team's game (team came from the last stat line), and now use the roster team.
 - **News** (`pipeline/news.py`): ESPN's public fantasy news feed per player (`/apis/fantasy/v2/games/{ffl|fba}/news/players?playerId=`), up to 3 items from the last 10 days, 8 threads. NFL maps gsis to espn ids via rosters; NBA pids are ESPN ids. Shown in the drawer, plus a "News" tag on rows with an item from the last 48h. The model doesn't use it. `NEWS=0` skips it.
 
+- **Deploy fix (11/14):** each workflow deploys the whole site, but the other sport's props.json in the checkout is only committed on live pulls. Before deploying, `pipeline/keep_live.py` keeps the live Pages copy when it's newer, so the last build no longer rolls the other board back (that's what hid news/Kalshi on the NFL board).
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.
