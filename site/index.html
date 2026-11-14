@@ -270,7 +270,7 @@ async function load(){
   if (DATA.mode === 'sample') {
     const why = DATA.sample_reason === 'no_key' ? 'No Odds API key is configured, so each line'
       : DATA.sample_reason === 'api_error' ? `The Odds API pull failed (${(DATA.usage && DATA.usage.error) || 'error'}), so each line`
-      : DATA.sample_reason === 'no_lines' ? `No real lines have been pulled for this ${NBA ? 'slate' : 'week'} yet, so each line`
+      : DATA.sample_reason === 'no_lines' ? `The books haven't posted player props for this ${NBA ? 'slate' : 'week'} yet (the next scheduled pull will pick them up), so each line`
       : 'Real lines aren\'t available for this build, so each line';
     $('#banner').innerHTML = `<div class="banner"><b>Sample lines.</b> ${why} is set at the player's recent average. Projections and hit rates are real; edges are not.</div>`;
   }

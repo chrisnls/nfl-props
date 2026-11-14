@@ -967,7 +967,9 @@ def main():
     sample_reason = None
     if lines is None:
         lines, usage, mode = sample_lines(box, date, teams), err, "sample"
-        sample_reason = "no_key" if not api_key else "api_error" if err else "no_lines"
+        sample_reason = ("no_key" if not api_key
+                         else "no_lines" if (not err or "returned no lines" in err.get("error", ""))
+                         else "api_error")
     corr, corr_info = load_corrections()
     injuries = fetch_injuries(team_name_map(sched))
     props, defense, games = build_props(box, sched, date, lines, corr, injuries)

@@ -810,7 +810,9 @@ def main() -> None:
     if lines is None:
         log("using sample lines")
         lines, usage, mode = sample_odds(stats, week, players_in_week), usage_err, "sample"
-        sample_reason = "no_key" if not api_key else "api_error" if usage_err else "no_lines"
+        sample_reason = ("no_key" if not api_key
+                         else "no_lines" if (not usage_err or "returned no lines" in usage_err.get("error", ""))
+                         else "api_error")
 
     corrections, corr_info = load_corrections()
     props, defense = build_props(stats, games, frames["injuries"], frames["snaps"], week, lines, corrections)
