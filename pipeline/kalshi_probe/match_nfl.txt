@@ -1,66 +1,66 @@
-{"ok": true, "series": 8, "markets": 3676, "matched": 254, "fetched": "2026-11-14T18:57+00:00"}
+{"ok": true, "series": 8, "markets": 3719, "matched": 256, "fetched": "2026-11-14T20:37+00:00"}
 Xavier Worthy            Receptions        2.5 | yes 54¢ (-127) EV 0.53 | no 48¢ (100) EV -0.714 | book -120/111 | KXNFLREC-26NOV15KCATL-KCXWORTHY1-3
-Emmett Johnson           Receptions        3.5 | yes 45¢ (113) EV -0.67 | no 56¢ (-138) EV 0.457 | book 124/-148 | KXNFLREC-26NOV15KCATL-KCEJOHNSON10-4
-Justin Jefferson         Receptions        6.5 | yes 48¢ (100) EV -0.664 | no 53¢ (-122) EV 0.513 | book -105/-115 | KXNFLREC-26NOV15MINGB-MINJJEFFERSON18-7
+Emmett Johnson           Receptions        3.5 | yes 46¢ (108) EV -0.677 | no 55¢ (-133) EV 0.482 | book 124/-148 | KXNFLREC-26NOV15KCATL-KCEJOHNSON10-4
+Justin Jefferson         Receptions        6.5 | yes 47¢ (104) EV -0.657 | no 54¢ (-127) EV 0.486 | book -105/-115 | KXNFLREC-26NOV15MINGB-MINJJEFFERSON18-7
 Anthony Gould            Receptions        1.5 | yes 59¢ (-156) EV -0.725 | no 42¢ (127) EV 0.891 | book -155/131 | KXNFLREC-26NOV15MIAIND-INDAGOULD6-2
-Konata Mumpfield         Receptions        2.5 | yes 42¢ (127) EV -0.607 | no 60¢ (-163) EV 0.334 | book 119/-135 | KXNFLREC-26NOV15LARARI-LARKMUMPFIELD4-3
-Tutu Atwell              Receptions        2.5 | yes 44¢ (117) EV -0.593 | no 57¢ (-144) EV 0.378 | book 115/-125 | KXNFLREC-26NOV15LARARI-LARTATWELL8-3
-Gunnar Helm              Receptions        3.5 | yes 41¢ (133) EV -0.523 | no 64¢ (-194) EV 0.205 | book 120/-138 | KXNFLREC-26NOV15JACTEN-TENGHELM84-4
-Keenan Allen             Receptions        2.5 | yes 48¢ (100) EV 0.594 | no 56¢ (-138) EV -0.65 | book 110/-130 | KXNFLREC-26NOV15SFDAL-SFKALLEN10-3
+Konata Mumpfield         Receptions        2.5 | yes 41¢ (133) EV -0.598 | no 60¢ (-163) EV 0.334 | book 119/-135 | KXNFLREC-26NOV15LARARI-LARKMUMPFIELD4-3
+Tutu Atwell              Receptions        2.5 | yes 45¢ (113) EV -0.602 | no 58¢ (-150) EV 0.355 | book 115/-125 | KXNFLREC-26NOV15LARARI-LARTATWELL8-3
+Gunnar Helm              Receptions        3.5 | yes 39¢ (144) EV -0.5 | no 63¢ (-186) EV 0.223 | book 120/-138 | KXNFLREC-26NOV15JACTEN-TENGHELM84-4
+Keenan Allen             Receptions        2.5 | yes 46¢ (108) EV 0.66 | no 56¢ (-138) EV -0.65 | book 110/-130 | KXNFLREC-26NOV15SFDAL-SFKALLEN10-3
 Drake Maye               Pass TDs          1.5 | yes 57¢ (-144) EV 0.293 | no 44¢ (117) EV -0.485 | book -130/105 | KXNFLPASSTDS-26NOV15NEDET-NEDMAYE10-2
-Jordan Mason             Receptions        1.5 | yes 36¢ (163) EV -0.366 | no 65¢ (-203) EV 0.133 | book 182/-200 | KXNFLREC-26NOV15MINGB-MINJMASON27-2
-Devin Duvernay           Receptions        1.5 | yes 48¢ (100) EV -0.518 | no 59¢ (-156) EV 0.244 | book 101/-129 | KXNFLREC-26NOV15LARARI-ARIDDUVERNAY81-2
+Jordan Mason             Receptions        1.5 | yes 37¢ (156) EV -0.382 | no 64¢ (-194) EV 0.15 | book 182/-200 | KXNFLREC-26NOV15MINGB-MINJMASON27-2
+Devin Duvernay           Receptions        1.5 | yes 47¢ (104) EV -0.508 | no 56¢ (-138) EV 0.309 | book 101/-129 | KXNFLREC-26NOV15LARARI-ARIDDUVERNAY81-2
 Olamide Zaccheaus        Receptions        1.5 | yes 43¢ (122) EV -0.458 | no 58¢ (-150) EV 0.26 | book 126/-160 | KXNFLREC-26NOV15KCATL-ATLOZACCHEAUS14-2
 Jordan Watkins           Receptions        1.5 | yes 45¢ (113) EV 0.606 | no 56¢ (-138) EV -0.578 | book 104/-123 | KXNFLREC-26NOV15SFDAL-SFJWATKINS17-2
-Noah Fant                Receptions        0.5 | yes 68¢ (-233) EV 0.069 | no 34¢ (178) EV -0.3 | book -235/188 | KXNFLREC-26NOV15CARNO-NONFANT87-1
+Noah Fant                Receptions        0.5 | yes 68¢ (-233) EV 0.069 | no 33¢ (186) EV -0.28 | book -235/188 | KXNFLREC-26NOV15CARNO-NONFANT87-1
 Ben Yurosek              Receptions        1.5 | yes 40¢ (138) EV -0.4 | no 61¢ (-170) EV 0.187 | book 140/-174 | KXNFLREC-26NOV15MINGB-MINBYUROSEK85-2
 Laquon Treadwell         Receptions        2.5 | yes 42¢ (127) EV -0.402 | no 59¢ (-156) EV 0.208 | book 130/-140 | KXNFLREC-26NOV15MIAIND-INDLTREADWELL13-3
 Breece Hall              Receptions        2.5 | yes 51¢ (-113) EV 0.385 | no 50¢ (-108) EV -0.488 | book -106/-106 | KXNFLREC-26NOV15BUFNYJ-NYJBHALL20-3
-Deshaun Watson           Pass TDs          1.5 | yes 32¢ (194) EV -0.203 | no 70¢ (-257) EV 0.012 | book 210/-275 | KXNFLPASSTDS-26NOV15HOUCLE-CLEDWATSON4-2
-Elic Ayomanor            Receptions        2.5 | yes 43¢ (122) EV -0.382 | no 59¢ (-156) EV 0.184 | book 120/-140 | KXNFLREC-26NOV15JACTEN-TENEAYOMANOR5-3
-Tory Horton              Receptions        0.5 | yes 65¢ (-203) EV 0.079 | no 37¢ (156) EV -0.29 | book -206/164 | KXNFLREC-26NOV15SEALV-SEATHORTON15-1
-Jahan Dotson             Receptions        2.5 | yes 39¢ (144) EV -0.315 | no 63¢ (-186) EV 0.106 | book 154/-176 | KXNFLREC-26NOV15KCATL-ATLJDOTSON4-3
+Deshaun Watson           Pass TDs          1.5 | yes 32¢ (194) EV -0.203 | no 69¢ (-245) EV 0.027 | book 210/-275 | KXNFLPASSTDS-26NOV15HOUCLE-CLEDWATSON4-2
+Elic Ayomanor            Receptions        2.5 | yes 43¢ (122) EV -0.382 | no 58¢ (-150) EV 0.203 | book 120/-140 | KXNFLREC-26NOV15JACTEN-TENEAYOMANOR5-3
+Tory Horton              Receptions        0.5 | yes 65¢ (-203) EV 0.079 | no 36¢ (163) EV -0.271 | book -206/164 | KXNFLREC-26NOV15SEALV-SEATHORTON15-1
+Jahan Dotson             Receptions        2.5 | yes 38¢ (150) EV -0.297 | no 63¢ (-186) EV 0.106 | book 154/-176 | KXNFLREC-26NOV15KCATL-ATLJDOTSON4-3
 Ty Johnson               Receptions        1.5 | yes 59¢ (-156) EV 0.182 | no 43¢ (122) EV -0.38 | book -161/130 | KXNFLREC-26NOV15BUFNYJ-BUFTJOHNSON26-2
-Daniel Jones             Pass TDs          1.5 | yes 34¢ (178) EV -0.219 | no 68¢ (-233) EV 0.027 | book 180/-220 | KXNFLPASSTDS-26NOV15MIAIND-INDDJONES17-2
+Daniel Jones             Pass TDs          1.5 | yes 34¢ (178) EV -0.219 | no 67¢ (-223) EV 0.042 | book 180/-220 | KXNFLPASSTDS-26NOV15MIAIND-INDDJONES17-2
 Jacoby Brissett          Pass Att         30.5 | yes 49¢ (-104) EV 0.412 | no 53¢ (-122) EV -0.491 | book -105/-121 | KXNFLPASSATT-26NOV16LACBAL-BALJBRISSETT7-31
-Ashton Dulin             Receptions        1.5 | yes 46¢ (108) EV -0.408 | no 56¢ (-138) EV 0.234 | book 106/-122 | KXNFLREC-26NOV15MIAIND-INDADULIN16-2
-Omar Cooper Jr.          Receptions        3.5 | yes 46¢ (108) EV 0.479 | no 57¢ (-144) EV -0.508 | book 111/-135 | KXNFLREC-26NOV15BUFNYJ-NYJOCOOPER11-4
-Drew Lock                Pass Att         28.5 | yes 52¢ (-117) EV -0.461 | no 51¢ (-113) EV 0.338 | book -115/-106 | KXNFLPASSATT-26NOV15SEALV-SEADLOCK2-29
+Ashton Dulin             Receptions        1.5 | yes 44¢ (117) EV -0.383 | no 57¢ (-144) EV 0.214 | book 106/-122 | KXNFLREC-26NOV15MIAIND-INDADULIN16-2
+Omar Cooper Jr.          Receptions        3.5 | yes 46¢ (108) EV 0.479 | no 56¢ (-138) EV -0.5 | book 111/-135 | KXNFLREC-26NOV15BUFNYJ-NYJOCOOPER11-4
+Drew Lock                Pass Att         28.5 | yes 52¢ (-117) EV -0.461 | no 52¢ (-117) EV 0.313 | book -115/-106 | KXNFLPASSATT-26NOV15SEALV-SEADLOCK2-29
 Khalil Herbert           Receptions        0.5 | yes 62¢ (-178) EV 0.103 | no 39¢ (144) EV -0.283 | book -186/152 | KXNFLREC-26NOV15KCATL-ATLKHERBERT25-1
 Tucker Kraft             Receptions        4.5 | yes 39¢ (144) EV -0.283 | no 63¢ (-186) EV 0.086 | book 134/-165 | KXNFLREC-26NOV15MINGB-GBTKRAFT85-5
 Michael Mayer            Receptions        2.5 | yes 57¢ (-144) EV 0.197 | no 45¢ (113) EV -0.374 | book -137/115 | KXNFLREC-26NOV15SEALV-LVMMAYER87-3
 Quinshon Judkins         Receptions        1.5 | yes 39¢ (144) EV 0.7 | no 62¢ (-178) EV -0.527 | book 154/-195 | KXNFLREC-26NOV15HOUCLE-CLEQJUDKINS10-2
 Ollie Gordon II          Receptions        1.5 | yes 49¢ (-104) EV -0.41 | no 52¢ (-117) EV 0.294 | book -102/-114 | KXNFLREC-26NOV15MIAIND-MIAOGORDON0-2
-Jerry Jeudy              Receptions        1.5 | yes 56¢ (-138) EV 0.197 | no 46¢ (108) EV -0.362 | book -139/110 | KXNFLREC-26NOV15HOUCLE-CLEJJEUDY3-2
+Jerry Jeudy              Receptions        1.5 | yes 56¢ (-138) EV 0.197 | no 45¢ (113) EV -0.349 | book -139/110 | KXNFLREC-26NOV15HOUCLE-CLEJJEUDY3-2
 Braelon Allen            Receptions        1.5 | yes 46¢ (108) EV 0.437 | no 55¢ (-133) EV -0.456 | book 123/-130 | KXNFLREC-26NOV15BUFNYJ-NYJBALLEN0-2
 Josh Cameron             Receptions        0.5 | yes 64¢ (-194) EV 0.05 | no 38¢ (150) EV -0.232 | book -205/177 | KXNFLREC-26NOV15JACTEN-JACJCAMERON19-1
 Bryce Young              Rush Att          2.5 | yes 41¢ (133) EV -0.27 | no 60¢ (-163) EV 0.106 | book 125/-153 | KXNFLRSHATT-26NOV15CARNO-CARBYOUNG9-3
-Deion Burks              Receptions        1.5 | yes 57¢ (-144) EV -0.475 | no 45¢ (113) EV 0.468 | book -156/140 | KXNFLREC-26NOV15MIAIND-INDDBURKS80-2
+Deion Burks              Receptions        1.5 | yes 58¢ (-150) EV -0.483 | no 44¢ (117) EV 0.5 | book -156/140 | KXNFLREC-26NOV15MIAIND-INDDBURKS80-2
 Brian Thomas Jr.         Receptions        0.5 | yes 66¢ (-213) EV 0.013 | no 36¢ (163) EV -0.182 | book -204/168 | KXNFLREC-26NOV15JACTEN-JACBTHOMAS7-1
 Devaughn Vele            Rec Yds          29.5 | yes 53¢ (-122) EV 0.244 | no 48¢ (100) EV -0.368 | book -114/-110 | KXNFLRECYDS-26NOV15CARNO-NODVELE14-30
 Mason Taylor             Receptions        2.5 | yes 40¢ (138) EV 0.621 | no 61¢ (-170) EV -0.494 | book 140/-180 | KXNFLREC-26NOV15BUFNYJ-NYJMTAYLOR85-3
 
-indexed 3676 Kalshi markets; sample keys:
-   ('player_pass_yds', 'jared goff', 174.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-175', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.92, 'no': 0.12, 'vol': 6.21, 'oi': 6.21}
-   ('player_pass_yds', 'jared goff', 199.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-200', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.85, 'no': 0.18, 'vol': 547.04, 'oi': 546.93}
-   ('player_pass_yds', 'jared goff', 224.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-225', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.76, 'no': 0.28, 'vol': 0.12, 'oi': 0.12}
-   ('player_pass_yds', 'jared goff', 249.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-250', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.61, 'no': 0.41, 'vol': 326.68, 'oi': 326.68}
+indexed 3719 Kalshi markets; sample keys:
+   ('player_pass_yds', 'jared goff', 174.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-175', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.92, 'no': 0.12, 'vol': 11.61, 'oi': 11.61}
+   ('player_pass_yds', 'jared goff', 199.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-200', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.85, 'no': 0.18, 'vol': 552.86, 'oi': 552.75}
+   ('player_pass_yds', 'jared goff', 224.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-225', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.76, 'no': 0.28, 'vol': 2.7, 'oi': 2.7}
+   ('player_pass_yds', 'jared goff', 249.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-250', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.61, 'no': 0.41, 'vol': 330.28, 'oi': 330.28}
    ('player_pass_yds', 'jared goff', 274.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-275', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.46, 'no': 0.55, 'vol': 1784.78, 'oi': 1627.68}
-   ('player_pass_yds', 'jared goff', 299.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-300', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.35, 'no': 0.68, 'vol': 42.14, 'oi': 42.14}
-   ('player_pass_yds', 'jared goff', 324.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-325', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.23, 'no': 0.8, 'vol': None, 'oi': 0.0}
-   ('player_pass_yds', 'jared goff', 349.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-350', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.15, 'no': 0.88, 'vol': None, 'oi': 0.0}
+   ('player_pass_yds', 'jared goff', 299.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-300', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.35, 'no': 0.67, 'vol': 42.14, 'oi': 42.14}
+   ('player_pass_yds', 'jared goff', 324.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-325', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.24, 'no': 0.8, 'vol': None, 'oi': 0.0}
+   ('player_pass_yds', 'jared goff', 349.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-350', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.15, 'no': 0.88, 'vol': 0.56, 'oi': 0.56}
    ('player_pass_yds', 'jared goff', 374.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-375', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.09, 'no': 0.94, 'vol': None, 'oi': 0.0}
-   ('player_pass_yds', 'jared goff', 399.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-400', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.06, 'no': 0.97, 'vol': None, 'oi': 0.0}
-   ('player_pass_yds', 'drake maye', 174.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-175', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.89, 'no': 0.14, 'vol': 27.99, 'oi': 27.79}
-   ('player_pass_yds', 'drake maye', 199.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-200', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.82, 'no': 0.21, 'vol': 0.11, 'oi': 0.11}
+   ('player_pass_yds', 'jared goff', 399.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-DETJGOFF16-400', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.06, 'no': 0.96, 'vol': None, 'oi': 0.0}
+   ('player_pass_yds', 'drake maye', 174.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-175', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.89, 'no': 0.14, 'vol': 33.51, 'oi': 33.31}
+   ('player_pass_yds', 'drake maye', 199.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-200', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.82, 'no': 0.21, 'vol': 18.29, 'oi': 18.29}
    ('player_pass_yds', 'drake maye', 224.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-225', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.7, 'no': 0.31, 'vol': 316.17, 'oi': 314.17}
    ('player_pass_yds', 'drake maye', 249.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-250', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.59, 'no': 0.42, 'vol': 552.22, 'oi': 552.22}
-   ('player_pass_yds', 'drake maye', 274.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-275', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.42, 'no': 0.59, 'vol': 1204.23, 'oi': 1130.49}
+   ('player_pass_yds', 'drake maye', 274.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-275', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.42, 'no': 0.59, 'vol': 1208.8, 'oi': 1135.06}
    ('player_pass_yds', 'drake maye', 299.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-300', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.31, 'no': 0.71, 'vol': 199.11, 'oi': 199.11}
-   ('player_pass_yds', 'drake maye', 324.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-325', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.21, 'no': 0.82, 'vol': None, 'oi': 0.0}
-   ('player_pass_yds', 'drake maye', 349.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-350', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.14, 'no': 0.89, 'vol': 572.0, 'oi': 572.0}
-   ('player_pass_yds', 'drake maye', 374.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-375', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.09, 'no': 0.96, 'vol': None, 'oi': 0.0}
-   ('player_pass_yds', 'drake maye', 399.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-400', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.06, 'no': 0.98, 'vol': 20.57, 'oi': 20.57}
+   ('player_pass_yds', 'drake maye', 324.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-325', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.21, 'no': 0.81, 'vol': 0.6, 'oi': 0.6}
+   ('player_pass_yds', 'drake maye', 349.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-350', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.13, 'no': 0.89, 'vol': 572.0, 'oi': 572.0}
+   ('player_pass_yds', 'drake maye', 374.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-375', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.08, 'no': 0.94, 'vol': None, 'oi': 0.0}
+   ('player_pass_yds', 'drake maye', 399.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15NEDET-NEDMAYE10-400', 'event': 'KXNFLPASSYDS-26NOV15NEDET', 'yes': 0.06, 'no': 0.97, 'vol': 20.57, 'oi': 20.57}
    ('player_pass_yds', 'geno smith', 149.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15BUFNYJ-NYJGSMITH7-150', 'event': 'KXNFLPASSYDS-26NOV15BUFNYJ', 'yes': 0.87, 'no': 0.16, 'vol': 104.36, 'oi': 104.36}
    ('player_pass_yds', 'geno smith', 174.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15BUFNYJ-NYJGSMITH7-175', 'event': 'KXNFLPASSYDS-26NOV15BUFNYJ', 'yes': 0.79, 'no': 0.25, 'vol': 31.23, 'oi': 31.23}
    ('player_pass_yds', 'geno smith', 199.5, '2026-11-15') {'ticker': 'KXNFLPASSYDS-26NOV15BUFNYJ-NYJGSMITH7-200', 'event': 'KXNFLPASSYDS-26NOV15BUFNYJ', 'yes': 0.66, 'no': 0.38, 'vol': 89.56, 'oi': 89.56}

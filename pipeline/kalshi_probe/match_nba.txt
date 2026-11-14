@@ -1,68 +1,68 @@
-{"ok": true, "series": 7, "markets": 1067, "matched": 156, "fetched": "2026-11-14T18:57+00:00"}
-Cooper Flagg             Double-Double     0.5 | yes 30¢ (212) EV 0.378 | no 73¢ (-300) EV -0.255 | book 220/-300 | KXNBA2D-26NOV14DALCLE-DALCFLAGG32
-Ausar Thompson           Double-Double     0.5 | yes 20¢ (355) EV 0.486 | no 85¢ (-614) EV -0.217 | book 410/-600 | KXNBA2D-26NOV14DETMIA-DETATHOMPSON9
-Jaden McDaniels          Double-Double     0.5 | yes 12¢ (669) EV 0.885 | no 96¢ (-3233) EV -0.222 | book 700/-1200 | KXNBA2D-26NOV14CHIMIN-MINJMCDANIELS3
-Rudy Gobert              Double-Double     0.5 | yes 41¢ (133) EV -0.381 | no 68¢ (-233) EV 0.049 | book 150/-190 | KXNBA2D-26NOV14CHIMIN-MINRGOBERT27
-Paul Reed                Double-Double     0.5 | yes 30¢ (212) EV -0.331 | no 79¢ (-426) EV -0.03 | book 190/-260 | KXNBA2D-26NOV14DETMIA-DETPREED7
-Josh Giddey              Double-Double     0.5 | yes 41¢ (133) EV -0.298 | no 67¢ (-223) EV 0.012 | book 136/-175 | KXNBA2D-26NOV14CHIMIN-CHIJGIDDEY3
-Davion Mitchell          Double-Double     0.5 | yes 30¢ (212) EV 0.147 | no 72¢ (-285) EV -0.145 | book 243/-330 | KXNBA2D-26NOV14DETMIA-MIADMITCHELL2
+{"ok": true, "series": 7, "markets": 1084, "matched": 153, "fetched": "2026-11-14T20:36+00:00"}
+Cooper Flagg             Double-Double     0.5 | yes 31¢ (203) EV 0.336 | no 72¢ (-285) EV -0.245 | book 220/-300 | KXNBA2D-26NOV14DALCLE-DALCFLAGG32
+Ausar Thompson           Double-Double     0.5 | yes 19¢ (376) EV 0.557 | no 83¢ (-525) EV -0.199 | book 410/-600 | KXNBA2D-26NOV14DETMIA-DETATHOMPSON9
+Jaden McDaniels          Double-Double     0.5 | yes 11¢ (733) EV 1.042 | no 93¢ (-1567) EV -0.197 | book 700/-1200 | KXNBA2D-26NOV14CHIMIN-MINJMCDANIELS3
+Rudy Gobert              Double-Double     0.5 | yes 41¢ (133) EV -0.381 | no 65¢ (-203) EV 0.096 | book 150/-190 | KXNBA2D-26NOV14CHIMIN-MINRGOBERT27
+Paul Reed                Double-Double     0.5 | yes 22¢ (317) EV -0.108 | no 80¢ (-456) EV -0.041 | book 190/-260 | KXNBA2D-26NOV14DETMIA-DETPREED7
+Josh Giddey              Double-Double     0.5 | yes 42¢ (127) EV -0.314 | no 62¢ (-178) EV 0.091 | book 136/-175 | KXNBA2D-26NOV14CHIMIN-CHIJGIDDEY3
+Davion Mitchell          Double-Double     0.5 | yes 29¢ (223) EV 0.184 | no 72¢ (-285) EV -0.145 | book 243/-330 | KXNBA2D-26NOV14DETMIA-MIADMITCHELL2
 Donovan Mitchell         Double-Double     0.5 | yes 12¢ (669) EV 0.392 | no 89¢ (-900) EV -0.09 | book 810/-1600 | KXNBA2D-26NOV14DALCLE-CLEDMITCHELL45
-Zach Edey                Double-Double     0.5 | yes 18¢ (400) EV -0.47 | no 88¢ (-809) EV 0.004 | book 425/-650 | KXNBA2D-26NOV14BKNMEM-MEMZEDEY14
-Nikola Jokic             Double-Double     0.5 | yes 84¢ (-567) EV -0.082 | no 20¢ (355) EV -0.0 | book -620/550 | KXNBA2D-26NOV14DENNOP-DENNJOKIC15
+Zach Edey                Double-Double     0.5 | yes 21¢ (335) EV -0.539 | no 83¢ (-525) EV 0.064 | book 425/-650 | KXNBA2D-26NOV14BKNMEM-MEMZEDEY14
+Nikola Jokic             Double-Double     0.5 | yes 85¢ (-614) EV -0.093 | no 17¢ (456) EV 0.222 | book -620/550 | KXNBA2D-26NOV14DENNOP-DENNJOKIC15
 Jaden McDaniels          Rebounds          5.5 | yes 57¢ (-144) EV 0.264 | no 44¢ (117) EV -0.448 | book -140/110 | KXNBAREB-26NOV14CHIMIN-MINJMCDANIELS3-6
-Daniel Gafford           Double-Double     0.5 | yes 9¢ (900) EV -0.8 | no 96¢ (-3233) EV 0.01 | book 1040/-2200 | KXNBA2D-26NOV14DALCLE-DALDGAFFORD21
-Day'Ron Sharpe           Double-Double     0.5 | yes 18¢ (400) EV -0.42 | no 85¢ (-614) EV 0.028 | book 425/-650 | KXNBA2D-26NOV14BKNMEM-BKNDSHARPE20
+Daniel Gafford           Double-Double     0.5 | yes 8¢ (1011) EV -0.778 | no 96¢ (-3233) EV 0.01 | book 1040/-2200 | KXNBA2D-26NOV14DALCLE-DALDGAFFORD21
+Day'Ron Sharpe           Double-Double     0.5 | yes 14¢ (567) EV -0.227 | no 89¢ (-900) EV -0.018 | book 425/-650 | KXNBA2D-26NOV14BKNMEM-BKNDSHARPE20
 Meleek Thomas            Threes            1.5 | yes 64¢ (-194) EV 0.115 | no 41¢ (133) EV -0.386 | book -165/135 | KXNBA3PT-26NOV14DALCLE-CLEMTHOMAS15-2
-Kevin Huerter            Rebounds          3.5 | yes 47¢ (104) EV -0.455 | no 54¢ (-127) EV 0.309 | book 100/-130 | KXNBAREB-26NOV14DETMIA-DETKHUERTERSF-4
+Kevin Huerter            Rebounds          3.5 | yes 46¢ (108) EV -0.444 | no 55¢ (-133) EV 0.286 | book 100/-130 | KXNBAREB-26NOV14DETMIA-DETKHUERTERSF-4
 Cameron Johnson          Threes            1.5 | yes 62¢ (-178) EV 0.139 | no 39¢ (144) EV -0.339 | book -170/140 | KXNBA3PT-26NOV14DENNOP-DENCJOHNSON23-2
-Meleek Thomas            Rebounds          3.5 | yes 43¢ (122) EV -0.4 | no 62¢ (-178) EV 0.141 | book 125/-161 | KXNBAREB-26NOV14DALCLE-CLEMTHOMAS15-4
-Cedric Coward            Double-Double     0.5 | yes 19¢ (376) EV 0.248 | no 84¢ (-567) EV -0.132 | book 360/-600 | KXNBA2D-26NOV14BKNMEM-MEMCCOWARD23
-John Collins             Double-Double     0.5 | yes 13¢ (614) EV -0.586 | no 89¢ (-900) EV 0.047 | book 720/-1200 | KXNBA2D-26NOV14DETMIA-DETJCOLLINS20
-Michael Porter Jr.       Double-Double     0.5 | yes 20¢ (355) EV 0.118 | no 83¢ (-525) EV -0.102 | book 400/-600 | KXNBA2D-26NOV14BKNMEM-BKNMPORTER17
-Day'Ron Sharpe           Rebounds          7.5 | yes 47¢ (104) EV -0.408 | no 54¢ (-127) EV 0.268 | book 102/-120 | KXNBAREB-26NOV14BKNMEM-BKNDSHARPE20-8
+Meleek Thomas            Rebounds          3.5 | yes 46¢ (108) EV -0.438 | no 63¢ (-186) EV 0.123 | book 125/-161 | KXNBAREB-26NOV14DALCLE-CLEMTHOMAS15-4
+Cedric Coward            Double-Double     0.5 | yes 18¢ (400) EV 0.31 | no 84¢ (-567) EV -0.132 | book 360/-600 | KXNBA2D-26NOV14BKNMEM-MEMCCOWARD23
+John Collins             Double-Double     0.5 | yes 10¢ (809) EV -0.473 | no 93¢ (-1567) EV 0.002 | book 720/-1200 | KXNBA2D-26NOV14DETMIA-DETJCOLLINS20
+Michael Porter Jr.       Double-Double     0.5 | yes 21¢ (335) EV 0.07 | no 83¢ (-525) EV -0.102 | book 400/-600 | KXNBA2D-26NOV14BKNMEM-BKNMPORTER17
+Day'Ron Sharpe           Rebounds          7.5 | yes 48¢ (100) EV -0.42 | no 53¢ (-122) EV 0.291 | book 102/-120 | KXNBAREB-26NOV14BKNMEM-BKNDSHARPE20-8
 Nolan Traore             Rebounds          1.5 | yes 58¢ (-150) EV 0.172 | no 43¢ (122) EV -0.34 | book -180/135 | KXNBAREB-26NOV14BKNMEM-BKNNTRAORE10-2
-Bam Adebayo              Double-Double     0.5 | yes 45¢ (113) EV 0.03 | no 70¢ (-257) EV -0.283 | book 120/-150 | KXNBA2D-26NOV14DETMIA-MIABADEBAYO13
+Bam Adebayo              Double-Double     0.5 | yes 44¢ (117) EV 0.052 | no 61¢ (-170) EV -0.181 | book 120/-150 | KXNBA2D-26NOV14DETMIA-MIABADEBAYO13
 Aaron Gordon             Threes            1.5 | yes 40¢ (138) EV -0.281 | no 61¢ (-170) EV 0.108 | book 155/-175 | KXNBA3PT-26NOV14DENNOP-DENAGORDON32-2
-Jamal Murray             Double-Double     0.5 | yes 18¢ (400) EV 0.11 | no 84¢ (-567) EV -0.085 | book 450/-750 | KXNBA2D-26NOV14DENNOP-DENJMURRAY27
-Naji Marshall            Rebounds          3.5 | yes 42¢ (127) EV -0.302 | no 59¢ (-156) EV 0.136 | book 125/-157 | KXNBAREB-26NOV14DALCLE-DALNMARSHALL3-4
+Jamal Murray             Double-Double     0.5 | yes 16¢ (488) EV 0.306 | no 85¢ (-614) EV -0.095 | book 450/-750 | KXNBA2D-26NOV14DENNOP-DENJMURRAY27
+Naji Marshall            Rebounds          3.5 | yes 41¢ (133) EV -0.286 | no 60¢ (-163) EV 0.118 | book 125/-157 | KXNBAREB-26NOV14DALCLE-DALNMARSHALL3-4
 Bam Adebayo              Assists           3.5 | yes 44¢ (117) EV -0.326 | no 57¢ (-144) EV 0.169 | book 118/-148 | KXNBAAST-26NOV14DETMIA-MIABADEBAYO13-4
-Giannis Antetokounmpo    Double-Double     0.5 | yes 79¢ (-426) EV -0.14 | no 39¢ (144) EV -0.261 | book -344/280 | KXNBA2D-26NOV14DETMIA-MIAGANTETOKOUNMPO7
+Giannis Antetokounmpo    Double-Double     0.5 | yes 71¢ (-270) EV -0.045 | no 32¢ (194) EV -0.109 | book -344/280 | KXNBA2D-26NOV14DETMIA-MIAGANTETOKOUNMPO7
 Jerami Grant             Threes            1.5 | yes 43¢ (122) EV 0.518 | no 58¢ (-150) EV -0.472 | book 118/-150 | KXNBA3PT-26NOV14BKNMEM-MEMJGRANT9-2
-Cameron Boozer           Double-Double     0.5 | yes 45¢ (113) EV -0.181 | no 63¢ (-186) EV -0.054 | book 120/-150 | KXNBA2D-26NOV14BKNMEM-MEMCBOOZER27
+Cameron Boozer           Double-Double     0.5 | yes 46¢ (108) EV -0.198 | no 58¢ (-150) EV 0.025 | book 120/-150 | KXNBA2D-26NOV14BKNMEM-MEMCBOOZER27
 Zion Williamson          Double-Double     0.5 | yes 11¢ (733) EV -0.492 | no 93¢ (-1567) EV -0.001 | book 800/-1500 | KXNBA2D-26NOV14DENNOP-NOPZWILLIAMSON1
-P.J. Washington          Threes            1.5 | yes 60¢ (-163) EV 0.084 | no 41¢ (133) EV -0.237 | book -180/145 | KXNBA3PT-26NOV14DALCLE-DALPWASHINGTON25-2
-Jonathan Kuminga         Double-Double     0.5 | yes 11¢ (733) EV 0.217 | no 90¢ (-1011) EV -0.062 | book 820/-1800 | KXNBA2D-26NOV14CHIMIN-MINJKUMINGA0
-Peyton Watson            Threes            1.5 | yes 43¢ (122) EV -0.253 | no 60¢ (-163) EV 0.071 | book 130/-150 | KXNBA3PT-26NOV14DALCLE-CLEPWATSON8-2
-Nolan Traore             Assists           3.5 | yes 45¢ (113) EV -0.281 | no 56¢ (-138) EV 0.141 | book -144/112 | KXNBAAST-26NOV14BKNMEM-BKNNTRAORE10-4
+P.J. Washington          Threes            1.5 | yes 61¢ (-170) EV 0.067 | no 40¢ (138) EV -0.219 | book -180/145 | KXNBA3PT-26NOV14DALCLE-DALPWASHINGTON25-2
+Jonathan Kuminga         Double-Double     0.5 | yes 12¢ (669) EV 0.123 | no 93¢ (-1567) EV -0.091 | book 820/-1800 | KXNBA2D-26NOV14CHIMIN-MINJKUMINGA0
+Peyton Watson            Threes            1.5 | yes 41¢ (133) EV -0.219 | no 61¢ (-170) EV 0.054 | book 130/-150 | KXNBA3PT-26NOV14DALCLE-CLEPWATSON8-2
+Nolan Traore             Assists           3.5 | yes 41¢ (133) EV -0.214 | no 60¢ (-163) EV 0.068 | book -144/112 | KXNBAAST-26NOV14BKNMEM-BKNNTRAORE10-4
 Ayo Dosunmu              Threes            1.5 | yes 53¢ (-122) EV 0.205 | no 48¢ (100) EV -0.326 | book -125/100 | KXNBA3PT-26NOV14CHIMIN-MINADOSUNMU13-2
 Jamal Murray             Threes            2.5 | yes 60¢ (-163) EV 0.056 | no 41¢ (133) EV -0.198 | book -162/135 | KXNBA3PT-26NOV14DENNOP-DENJMURRAY27-3
-Daniel Gafford           Rebounds          5.5 | yes 54¢ (-127) EV -0.382 | no 47¢ (104) EV 0.335 | book -135/112 | KXNBAREB-26NOV14DALCLE-DALDGAFFORD21-6
+Daniel Gafford           Rebounds          5.5 | yes 55¢ (-133) EV -0.393 | no 47¢ (104) EV 0.335 | book -135/112 | KXNBAREB-26NOV14DALCLE-DALDGAFFORD21-6
 Nikola Jokic             Threes            1.5 | yes 44¢ (117) EV -0.243 | no 57¢ (-144) EV 0.105 | book 120/-138 | KXNBA3PT-26NOV14DENNOP-DENNJOKIC15-2
-Daniss Jenkins           Double-Double     0.5 | yes 8¢ (1011) EV 0.2 | no 94¢ (-1900) EV -0.061 | book 1300/-2500 | KXNBA2D-26NOV14DETMIA-DETDJENKINS24
+Daniss Jenkins           Double-Double     0.5 | yes 8¢ (1011) EV 0.2 | no 96¢ (-3233) EV -0.08 | book 1300/-2500 | KXNBA2D-26NOV14DETMIA-DETDJENKINS24
 
-indexed 1067 Kalshi markets; sample keys:
-   ('player_points', 'zion williamson', 14.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPZWILLIAMSON1-15', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.81, 'no': 0.22, 'vol': 55.58, 'oi': 55.58}
-   ('player_points', 'zion williamson', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPZWILLIAMSON1-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.58, 'no': 0.43, 'vol': 971.97, 'oi': 971.97}
-   ('player_points', 'zion williamson', 24.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPZWILLIAMSON1-25', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.33, 'no': 0.69, 'vol': 6.0, 'oi': 6.0}
-   ('player_points', 'zion williamson', 29.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPZWILLIAMSON1-30', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.16, 'no': 0.85, 'vol': 38.88, 'oi': 28.88}
-   ('player_points', 'cameron johnson', 9.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENCJOHNSON23-10', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.72, 'no': 0.31, 'vol': None, 'oi': 0.0}
-   ('player_points', 'cameron johnson', 14.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENCJOHNSON23-15', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.38, 'no': 0.63, 'vol': 0.23, 'oi': 0.23}
+indexed 1084 Kalshi markets; sample keys:
+   ('player_points', 'zion williamson', 14.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPZWILLIAMSON1-15', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.8, 'no': 0.21, 'vol': 79.93, 'oi': 79.93}
+   ('player_points', 'zion williamson', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPZWILLIAMSON1-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.58, 'no': 0.43, 'vol': 1607.7, 'oi': 1607.7}
+   ('player_points', 'zion williamson', 24.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPZWILLIAMSON1-25', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.32, 'no': 0.69, 'vol': 14.94, 'oi': 14.94}
+   ('player_points', 'zion williamson', 29.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPZWILLIAMSON1-30', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.15, 'no': 0.86, 'vol': 412.88, 'oi': 402.88}
+   ('player_points', 'cameron johnson', 9.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENCJOHNSON23-10', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.7, 'no': 0.31, 'vol': None, 'oi': 0.0}
+   ('player_points', 'cameron johnson', 14.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENCJOHNSON23-15', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.38, 'no': 0.63, 'vol': 5.27, 'oi': 5.27}
    ('player_points', 'cameron johnson', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENCJOHNSON23-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.16, 'no': 0.87, 'vol': 5.63, 'oi': 5.63}
-   ('player_points', 'nikola jokic', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENNJOKIC15-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.82, 'no': 0.19, 'vol': 263.26, 'oi': 263.26}
-   ('player_points', 'nikola jokic', 24.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENNJOKIC15-25', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.59, 'no': 0.42, 'vol': 72.39, 'oi': 72.39}
-   ('player_points', 'nikola jokic', 29.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENNJOKIC15-30', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.35, 'no': 0.66, 'vol': 415.72, 'oi': 415.72}
-   ('player_points', 'nikola jokic', 34.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENNJOKIC15-35', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.19, 'no': 0.83, 'vol': 517.68, 'oi': 517.68}
-   ('player_points', 'christian braun', 9.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENCBRAUN0-10', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.67, 'no': 0.35, 'vol': 16.19, 'oi': 16.19}
+   ('player_points', 'nikola jokic', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENNJOKIC15-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.83, 'no': 0.19, 'vol': 341.85, 'oi': 341.85}
+   ('player_points', 'nikola jokic', 24.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENNJOKIC15-25', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.61, 'no': 0.41, 'vol': 241.91, 'oi': 241.91}
+   ('player_points', 'nikola jokic', 29.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENNJOKIC15-30', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.35, 'no': 0.66, 'vol': 443.88, 'oi': 443.88}
+   ('player_points', 'nikola jokic', 34.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENNJOKIC15-35', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.18, 'no': 0.83, 'vol': 517.68, 'oi': 517.68}
+   ('player_points', 'christian braun', 9.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENCBRAUN0-10', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.66, 'no': 0.36, 'vol': 16.19, 'oi': 16.19}
    ('player_points', 'christian braun', 14.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENCBRAUN0-15', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.32, 'no': 0.69, 'vol': 35.32, 'oi': 35.32}
-   ('player_points', 'christian braun', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENCBRAUN0-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.12, 'no': 0.91, 'vol': None, 'oi': 0.0}
-   ('player_points', 'jamal murray', 14.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENJMURRAY27-15', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.91, 'no': 0.1, 'vol': 329.66, 'oi': 318.74}
-   ('player_points', 'jamal murray', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENJMURRAY27-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.73, 'no': 0.29, 'vol': 147.55, 'oi': 138.37}
-   ('player_points', 'jamal murray', 24.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENJMURRAY27-25', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.49, 'no': 0.52, 'vol': 1450.93, 'oi': 1450.93}
-   ('player_points', 'jamal murray', 29.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENJMURRAY27-30', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.28, 'no': 0.73, 'vol': 439.68, 'oi': 439.68}
+   ('player_points', 'christian braun', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENCBRAUN0-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.12, 'no': 0.9, 'vol': None, 'oi': 0.0}
+   ('player_points', 'jamal murray', 14.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENJMURRAY27-15', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.91, 'no': 0.1, 'vol': 338.02, 'oi': 324.92}
+   ('player_points', 'jamal murray', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENJMURRAY27-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.73, 'no': 0.29, 'vol': 284.63, 'oi': 275.45}
+   ('player_points', 'jamal murray', 24.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENJMURRAY27-25', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.49, 'no': 0.52, 'vol': 1877.11, 'oi': 1844.23}
+   ('player_points', 'jamal murray', 29.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENJMURRAY27-30', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.28, 'no': 0.73, 'vol': 545.08, 'oi': 545.08}
    ('player_points', 'jamal murray', 34.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENJMURRAY27-35', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.12, 'no': 0.89, 'vol': 1108.37, 'oi': 1102.8}
    ('player_points', 'aaron gordon', 9.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENAGORDON32-10', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.74, 'no': 0.28, 'vol': 40.02, 'oi': 40.02}
    ('player_points', 'aaron gordon', 14.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENAGORDON32-15', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.41, 'no': 0.6, 'vol': None, 'oi': 0.0}
    ('player_points', 'aaron gordon', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-DENAGORDON32-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.17, 'no': 0.84, 'vol': 5.88, 'oi': 5.88}
-   ('player_points', 'jeremiah fears', 9.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPJFEARS0-10', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.91, 'no': 0.11, 'vol': None, 'oi': 0.0}
-   ('player_points', 'jeremiah fears', 14.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPJFEARS0-15', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.7, 'no': 0.32, 'vol': 8.19, 'oi': 8.19}
-   ('player_points', 'jeremiah fears', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPJFEARS0-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.42, 'no': 0.59, 'vol': 52.75, 'oi': 50.61}
+   ('player_points', 'jeremiah fears', 9.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPJFEARS0-10', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.9, 'no': 0.11, 'vol': None, 'oi': 0.0}
+   ('player_points', 'jeremiah fears', 14.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPJFEARS0-15', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.69, 'no': 0.32, 'vol': 12.33, 'oi': 12.33}
+   ('player_points', 'jeremiah fears', 19.5, '2026-11-14') {'ticker': 'KXNBAPTS-26NOV14DENNOP-NOPJFEARS0-20', 'event': 'KXNBAPTS-26NOV14DENNOP', 'yes': 0.42, 'no': 0.59, 'vol': 150.22, 'oi': 148.08}
