@@ -1003,6 +1003,7 @@ def main():
     injuries = fetch_injuries(team_name_map(sched))
     props, defense, games = build_props(box, sched, date, lines, corr, injuries)
     OUT.mkdir(parents=True, exist_ok=True)
+    kalshi_status = build.attach_kalshi(props, games, "nba", mode)
     x = dt.date.fromisoformat(date)
     payload = {
         "sport": "nba", "season": SEASON, "week": x.strftime("%a %b ") + str(x.day), "slate": date,
@@ -1011,6 +1012,7 @@ def main():
         "stats_through_week": label_date(str(box.date.max())), "usage": usage,
         "markets": {k: v[1] for k, v in MARKETS.items()}, "games": games, "props": props,
         "defense": defense, "corrections": corr_info, "injuries_ok": injuries.get("ok", False),
+        "kalshi": kalshi_status,
     }
     (OUT / "props.json").write_text(json.dumps(payload, separators=(",", ":")))
     log(f"nba: wrote {len(props)} props -> {OUT / 'props.json'}")

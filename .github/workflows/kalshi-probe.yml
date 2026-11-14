@@ -13,7 +13,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install requests
-      - run: python pipeline/kalshi_probe.py
+      - run: |
+          mkdir -p pipeline/kalshi_probe
+          python pipeline/kalshi.py --probe nba > pipeline/kalshi_probe/match_nba.txt 2>&1 || true
+          python pipeline/kalshi.py --probe nfl > pipeline/kalshi_probe/match_nfl.txt 2>&1 || true
       - name: Commit probe output
         run: |
           git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"

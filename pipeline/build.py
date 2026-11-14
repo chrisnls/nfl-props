@@ -161,6 +161,16 @@ def norm_name(name) -> str:
     return NAME_ALIASES.get(n, n)
 
 
+def attach_kalshi(props, games, sport, mode):
+    """Kalshi prices for the same props (free public data, refreshed on every build, even cached ones)."""
+    if mode == "sample" or os.environ.get("KALSHI", "1") == "0":
+        return {"ok": False, "error": "skipped"}
+    import kalshi
+    st = kalshi.attach(props, games, sport)
+    log(f"kalshi: {st}")
+    return st
+
+
 def american_to_prob(price: float) -> float:
     return 100 / (price + 100) if price > 0 else -price / (-price + 100)
 
@@ -842,6 +852,7 @@ def main() -> None:
     corrections, corr_info = load_corrections()
     props, defense = build_props(stats, games, frames["injuries"], frames["snaps"], week, lines, corrections)
     OUT.mkdir(parents=True, exist_ok=True)
+    kalshi_status = attach_kalshi(props, wg, "nfl", mode)
     payload = {
         "season": SEASON, "week": week, "mode": mode,
         "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
@@ -853,6 +864,7 @@ def main() -> None:
         "props": props,
         "defense": defense,
         "corrections": corr_info,
+        "kalshi": kalshi_status,
     }
     (OUT / "props.json").write_text(json.dumps(payload, separators=(",", ":")))
     log(f"wrote {len(props)} props -> {OUT / 'props.json'}")
