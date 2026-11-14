@@ -693,6 +693,14 @@ def build_props(box, sched, date, lines, corrections=None, injuries=None, outs_o
             for p in ps:
                 if not p["role_change"]:
                     p["role_change"] = flag
+    # the books disagree so much that they must know something (minutes news etc.; see build.MARKET_GAP)
+    for p in props:
+        if p["role_change"] or p["over"] is None or p["under"] is None or p["fair_over"] is None or p["books"] == ["sample"]:
+            continue
+        gap = p["p_over"] - p["fair_over"]
+        if abs(gap) >= build.MARKET_GAP:
+            p["role_change"] = {"why": "market", "dir": "up" if gap < 0 else "down", "model": p["p_over"],
+                                "book": p["fair_over"], "z": None, "lo": None, "hi": None}
     if unmatched:
         log(f"nba: unmatched players from odds feed: {sorted(unmatched)[:20]}")
     props.sort(key=lambda p: (p["role_change"] is not None, -abs(p["edge_sd"])))
@@ -919,7 +927,8 @@ def run_grade(frames):
                                  "flagged_usage": rec([r for r in flagged if r["role_change"] == "usage"]),
                                  "flagged_minutes": rec([r for r in flagged if r["role_change"] == "minutes"]),
                                  "flagged_injury": rec([r for r in flagged if r["role_change"] == "injury"]),
-                                 "flagged_thin": rec([r for r in flagged if r["role_change"] == "thin"])},
+                                 "flagged_thin": rec([r for r in flagged if r["role_change"] == "thin"]),
+                                 "flagged_market": rec([r for r in flagged if r["role_change"] == "market"])},
         "teammate_out": {"with": rec([r for r in unflagged if r.get("tm_out")]),
                          "without": rec([r for r in unflagged if not r.get("tm_out")])},
         "calibration": cal(unflagged),
@@ -1006,6 +1015,7 @@ def main():
     props, defense, games = build_props(box, sched, date, lines, corr, injuries)
     OUT.mkdir(parents=True, exist_ok=True)
     kalshi_status = build.attach_kalshi(props, games, "nba", mode)
+    news_status = build.attach_news(props, "nba", lambda p: p.get("pid"))
     x = dt.date.fromisoformat(date)
     payload = {
         "sport": "nba", "season": SEASON, "week": x.strftime("%a %b ") + str(x.day), "slate": date,
@@ -1014,7 +1024,7 @@ def main():
         "stats_through_week": label_date(str(box.date.max())), "usage": usage,
         "markets": {k: v[1] for k, v in MARKETS.items()}, "games": games, "props": props,
         "defense": defense, "corrections": corr_info, "injuries_ok": injuries.get("ok", False),
-        "kalshi": kalshi_status,
+        "kalshi": kalshi_status, "news": news_status,
     }
     (OUT / "props.json").write_text(json.dumps(payload, separators=(",", ":")))
     log(f"nba: wrote {len(props)} props -> {OUT / 'props.json'}")

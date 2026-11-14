@@ -136,6 +136,13 @@ A full-slate pull of 6 markets costs **~6 credits per game (~84)**; live pulls s
 ### Slip sidebar (11/14)
 - On screens 1100px+ the parlay slip is a left sidebar (380px open, 48px rail closed) that pushes the board over instead of covering it; the player drawer stays on the right, so both fit. Open/closed is remembered (`localStorage.slipOpen`). Below 1100px it stays a bottom sheet, capped at 80% height and scrollable.
 
+### News-driven role changes (11/14)
+Prompted by Anthony Gould (IND): his line jumped from his backup history to 1.5 receptions after the Colts traded Downs and Allen, and the board showed a fake 92% EV on the under.
+- **Market flag** (`role_change.why = "market"`, `build.MARKET_GAP = 0.20`, NFL and NBA): model P(over) vs the books' no-vig P differ by 20+ points, so the prop is demoted as not rated. Evidence from graded live props: at gaps of 0.20 or more, the model's side won 45% (NFL, n=108) and 33% (NBA, n=52); Brier was 0.33–0.58 for the model vs ~0.245 for the books. Skipped for yes-only markets and sample lines. The Results tab tracks it as `flagged_market`.
+- **Vacated volume** (NFL): weekly rosters are now a source (`rosters`). `vacated_volume()` finds teammates traded, put on IR (RES) or released (off the roster) who played for the team in its last 2 games, and their share of team targets and carries over the last 4. QBs are excluded. Teams on a bye have no current-week rows, so "off roster" is measured against each team's latest roster week. Teammates in receiving markets (targets) or rushing markets (carries) get `p.vacated` when the share is at least 15%; TD markets use targets for WR/TE and both for RB. If the model leans under (edge ≤ −0.3σ), the prop is demoted as `why = "vacated"`. No projection boost yet: the NBA redistribution backtest said boosts hurt. Grade first.
+- **New team** (`why = "newteam"`): roster team ≠ the team in his last game, so the log is from another offense. This also fixed a bug: traded players' props were placed in their old team's game (team came from the last stat line), and now use the roster team.
+- **News** (`pipeline/news.py`): ESPN's public fantasy news feed per player (`/apis/fantasy/v2/games/{ffl|fba}/news/players?playerId=`), up to 3 items from the last 10 days, 8 threads. NFL maps gsis to espn ids via rosters; NBA pids are ESPN ids. Shown in the drawer, plus a "News" tag on rows with an item from the last 48h. The model doesn't use it. `NEWS=0` skips it.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.

@@ -42,6 +42,7 @@ SOURCES = {
     "games": f"{NFLVERSE}/schedules/games.csv",
     "injuries": f"{NFLVERSE}/injuries/injuries_{SEASON}.csv",
     "snaps": f"{NFLVERSE}/snap_counts/snap_counts_{SEASON}.csv",
+    "rosters": f"{NFLVERSE}/weekly_rosters/roster_weekly_{SEASON}.csv",   # current team (trades) + IR/cut status
 }
 
 ODDS_BASE = "https://api.the-odds-api.com/v4/sports/americanfootball_nfl"
@@ -71,6 +72,17 @@ ROLE_Z_OUTSIDE = 1.5
 ROLE_SNAP_PTS = 20
 ROLE_SNAP_REL = 0.40
 ROLE_SNAP_MIN_EDGE = 0.3   # |edge ÷ σ|; below this the lean is too weak to matter
+# Market-disagreement flag: when the model's P(over) and the books' no-vig P(over) differ by this much, the books
+# almost always know something the game log doesn't (trade, injury, depth chart). On graded live props the model's
+# side won 45% (NFL, n=108) and 33% (NBA, n=52) at gaps >= 0.20, with Brier 0.35+ vs the books' 0.245.
+MARKET_GAP = 0.20
+# Vacated-volume flag: teammates who were traded, put on IR or released since the team's last games, and how
+# much of the team's targets/carries they took. A share this large redistributes to whoever is left.
+VAC_MIN = 0.15        # vacated share of team targets (receiving markets) or carries (rushing) to tag teammates
+VAC_PLAYER_MIN = 0.05  # ignore departed players below this share
+VAC_RECENT = 2        # the departed player played for the team within its last N games (older exits are in the log)
+VAC_MARKETS = {"player_receptions": "targets", "player_reception_yds": "targets",
+               "player_rush_yds": "carries", "player_rush_attempts": "carries", "player_anytime_td": "both"}
 
 # Volume stat behind each market, for the "why" breakdown (volume x efficiency).
 VOLUME = {"passing_yards": "attempts", "passing_tds": "attempts", "rushing_yards": "carries",
@@ -168,6 +180,16 @@ def attach_kalshi(props, games, sport, mode):
     import kalshi
     st = kalshi.attach(props, games, sport)
     log(f"kalshi: {st}")
+    return st
+
+
+def attach_news(props, sport, espn_of):
+    """Recent ESPN/Rotowire player news for the drawer (free; the model doesn't use it)."""
+    if os.environ.get("NEWS", "1") == "0":
+        return {"ok": False, "error": "skipped"}
+    import news
+    st = news.attach(props, sport, espn_of)
+    log(f"news: {st}")
     return st
 
 
@@ -474,7 +496,57 @@ def role_change(values: list[float], line: float, discrete: bool,
     return None
 
 
-def build_props(stats, games, injuries, snaps, week, lines, corrections=None) -> list[dict]:
+def roster_state(rosters, week):
+    """-> (current team by gsis id, why-departed lookup inputs) from nflverse weekly rosters, as of `week`."""
+    if rosters is None or not len(rosters):
+        return {}, {}, None
+    rw = rosters[(rosters.week <= week) & rosters.gsis_id.notna()]
+    if not len(rw):
+        return {}, {}, None
+    rweek = int(rw.week.max())
+    team_week = rw.groupby("team").week.max()          # teams on a bye have no rows for the latest week
+    last = rw.sort_values("week").groupby("gsis_id").last()
+    on_now = last.week >= last.team.map(team_week)     # still on his team's latest roster
+    team = last.team.to_dict()
+    status = {g: (last.status[g] if on_now[g] else "OFF") for g in last.index}
+    return team, status, rweek
+
+
+def vacated_volume(hist, cur_team, status, team_weeks, week):
+    """team -> {"targets": share, "carries": share, "who": [...]} for teammates gone since the team's last games."""
+    out = {}
+    if not cur_team:
+        return out
+    for team, tws in team_weeks.items():
+        recent = [w for w in tws if w < week][-4:]
+        last_n = set(recent[-VAC_RECENT:])
+        sub = hist[(hist.team == team) & (hist.week.isin(recent))]
+        if not len(sub):
+            continue
+        who, vt, vc = [], 0.0, 0.0
+        for pid_, g in sub.groupby("player_id"):
+            if pid_ not in status or not (set(g.week) & last_n) or g.position.iloc[-1] == "QB":
+                continue      # never on a roster (id mismatch), gone before the last games, or a QB (a QB change isn't volume)
+            now, st = cur_team.get(pid_), status.get(pid_)
+            why = ("traded to " + now) if now and now != team else "on IR" if st == "RES" else \
+                  "released" if st in ("OFF", "CUT", "RET") else None
+            if not why:
+                continue
+            wk = set(g.week)
+            team_wk = sub[sub.week.isin(wk)]
+            tt, tc = team_wk.targets.fillna(0).sum(), team_wk.carries.fillna(0).sum()
+            st_, sc_ = (g.targets.fillna(0).sum() / tt if tt else 0.0), (g.carries.fillna(0).sum() / tc if tc else 0.0)
+            if max(st_, sc_) < VAC_PLAYER_MIN:
+                continue
+            vt, vc = vt + st_, vc + sc_
+            who.append({"name": g.player_display_name.iloc[-1], "pid": pid_, "why": why,
+                        "targets": round(100 * st_), "carries": round(100 * sc_)})
+        if who:
+            out[team] = {"targets": vt, "carries": vc, "who": sorted(who, key=lambda x: -max(x["targets"], x["carries"]))}
+    return out
+
+
+def build_props(stats, games, injuries, snaps, week, lines, corrections=None, rosters=None) -> list[dict]:
     hist = stats[stats.week < week].copy()
     this_week = games[games.week == week]
     team_game = {}
@@ -500,6 +572,9 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
         implied[g.home_team] = (g.total_line + g.spread_line) / 2    # spread_line > 0: home favored
         implied[g.away_team] = (g.total_line - g.spread_line) / 2
     latest_team = stats.sort_values("week").groupby("player_id").team.last()
+    # weekly rosters know about trades before the player's first game for the new team
+    cur_team, roster_status, _ = roster_state(rosters, week)
+    team_of = lambda pid_: cur_team.get(pid_) or latest_team.get(pid_)
 
     inj = injuries[injuries.week == injuries.week.max()]
     def clean(v):
@@ -531,6 +606,10 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
                           None if pd.isna(g.away_score) else int(g.away_score)) for g in games.itertuples()}
     team_vol = {vc: hist.groupby(["team", "week"])[vc].sum() for vc in set(VOLUME.values())}
     profile, defense = defense_profiler(hist, scores)
+    vacated = vacated_volume(hist, cur_team, roster_status, team_weeks, week)
+    if vacated:
+        log("vacated volume: " + "; ".join(f"{t} {round(100 * v['targets'])}% tgt {round(100 * v['carries'])}% car ("
+                                          + ", ".join(f"{w['name']} {w['why']}" for w in v["who"]) + ")" for t, v in vacated.items()))
 
     def game_context(r, pname, pid, pos, col):
         vc = VOLUME[col]
@@ -568,7 +647,7 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
         cands = by_name.get(pname) or []
         if len(cands) <= 1:
             return cands[0] if cands else None
-        return max(cands, key=lambda c: (latest_team.get(c) in team_game, last_pos.get(c) in positions,
+        return max(cands, key=lambda c: (team_of(c) in team_game, last_pos.get(c) in positions,
                                          int(games_played.get(c, 0))))
 
     for (pname, market), book_lines in lines.items():
@@ -582,7 +661,7 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
         if len(glog) == 0:
             continue
         thin = len(glog) < MIN_GAMES
-        team = latest_team.get(pid)
+        team = team_of(pid)
         if team not in team_game:
             continue
         game_id, opp, is_home = team_game[team]
@@ -645,6 +724,30 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
             role = {"why": "lowuse", "touches": round(statistics.fmean([float(v) for v in glog.touches.fillna(0)][-5:]), 1),
                     "dir": "down", "z": None, "lo": None, "hi": None}
 
+        # trade / IR / release: teammates' volume is up for grabs; the game log can't know yet
+        vac = None
+        kind = VAC_MARKETS.get(market)
+        if kind == "both":   # TD: receivers inherit targets; backs inherit carries and targets
+            kind = "both" if pos == "RB" else "targets" if pos in ("WR", "TE") else None
+        if kind and team in vacated:
+            v = vacated[team]
+            share = max(v["targets"], v["carries"]) if kind == "both" else v[kind]
+            who = [w for w in v["who"] if w["pid"] != pid and (kind == "both" or w[kind] >= 100 * VAC_PLAYER_MIN)]
+            if share >= VAC_MIN and who:
+                vac = {"kind": "targets & carries" if kind == "both" else kind, "share": round(100 * share),
+                       "who": [{k: w[k] for k in ("name", "why", "targets", "carries")} for w in who]}
+                if role is None and edge_sd <= -ROLE_SNAP_MIN_EDGE:   # model leans under on a player whose role just grew
+                    role = {"why": "vacated", "dir": "up", "share": vac["share"], "kind": vac["kind"],
+                            "names": [w["name"] for w in who], "z": None, "lo": None, "hi": None}
+        moved_from = glog.team.iloc[-1] if glog.team.iloc[-1] != team else None
+        if moved_from and role is None:   # traded / signed: every game in the log was for another team
+            role = {"why": "newteam", "from": moved_from, "dir": "up" if edge_sd < 0 else "down", "z": None, "lo": None, "hi": None}
+        # the books disagree so much that they must know something (see MARKET_GAP)
+        gap = p_over - fair_over if fair_over is not None and imp_under is not None and cons["books"] != ["sample"] else None
+        if role is None and gap is not None and abs(gap) >= MARKET_GAP:
+            role = {"why": "market", "dir": "up" if gap < 0 else "down", "model": round(p_over, 3),
+                    "book": round(fair_over, 3), "z": None, "lo": None, "hi": None}
+
         if thin:   # too few games to project honestly: show the line and the games, don't rate it
             role = {"why": "thin", "games": len(values), "dir": "up" if line > statistics.fmean(values) else "down",
                     "z": None, "lo": min(values), "hi": max(values)}
@@ -693,6 +796,7 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None) ->
             "vol_label": VOLUME_LABEL[VOLUME[col]],
             "defense": def_key,
             "snaps": snap_pct.get((pname, team)),
+            "vacated": vac,
             "injury": inj_by_player.get((pname, team)),
             "team_injuries": team_injuries.get(team, []),
             "opp_injuries": [i for i in team_injuries.get(opp, []) if i["status"] in ("Out", "Doubtful")],
@@ -850,9 +954,13 @@ def main() -> None:
                          else "api_error")
 
     corrections, corr_info = load_corrections()
-    props, defense = build_props(stats, games, frames["injuries"], frames["snaps"], week, lines, corrections)
+    props, defense = build_props(stats, games, frames["injuries"], frames["snaps"], week, lines, corrections, frames.get("rosters"))
     OUT.mkdir(parents=True, exist_ok=True)
     kalshi_status = attach_kalshi(props, wg, "nfl", mode)
+    ros = frames.get("rosters")
+    espn = {} if ros is None else ros.dropna(subset=["gsis_id", "espn_id"]).drop_duplicates("gsis_id", keep="last") \
+        .set_index("gsis_id").espn_id.to_dict()
+    news_status = attach_news(props, "nfl", lambda p: espn.get(p["pid"]))
     payload = {
         "season": SEASON, "week": week, "mode": mode,
         "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
@@ -864,7 +972,7 @@ def main() -> None:
         "props": props,
         "defense": defense,
         "corrections": corr_info,
-        "kalshi": kalshi_status,
+        "kalshi": kalshi_status, "news": news_status,
     }
     (OUT / "props.json").write_text(json.dumps(payload, separators=(",", ":")))
     log(f"wrote {len(props)} props -> {OUT / 'props.json'}")
