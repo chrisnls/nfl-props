@@ -72,6 +72,18 @@ class Outcomes:
         g = self.games[self.games.week == week]
         return len(g) > 0 and g.home_score.notna().all() and set(g.game_id) <= self.stat_games
 
+    def game_complete(self, game_id: str) -> bool:
+        """This game is final AND its stat lines have landed: its props can be graded before the rest of the week
+        (Sunday's games no longer wait for Monday night)."""
+        g = self.games[self.games.game_id == game_id]
+        return len(g) == 1 and g.home_score.notna().all() and game_id in self.stat_games
+
+    def team_game_complete(self, team: str | None, week: int) -> bool:
+        if not team:
+            return self.week_complete(week)
+        g = self.games[(self.games.week == week) & ((self.games.home_team == team) | (self.games.away_team == team))]
+        return len(g) == 1 and self.game_complete(g.game_id.iloc[0])
+
     def actual(self, pid: str, week: int, market: str) -> float | None:
         """Stat value, or None if the player has no stat line that week (didn't play)."""
         col = MARKETS[market][0]
@@ -97,11 +109,16 @@ def grade_snapshots(out: Outcomes) -> tuple[list[dict], list[int], list[int]]:
         if snap.get("season", SEASON) != SEASON:
             continue
         week = int(snap["week"])
-        if not out.week_complete(week):
+        done = {gid for gid in {p.get("game") for p in snap["props"]} if gid and out.game_complete(gid)}
+        if not done:
             pending.append(week)
             continue
         graded.append(week)
+        if not out.week_complete(week):
+            pending.append(week)          # partly graded: the finished games count now, the rest later
         for p in snap["props"]:
+            if p.get("game") not in done:
+                continue
             actual = out.actual(p["pid"], week, p["market"])
             if actual is None:
                 continue   # did not play -> void, not graded
@@ -257,9 +274,12 @@ def build_results(out: Outcomes, frames: dict) -> dict:
         return [r for r in rs if lo <= abs(r.get("edge_sd") or 0) < hi]
 
     weeks_n = len(graded)
+    games_graded = {w: len({r["game"] for r in rows if r["week"] == w}) for w in graded}
+    games_total = {w: int((out.games.week == w).sum()) for w in graded}
     return {
         "season": SEASON, "updated": now_iso(),
         "graded_weeks": weeks_n, "graded_week_list": graded, "pending_weeks": pending,
+        "partial_weeks": {str(w): f"{games_graded[w]} of {games_total[w]} games" for w in graded if w in pending},
         "corrections_min_n": CORRECTIONS_MIN_N,
         "corrections_active": any(c.get("active") for c in corr.values()),
         "backtest_weeks": bt_weeks,
@@ -310,7 +330,7 @@ def grade_leg(leg: dict, week: int | None, out: Outcomes) -> dict:
         return {**g, "status": "unknown"}
     actual = out.actual(pid, week, market)
     if actual is None:
-        g["status"] = "void" if out.week_complete(week) else "pending"   # DNP once the week is final
+        g["status"] = "void" if out.team_game_complete(g.get("team"), week) else "pending"   # DNP once his game is final
         return g
     res = side_result(actual, float(leg["line"]))
     side = str(leg.get("side", "")).lower()

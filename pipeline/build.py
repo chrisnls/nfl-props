@@ -76,6 +76,11 @@ ROLE_SNAP_MIN_EDGE = 0.3   # |edge ÷ σ|; below this the lean is too weak to ma
 # almost always know something the game log doesn't (trade, injury, depth chart). On graded live props the model's
 # side won 45% (NFL, n=108) and 33% (NBA, n=52) at gaps >= 0.20, with Brier 0.35+ vs the books' 0.245.
 MARKET_GAP = 0.20
+# Typical-game shift, in σ. In the weeks 5-9 backtest only 37% of games beat the Rec Yds projection (40% receptions,
+# 43% rush yds; a symmetric curve assumes 50%), and on graded live props the model averaged 56% to go over on Rec Yds
+# vs 50% actual: over picks won 49%, under picks 56%. One pooled shift fit on week 9 improved week 10 out of sample
+# (Brier .2676 -> .2636, pick hit 50.5% -> 51.9%) and vice versa (c=0.18: .2581 -> .2562); per-market fits were noise.
+MEDIAN_SHIFT = 0.15
 # Vacated-volume flag: teammates who were traded, put on IR or released since the team's last games, and how
 # much of the team's targets/carries they took. A share this large redistributes to whoever is left.
 VAC_MIN = 0.15        # vacated share of team targets (receiving markets) or carries (rushing) to tag teammates
@@ -689,6 +694,10 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None, ro
         corr = (corrections or {}).get(market) if market not in BINARY_MARKETS else None   # TD: calibrated on P directly
         if corr:   # learned from backtest + graded weeks (see grade.py); active per market at CORRECTIONS_MIN_N
             proj, sd = proj * corr["proj_mult"], sd * corr["sd_mult"]
+        if market != ANYTIME:
+            # projections are averages, but lines sit at the typical (median) game, and these stats are lopsided
+            # (a few long catches pull the average up). Shift to the typical game; see MEDIAN_SHIFT.
+            proj -= MEDIAN_SHIFT * sd
 
         # continuity for counts: over a whole-number line L means L+1 or more (L is a push), so
         # compare at L+0.5; a half-point line (1.5) already sits between the integers -- no shift.

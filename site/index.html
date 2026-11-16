@@ -906,7 +906,7 @@ function renderResults(R){
       <div class="tile"><span class="k">Record (model's side)</span><div class="v">${recTxt(o)}</div><div class="meta">${o.hit_pct != null ? o.hit_pct + '% hit · 52.4% breaks even at -110' : ''}</div></div>
       <div class="tile"><span class="k">Units at -110</span><div class="v ${signCls(o.units)}">${unitsTxt(o.units)}</div><div class="meta">ROI ${o.roi != null ? (o.roi > 0 ? '+' : '') + o.roi + '%' : '—'} · 1u per prop</div></div>
       <div class="tile"><span class="k">Brier score</span><div class="v">${o.brier != null ? o.brier.toFixed(3) : '—'}</div><div class="meta">0.250 = coin flip · lower is better</div></div>
-      <div class="tile"><span class="k">Graded</span><div class="v">${R.graded_weeks} ${R.period === 'day' ? 'day' : 'wk'}${R.graded_weeks === 1 ? '' : 's'}</div><div class="meta">${o.n} props${pend ? ' · pending ' + pend : ''}</div></div>
+      <div class="tile"><span class="k">Graded</span><div class="v">${R.graded_weeks} ${R.period === 'day' ? 'day' : 'wk'}${R.graded_weeks === 1 ? '' : 's'}</div><div class="meta">${o.n} props${Object.keys(R.partial_weeks || {}).length ? ' · ' + Object.entries(R.partial_weeks).map(([w, t]) => `wk ${w}: ${t} so far`).join(', ') : pend ? ' · pending ' + pend : ''}</div></div>
     </div>
     <p class="muted small">${R.note || ''}</p>
 
