@@ -227,22 +227,23 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
         </div>
       </div>
       <select id="sortSel">
-        <option value="edge">Sort: strongest edge</option>
+        <option value="value">Sort: best value (price vs market)</option>
+        <option value="edge">Sort: biggest model lean</option>
         <option value="ev">Sort: best EV</option>
         <option value="hit">Sort: hit rate L5</option>
-        <option value="over">Sort: over edge</option>
-        <option value="under">Sort: under edge</option>
-        <option value="str_over">Sort: Strong over → Strong under</option>
-        <option value="str_under">Sort: Strong under → Strong over</option>
+        <option value="over">Sort: model leans over</option>
+        <option value="under">Sort: model leans under</option>
+        <option value="str_over">Sort: big lean over → big lean under</option>
+        <option value="str_under">Sort: big lean under → big lean over</option>
         <option value="player">Sort: player</option>
       </select>
-      <select id="strSel" title="Only show props rated at these strengths">
-        <option value="">Any strength</option>
-        <option value="Strong over">Strong over</option><option value="Solid over">Solid over</option><option value="Lean over">Lean over</option>
-        <option value="Lean under">Lean under</option><option value="Solid under">Solid under</option><option value="Strong under">Strong under</option>
-        <option value="SS over">Strong + Solid overs</option><option value="SS under">Strong + Solid unders</option><option value="SS">Strong + Solid (either side)</option>
+      <select id="strSel" title="Only show props where the model leans this much (its opinion vs the books, not a pick)">
+        <option value="">Any model lean</option>
+        <option value="Strong over">Big lean over</option><option value="Solid over">Model lean over</option><option value="Lean over">Slight lean over</option>
+        <option value="Lean under">Slight lean under</option><option value="Solid under">Model lean under</option><option value="Strong under">Big lean under</option>
+        <option value="SS over">Big + model leans, overs</option><option value="SS under">Big + model leans, unders</option><option value="SS">Big + model leans (either side)</option>
       </select>
-      <select id="sideSel" title="Only show props where the model leans this way"><option value="">Overs &amp; unders</option><option value="Over">Overs only</option><option value="Under">Unders only</option></select>
+      <select id="sideSel" title="Only show props whose shown side (value pick, else the model lean) is this side"><option value="">Overs &amp; unders</option><option value="Over">Overs only</option><option value="Under">Unders only</option></select>
       <select id="venueSel" title="Price the board and the builder at the best sportsbook, or at Kalshi only"><option value="">Best book price</option><option value="kalshi">Kalshi prices</option></select>
       <select id="minGames"><option value="3">3+ games</option><option value="5" selected>5+ games</option><option value="7">7+ games</option></select>
       <input type="search" id="q" placeholder="Search player or team">
@@ -305,7 +306,7 @@ let KICK = {};
 
 let DATA, props = [], state = {markets:new Set(), games:new Set(), sort:'edge', min:5, q:'', sel:null, side:'', str:'', venue:''};
 // remember the over/under choice between visits
-try { state.side = localStorage.getItem('side') || ''; state.str = localStorage.getItem('strength') || ''; state.sort = localStorage.getItem('sort') || 'edge'; state.venue = localStorage.getItem('venue') || ''; } catch (e) {}
+try { state.side = localStorage.getItem('side') || ''; state.str = localStorage.getItem('strength') || ''; state.sort = localStorage.getItem('sortv2') ? (localStorage.getItem('sort') || 'value') : 'value'; state.venue = localStorage.getItem('venue') || ''; } catch (e) {}
 let slip = JSON.parse(localStorage.getItem(SK('slip')) || '[]');
 
 async function load(){
@@ -352,7 +353,7 @@ async function load(){
   panel.onclick = e => e.stopPropagation();
   document.addEventListener('click', () => { panel.hidden = true; $('#gameBtn').setAttribute('aria-expanded', 'false'); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') panel.hidden = true; });
-  $('#sortSel').onchange = e => { state.sort = e.target.value; try { localStorage.setItem('sort', state.sort); } catch (err) {} render(); };
+  $('#sortSel').onchange = e => { state.sort = e.target.value; try { localStorage.setItem('sort', state.sort); localStorage.setItem('sortv2', '1'); } catch (err) {} render(); };
   $('#sideSel').value = state.side;
   $('#strSel').value = state.str;
   $('#strSel').onchange = e => { state.str = e.target.value; try { localStorage.setItem('strength', state.str); } catch (err) {} render(); };
@@ -363,6 +364,7 @@ async function load(){
   $('#minGames').onchange = e => { state.min = +e.target.value; render(); };
   $('#q').oninput = e => { state.q = e.target.value.toLowerCase(); render(); };
   render(); renderSlip();
+  getJSON(BASE + 'results.json').then(r => { RESULTS_BOARD = r || {}; render(); });
   showTab(location.hash.slice(1));
 }
 
@@ -370,6 +372,13 @@ const esd = p => p.edge_sd ?? p.edge / p.sd;
 // Plain-English strength of the edge: the gap vs the line, measured against the player's
 // normal game-to-game swing (σ). ~1 swing = strong; under a third of a swing = noise.
 const strength = p => { const a = Math.abs(esd(p)); return a >= 1 ? 'Strong' : a >= 0.6 ? 'Solid' : a >= 0.3 ? 'Lean' : 'Thin'; };
+// What the board SHOWS for a strength: the model's lean vs the books, not a pick. Graded leans showed no skill over
+// the books (docs/HANDOFF.md 11/19), so the labels say "lean" and carry their season record.
+const LEAN = {Strong: 'Big lean', Solid: 'Model lean', Lean: 'Slight lean', Thin: 'No lean'};
+const leanRec = st => { const b = ((RESULTS_BOARD && RESULTS_BOARD.by_edge) || []).find(x => x.bucket.startsWith(st));
+  return b && b.n ? `${b.w}–${b.l} this season` : ''; };
+let RESULTS_BOARD = null;
+const leanBucket = b => b.replace(/^Strong/, 'Big lean').replace(/^Solid/, 'Model lean').replace(/^Lean/, 'Slight lean').replace(/^Thin/, 'No lean');
 // full rating, e.g. "Solid under" ("Thin" has no side); thin-history props aren't rated
 const rating = p => isThin(p) || (p.role_change && ['lowuse', 'uncal'].includes(p.role_change.why)) ? 'Not rated' : p.no_bet_side ? 'Thin' : strength(p) === 'Thin' ? 'Thin' : `${strength(p)} ${p.edge >= 0 ? 'over' : 'under'}`;   // TD yes/no map onto over/under for sorting
 // rank for the strength sorts: Strong over 0 … Lean over 2, Thin 3, Lean under 4 … Strong under 6, not rated last
@@ -386,7 +395,7 @@ const isBin = p => isBinM(p.market);
 const SIDE = (p, side) => isBin(p) ? (side === 'Over' ? 'Yes' : 'No') : side;     // yes/no market wording
 const ptsTxt = x => (x > 0 ? '+' : '') + Math.round(x * 100) + ' pts';
 const gapText = p => isTD(p) ? `${pct(p.p_over)} ${BIN[p.market]}` : isBin(p) ? `vs book ${pct(p.fair_over)}` : p.edge === 0 ? 'right on the line' : `${Math.abs(p.edge)} ${p.edge > 0 ? 'over' : 'under'} the line`;
-const strTip = p => isBin(p) ? `Model gives him ${pct(p.p_over)} ${BIN[p.market]}${isTD(p) ? ` (expected TDs ${p.proj})` : ` (simulated from ${p.proj_min} projected minutes)`}; the book's price implies ${pct(p.fair_over)}${p.under == null ? ' (incl. vig — no "No" price posted)' : ''}. Gap ${ptsTxt(p.edge)}. Strong ≥ 10 pts, Solid ≥ 6, Lean ≥ 3.` : `Projection is ${gapText(p)}. That gap is ${Math.abs(esd(p)).toFixed(1)}× this player's normal game-to-game swing (σ ${p.sd}). Strong ≥ 1×, Solid ≥ 0.6×, Lean ≥ 0.3×, Thin below that.`;
+const strTip = p => isBin(p) ? `Model gives him ${pct(p.p_over)} ${BIN[p.market]}${isTD(p) ? ` (expected TDs ${p.proj})` : ` (simulated from ${p.proj_min} projected minutes)`}; the book's price implies ${pct(p.fair_over)}${p.under == null ? ' (incl. vig — no "No" price posted)' : ''}. Gap ${ptsTxt(p.edge)}. Big lean ≥ 10 pts, model lean ≥ 6, slight ≥ 3. A lean is the model's opinion, not a pick: graded leans haven't beaten the books.` : `Projection is ${gapText(p)}. That gap is ${Math.abs(esd(p)).toFixed(1)}× this player's normal game-to-game swing (σ ${p.sd}). Big lean ≥ 1×, model lean ≥ 0.6×, slight ≥ 0.3×. A lean is the model's opinion, not a pick: graded leans haven't beaten the books.`;
 const isThin = p => p.role_change && p.role_change.why === 'thin';
 const INJ_ABBR = {'out':'OUT', 'doubtful':'DBT', 'questionable':'Q', 'day-to-day':'GTD', 'probable':'P', 'suspension':'SUSP'};
 const injAbbr = st => INJ_ABBR[String(st).toLowerCase()] || String(st)[0];
@@ -424,10 +433,35 @@ const roleTag = p => (!p.role_change ? '' : p.role_change.why === 'injury' ? ''
   ? `<span class="tag role" title="${roleWhy(p.role_change)}">Thin history · ${p.role_change.games} g</span>`
   : `<span class="tag role" title="${roleWhy(p.role_change)}">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>`)
   + (p.vacated && !(p.role_change && p.role_change.why === 'vacated') ? ` <span class="tag tmout" title="Gone since the team's last games: ${vacWho(p.vacated)}">${p.vacated.share}% ${p.vacated.kind} open</span>` : '')
+  + (minutesTrend(p) ? ((t) => ` <span class="tag ${t.dir === 'up' ? 'tmout' : 'q'}" title="Minutes ${t.dir}: ${t.l3.toFixed(0)} a game over his last 3 vs ${t.szn.toFixed(0)} this season. In testing, books were slow to price rotation changes: ${t.dir === 'up' ? 'overs hit 54% vs 50% implied' : 'unders hit 59% vs 50% implied'}.">Min ${t.dir === 'up' ? '↑' : '↓'} ${t.l3.toFixed(0)} vs ${t.szn.toFixed(0)}</span>`)(minutesTrend(p)) : '')
+  + (valueOf(p).ev >= 0.02 && !p.diamond ? ` <span class="tag kal" title="${valueOf(p).side} at ${fmtOdds(valueOf(p).price)} (${BOOK[valueOf(p).book] || valueOf(p).book}) is ${(valueOf(p).ev * 100).toFixed(1)}% better than the market's consensus odds (${pct(valueOf(p).prob)})">Value ${valueOf(p).side.toLowerCase()} +${(valueOf(p).ev * 100).toFixed(1)}%</span>` : '')
   + (p.diamond ? ` <span class="tag diam" title="Diamond: ${p.diamond.side} at ${fmtOdds(p.diamond.price)} (${BOOK[p.diamond.venue] || p.diamond.venue}) beats the market's consensus · EV +${(p.diamond.ev * 100).toFixed(1)}%">💎 ${p.diamond.side}</span>` : '')
   + (p.news && p.news.length && (Date.now() - new Date(p.news[0].when)) < 48 * 3600e3 ? ` <span class="tag q" title="${p.news[0].headline.replace(/"/g, '&quot;')}">News</span>` : '');
 
 const KAL = () => state.venue === 'kalshi';
+// value = the best price (books, or Kalshi after its fee) vs the market's own consensus odds; no model involved
+const decOf = a => a > 0 ? 1 + a / 100 : 1 + 100 / -a;
+function valueOf(p){
+  if (p.fair_med == null || (p.n_fair || 0) < 3) return {ev: null};
+  let best = {ev: null};
+  for (const side of ['Over', 'Under']) {
+    const q = quote(p, side), k = p.kalshi || {}, kp = side === 'Over' ? k.over : k.under;
+    const prices = [[q.price, q.book], ...(KAL() ? [] : [[kp, 'kalshi']])].filter(x => x[0] != null);
+    for (const [price, book] of prices) {
+      const prob = side === 'Over' ? p.fair_med : 1 - p.fair_med, ev = prob * decOf(price) - 1;
+      if (best.ev == null || ev > best.ev) best = {ev, side, price, book, prob};
+    }
+  }
+  return best;
+}
+// NBA minutes trend: the one board signal that beat the line in testing (last 3 games vs season, ±15%)
+function minutesTrend(p){
+  if (!NBA) return null;
+  const m = (p.games || []).map(g => g.vol).filter(v => v != null);
+  if (m.length < 6) return null;
+  const l3 = m.slice(-3).reduce((a, b) => a + b, 0) / 3, szn = m.reduce((a, b) => a + b, 0) / m.length;
+  return l3 >= 1.15 * szn ? {dir: 'up', l3, szn} : l3 <= 0.85 * szn ? {dir: 'down', l3, szn} : null;
+}
 // "DAL @ CLE" for a leg: stored on the leg, else from this slate's props (older saved legs have no team)
 function legTeam(l){
   let team = l.team, opp = l.opp, home = l.home;
@@ -453,8 +487,10 @@ const kalLink = (l, txt) => kalUrl(l) ? `<a class="klink" href="${kalUrl(l)}" ta
 const kalName = (l) => isBinM(l.market) ? `${l.player}: ${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}` : `${l.player}: ${Math.round(l.line + 0.5)}+ ${l.label} — ${l.side === 'Over' ? 'Yes' : 'No'}`;
 
 function bestSide(p){
-  // which side the model likes, and that side's price/EV at the selected venue
-  const over = p.edge > 0, side = over ? 'Over' : 'Under', q = quote(p, side);
+  // the side to show and add: a diamond's side, else a value side (price beats the market by 2%+), else the model's lean
+  const v = valueOf(p);
+  const side = p.diamond ? (p.diamond.side === 'over' ? 'Over' : 'Under') : v.ev != null && v.ev >= 0.02 ? v.side : p.edge > 0 ? 'Over' : 'Under';
+  const over = side === 'Over', q = quote(p, side);
   return {side, ev: q.ev, price: q.price, book: q.book, cents: q.cents, p: over ? p.p_over : 1 - p.p_over};
 }
 
@@ -463,6 +499,7 @@ function render(){
     (!state.q || (p.player + ' ' + p.team + ' ' + p.opp).toLowerCase().includes(state.q)));
   const key = {
     edge: p => -Math.abs(esd(p)), ev: p => -(bestSide(p).ev ?? -9), hit: p => -(p.hit_l5 ?? 0),
+    value: p => (p.diamond ? -100 : 0) - (valueOf(p).ev ?? -1),
     over: p => -esd(p), under: p => esd(p), player: p => 0,
     // strength buckets in order, strongest edge first within each bucket
     str_over: p => RANK[rating(p)] * 100 - (RANK[rating(p)] <= 3 ? esd(p) : -esd(p)),
@@ -490,7 +527,7 @@ function render(){
       <div><span class="k">Over ${fmtOdds(p.over)} · Under ${fmtOdds(p.under)}</span>
         <span class="num" style="color:var(--ink3);font-size:12px">book ${pct(p.fair_over)} over</span></div>`
       : `<div class="num" title="${strTip(p)}"><span class="k">${isTD(p) ? 'xTD' : isBin(p) ? 'Model' : 'Proj'}</span>${isBin(p) && !isTD(p) ? pct(p.p_over) : p.proj} <span class="sig" style="white-space:nowrap">${gapText(p)}</span>
-        <span class="str ${strength(p) === 'Thin' || p.no_bet_side ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}" ${p.no_bet_side ? `title="The model leans No (book ${pct(p.fair_over)} vs model ${pct(p.p_over)}), but no book posts a No price"` : ''}>${p.no_bet_side ? 'No bet · leans no' : `${strength(p)} ${strength(p) === 'Thin' ? 'edge' : isBin(p) ? (p.edge >= 0 ? 'yes' : 'no') : p.edge >= 0 ? 'over' : 'under'}`}</span></div>
+        <span class="str ${strength(p) === 'Thin' || p.no_bet_side ? 'thin' : p.edge >= 0 ? 'pos' : 'neg'}" ${p.no_bet_side ? `title="The model leans No (book ${pct(p.fair_over)} vs model ${pct(p.p_over)}), but no book posts a No price"` : ''}>${p.no_bet_side ? 'No bet · leans no' : strength(p) === 'Thin' ? 'No lean' : `${LEAN[strength(p)]} ${isBin(p) ? (p.edge >= 0 ? 'yes' : 'no') : p.edge >= 0 ? 'over' : 'under'}`}</span>${strength(p) !== 'Thin' && !p.no_bet_side && leanRec(strength(p)) ? `<span class="sig" style="display:block;white-space:nowrap" title="How the model's ${LEAN[strength(p)].toLowerCase()}s have done on graded props (the side it leans, at -110)">${leanRec(strength(p))}</span>` : ''}</div>
       <div><span class="k">${SIDE(p, bs.side)} ${fmtOdds(bs.price)} ${bs.book ? BOOK[bs.book] || bs.book : ''}${KAL() && bs.cents != null ? ` · ${bs.cents}¢` : !KAL() && p.kalshi && kalTxt(p, bs.side) ? ` <span class="tag kal" title="Kalshi: ${kalTxt(p, bs.side)} = ${fmtOdds(p.kalshi[bs.side === 'Over' ? 'over' : 'under'])} after the fee">K ${kalTxt(p, bs.side)}</span>` : ''}</span>
         <span class="num side ${bs.ev > 0 ? 'pos' : ''}">${pct(bs.p)}</span> <span class="num" style="color:var(--ink3);font-size:12px">vs ${pct(bs.side === 'Over' ? p.fair_over : 1 - p.fair_over)}</span></div>`}
       <div class="hits">${[['L5', p.hit_l5], ['L10', p.hit_l10], ['Szn', p.hit_season]].map(([l, v]) => `<span><b><i style="width:${v ?? 0}%"></i></b>${v == null ? '—' : v + '%'}</span>`).join('')}</div>
@@ -668,7 +705,7 @@ function openDetail(p){
         : isBin(p) && !isTD(p) ? `<div class="tile"><span class="k">Projected minutes</span><div class="v">${p.proj_min}</div><div class="meta">simulated 4,000 games</div></div>`
         : isTD(p) ? `<div class="tile"><span class="k">Expected TDs</span><div class="v">${p.proj}</div><div class="meta">usage + his TD rate, game total</div></div>`
         : `<div class="tile"><span class="k">Projection</span><div class="v">${p.proj}</div><div class="meta">σ ${p.sd}</div></div>`}
-      ${isThin(p) ? '' : `<div class="tile"><span class="k">Edge</span><div class="v ${p.edge >= 0 ? 'pos' : 'neg'}">${isBin(p) ? ptsTxt(p.edge) : (p.edge > 0 ? '+' : '') + p.edge}</div><div class="meta" title="${strTip(p)}">${isThin(p) ? 'not rated · too few games' : isBin(p) ? `${strength(p)} · model vs book` : `${strength(p)} · ${Math.abs(esd(p)).toFixed(1)}× normal swing`}</div></div>`}
+      ${isThin(p) ? '' : `<div class="tile"><span class="k">Edge</span><div class="v ${p.edge >= 0 ? 'pos' : 'neg'}">${isBin(p) ? ptsTxt(p.edge) : (p.edge > 0 ? '+' : '') + p.edge}</div><div class="meta" title="${strTip(p)}">${isThin(p) ? 'not rated · too few games' : isBin(p) ? `${LEAN[strength(p)]} · model vs book${leanRec(strength(p)) ? ' · ' + leanRec(strength(p)) : ''}` : `${LEAN[strength(p)]} · ${Math.abs(esd(p)).toFixed(1)}× normal swing${leanRec(strength(p)) ? ' · ' + leanRec(strength(p)) : ''}`}</div></div>`}
       <div class="tile"><span class="k">${isTD(p) ? 'P(scores)' : isBin(p) ? 'P(' + p.label.toLowerCase() + ')' : 'P(over)'}</span><div class="v">${isThin(p) ? '—' : pct(p.p_over)}</div><div class="meta">book ${pct(p.fair_over)}</div></div>
       <div class="tile"><span class="k">${SIDE(p, 'Over')}</span><div class="v">${fmtOdds(p.over)}</div><div class="meta">${BOOK[p.over_book] || ''} · EV ${p.ev_over == null || isThin(p) ? '—' : (p.ev_over * 100).toFixed(1) + '%'}</div></div>
       <div class="tile"><span class="k">${SIDE(p, 'Under')}</span><div class="v">${fmtOdds(p.under)}</div><div class="meta">${BOOK[p.under_book] || ''} · EV ${p.ev_under == null || isThin(p) ? '—' : (p.ev_under * 100).toFixed(1) + '%'}</div></div>
@@ -860,7 +897,7 @@ async function loadResults(){
 function strengthGrid(title, rows){
   if (!rows || !Object.keys(rows).length) return '';
   const cols = Object.keys(Object.values(rows)[0]);
-  const short = b => b.split(' ')[0];
+  const short = b => ({Strong: 'Big', Solid: 'Model', Lean: 'Slight', Thin: 'None'})[b.split(' ')[0]] || b.split(' ')[0];
   const cell = r => {
     if (!r || !r.n) return '<td class="num muted">—</td>';
     const dec = r.w + r.l, small = dec < 5;
@@ -919,8 +956,8 @@ function renderResults(R){
     <table class="log">${recHead('Market')}${Object.entries(R.by_market || {}).map(([m, r]) => recRow(m, r)).join('')}</table>
 
     <div class="sec">By strength rating <span class="nc">(the board's Thin / Lean / Solid / Strong)</span></div>
-    <table class="log">${recHead('Edge')}${(R.by_edge || []).map(b => recRow(b.bucket, b)).join('')}</table>
-    <p class="muted small">If the model is any good, the stronger buckets should hit more often.</p>
+    <table class="log">${recHead('Edge')}${(R.by_edge || []).map(b => recRow(leanBucket(b.bucket), b)).join('')}</table>
+    <p class="muted small">If the model were adding anything beyond the books, the bigger leans would hit more often. So far they hit <i>less</i> often, which is why the board shows them as the model's leans rather than picks and sorts by value (price vs the market) instead.</p>
     ${strengthGrid('By market and rating', R.by_market_strength)}
     ${strengthGrid('Overs vs unders by rating', R.by_side_strength && {Overs: R.by_side_strength.over, Unders: R.by_side_strength.under})}
 
@@ -1195,7 +1232,7 @@ function renderBuilt(results){
       <div class="phead"><span><span class="badge ${r.style === 'conservative' ? 'won' : r.style === 'hail' ? 'lost' : 'pending'}">${S.name}</span>
         <b>${r.legs.length}-leg</b>${r.sameGame ? ' · <span class="muted">same-game legs</span>' : ''}${inRange ? '' : ` · <span class="muted" title="Couldn't hit the target odds with the legs available">outside target odds</span>`}</span>
         <span class="num" title="est. = blended probability, legs treated as independent">${fmtOdds(r.american)} · est. ${pct(r.prob)} · EV <b class="${r.ev > 0 ? 'pos' : 'neg'}">${(r.ev * 100).toFixed(0)}%</b> · $10 pays $${(10 * r.dec).toFixed(2)}</span></div>
-      ${r.legs.map(x => `<div class="pleg click" role="button" tabindex="0" data-prop="${x.p.id}" title="Open ${x.p.player}'s details"><span class="badge ${x.ev >= 0.08 ? 'won' : 'push'}" title="${rating(x.p)} · EV ${(x.ev * 100).toFixed(1)}%">${strength(x.p)}</span>
+      ${r.legs.map(x => `<div class="pleg click" role="button" tabindex="0" data-prop="${x.p.id}" title="Open ${x.p.player}'s details"><span class="badge ${x.ev >= 0.08 ? 'won' : 'push'}" title="${rating(x.p)} · EV ${(x.ev * 100).toFixed(1)}%">${LEAN[strength(x.p)]}</span>
         <span class="pl">${x.p.player} <b>${isBin(x.p) ? `${x.p.label} — ${SIDE(x.p, x.side)}` : `${x.side} ${x.p.line} ${x.p.label}`}</b> <span class="muted">${x.p.team} ${x.p.home ? 'vs' : '@'} ${x.p.opp}</span></span>
         <span class="num muted" title="model ${pct(x.model)} · book ${pct(x.book)} · blended ${pct(x.prob)}">${fmtOdds(x.price)} ${BOOK[x.venue] || ''} · est. ${pct(x.prob)} · EV ${(x.ev * 100).toFixed(0)}%${kalLink(legOf(x))}</span></div>`).join('')}
       <div class="btns" style="margin-top:8px"><button class="btn" data-use="${i}">Use this slip</button></div>

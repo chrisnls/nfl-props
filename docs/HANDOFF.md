@@ -158,6 +158,13 @@ Prompted by Anthony Gould (IND): his line jumped from his backup history to 1.5 
 - **Diamonds** (`pipeline/diamonds.py`, 💎 tab, 💎 tag on the board): estimate = the median no-vig P across books at the main line (3+ books pricing both sides) + an NBA minutes-trend nudge of ±3 pts. A diamond needs EV ≥ 3% at the best price (books or Kalshi after the fee), a price between −250 and +400, and a raw price gap ≤ 15% (bigger gaps are stale or mismatched quotes). Yes-only markets are excluded (can't be de-vigged). Max 12 per slate, 2 per game. Context (L10, defense, career vs opponent, vacated, model, news) is shown but not used. Each diamond is logged at its first pre-game price to `site/data/[nba/]diamonds/<slate>.json` and graded into `results.diamonds`.
 - **Consensus-line bug fixed:** `consensus()` used the median of the books' lines, which could land on a line nobody offers (69.5/70.5/71.5 → 70) and mix prices from different lines. About 8% of NFL and 5% of NBA props were affected, and those phantom whole-number lines also caused fake pushes in grading (e.g., the 11/17 parlay legs at "2"). It now uses the line the most books post (ties: closest to the median, then the lower).
 
+### Model leans demoted from "picks" (11/19)
+- Test: logistic fit of outcome on logit(book no-vig) + logit(model), leave-one-slate-out. The model's weight was ~0 in the NFL (+0.15 / −0.31) and negative in all 7 NBA folds (−0.16 to −0.31). Held-out Brier: book .2491 vs book+model .2538 (NFL), .2484 vs .2483 (NBA). Calibrated edges of 3+ pts: NFL 44.8% hit, −12% ROI. The NBA fade (5+ pts) went +9% on n=106, too small to trust; track it.
+- The board now shows strengths as the model's *lean*, not a pick: Strong → "Big lean", Solid → "Model lean", Lean → "Slight lean", Thin → "No lean". Each label carries its graded season record (`results.by_edge`). Internal keys (filters, `RANK`, results buckets) are unchanged.
+- The default sort is "best value (price vs market)": diamonds first, then the best price's EV vs the median no-vig (`valueOf()` in index.html, books + Kalshi). It migrates once from the old default via `localStorage.sortv2`.
+- Row side and add button: a diamond's side, else a value side (EV ≥ 2%), else the model's lean (`bestSide`). The Builder pool follows the same side.
+- New tags: NBA minutes trend "Min ↑/↓ L3 vs season" (±15%, the one signal that beat the line); "Value over/under +x%" (best price ≥ 2% over the market, non-diamond).
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.
