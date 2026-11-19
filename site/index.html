@@ -945,8 +945,10 @@ function renderResults(R){
 
 // predicted vs actual, one dot per P(over) decile, with the perfect-calibration diagonal
 function calibrationChart(cal){
-  const pts = cal.filter(c => c.n && c.predicted != null);
+  const MIN_N = 20;   // smaller buckets are noise (one prop makes a 0% or 100% dot)
+  const pts = cal.filter(c => c.n >= MIN_N && c.predicted != null), hidden = cal.filter(c => c.n && c.n < MIN_N);
   if (!pts.length) return '';
+  const maxN = Math.max(...pts.map(c => c.n)), rad = c => 3 + 5 * Math.sqrt(c.n / maxN);
   const W = 520, H = 300, L = 66, R_ = 22, T = 12, B = 40;
   const x = v => L + v * (W - L - R_), y = v => T + (1 - v) * (H - T - B);
   const ticks = [0, 0.25, 0.5, 0.75, 1];
@@ -956,17 +958,16 @@ function calibrationChart(cal){
   const path = pts.map((c, i) => `${i ? 'L' : 'M'}${x(c.predicted).toFixed(1)},${y(c.actual).toFixed(1)}`).join(' ');
   const dots = pts.map((c, i) => `<g class="cal-pt" data-i="${cal.indexOf(c)}">
       <circle cx="${x(c.predicted)}" cy="${y(c.actual)}" r="14" fill="transparent"/>
-      <circle cx="${x(c.predicted)}" cy="${y(c.actual)}" r="5" fill="var(--gold)" stroke="var(--panel)" stroke-width="2"/></g>`).join('');
+      <circle cx="${x(c.predicted)}" cy="${y(c.actual)}" r="${rad(c).toFixed(1)}" fill="var(--gold)" stroke="var(--panel)" stroke-width="2"/></g>`).join('');
   return `<div class="panel chart-panel"><svg class="calchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Calibration: predicted over probability vs actual over rate by decile">
       ${grid}
       <line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="var(--ink3)" stroke-dasharray="4 4"/>
-      <text x="${x(0.98)}" y="${y(0.6)}" text-anchor="end" font-size="11" fill="var(--ink3)">dashed = perfect calibration</text>
       <path d="${path}" fill="none" stroke="var(--gold)" stroke-width="2" opacity=".55"/>
       ${dots}
       <text x="${(L + W - R_) / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--ink2)">Model's P(over)</text>
       <text transform="translate(12 ${(T + H - B) / 2}) rotate(-90)" text-anchor="middle" font-size="11" fill="var(--ink2)">Actual over rate</text>
     </svg>
-    <div class="muted small">Dots above the dashed line: overs hit more often than predicted. Below it: less often. Buckets with few props are noisy.</div></div>`;
+    <div class="muted small">Dashed line = perfect calibration. Dots above it: overs hit more often than predicted; below it: less often. Bigger dot = more props (hover for the count).${hidden.length ? ` Hidden (under ${MIN_N} props, too few to read): ${hidden.map(c => `${c.bucket} (${c.n})`).join(', ')}.` : ''}</div></div>`;
 }
 function wireCalibration(){
   const tip = $('#tip'), cal = (RESULTS && RESULTS.calibration) || [];
