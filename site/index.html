@@ -64,6 +64,8 @@ header{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 85%,
 .klink{color:#7cc0ff;font-size:12px;text-decoration:none;margin-left:6px;white-space:nowrap}.klink:hover{text-decoration:underline}
 .news{display:grid;gap:8px;margin-bottom:6px}.nitem{background:var(--panel2);border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.45}
 .nitem a{color:var(--ink)}.nitem .small{margin-top:2px}
+.dwhy{display:grid;gap:4px;margin-top:8px;font-size:13px}.dctx{margin-top:6px}.dctx summary{cursor:pointer}.dctx div{margin:3px 0 0 4px}
+.tag.diam{background:rgba(124,192,255,.14);color:#9fd0ff}
 .tag.kal{background:rgba(92,170,242,.14);color:#7cc0ff}
 .row.demoted{opacity:.55}
 .sig{color:var(--ink3);font-size:12px}
@@ -214,7 +216,7 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
       <div class="meta" id="meta">loading…</div>
     </div>
     <div id="banner"></div>
-    <nav class="tabs" role="tablist"><button class="tab on" data-tab="board">Board</button><button class="tab" data-tab="results">Results</button><button class="tab" data-tab="parlays">Parlays</button><button class="tab" data-tab="builder">Builder</button></nav>
+    <nav class="tabs" role="tablist"><button class="tab on" data-tab="board">Board</button><button class="tab" data-tab="results">Results</button><button class="tab" data-tab="parlays">Parlays</button><button class="tab" data-tab="builder">Builder</button><button class="tab" data-tab="diamonds">💎 Diamonds</button></nav>
     <div class="filters" data-view="board">
       <div class="chips" id="marketChips"></div>
       <div class="gpick" id="gpick">
@@ -252,6 +254,7 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
   <div class="view" id="resultsView" data-view="results" hidden></div>
   <div class="view" id="parlaysView" data-view="parlays" hidden></div>
   <div class="view" id="builderView" data-view="builder" hidden></div>
+  <div class="view" id="diamondsView" data-view="diamonds" hidden></div>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -421,6 +424,7 @@ const roleTag = p => (!p.role_change ? '' : p.role_change.why === 'injury' ? ''
   ? `<span class="tag role" title="${roleWhy(p.role_change)}">Thin history · ${p.role_change.games} g</span>`
   : `<span class="tag role" title="${roleWhy(p.role_change)}">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>`)
   + (p.vacated && !(p.role_change && p.role_change.why === 'vacated') ? ` <span class="tag tmout" title="Gone since the team's last games: ${vacWho(p.vacated)}">${p.vacated.share}% ${p.vacated.kind} open</span>` : '')
+  + (p.diamond ? ` <span class="tag diam" title="Diamond: ${p.diamond.side} at ${fmtOdds(p.diamond.price)} (${BOOK[p.diamond.venue] || p.diamond.venue}) beats the market's consensus · EV +${(p.diamond.ev * 100).toFixed(1)}%">💎 ${p.diamond.side}</span>` : '')
   + (p.news && p.news.length && (Date.now() - new Date(p.news[0].when)) < 48 * 3600e3 ? ` <span class="tag q" title="${p.news[0].headline.replace(/"/g, '&quot;')}">News</span>` : '');
 
 const KAL = () => state.venue === 'kalshi';
@@ -819,7 +823,7 @@ $('#slipBar').onclick = () => setSlipOpen(!$('#slip').classList.contains('open')
 try { if (localStorage.getItem('slipOpen') === '1') setSlipOpen(true); } catch (e) {}
 
 // ---- tabs: Board / Results / Parlays
-const TABS = ['board', 'results', 'parlays', 'builder'];
+const TABS = ['board', 'results', 'parlays', 'builder', 'diamonds'];
 let RESULTS = null, PARLAYS = null;
 async function getJSON(path){
   try { const r = await fetch(path + '?v=' + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; }
@@ -831,6 +835,7 @@ function showTab(t){
   if (location.hash.slice(1) !== t) history.replaceState(null, '', location.pathname + location.search + (t === 'board' ? '' : '#' + t));
   if (t === 'results') loadResults();
   if (t === 'parlays') loadParlays();
+  if (t === 'diamonds') (async () => { if (!RESULTS) RESULTS = await getJSON(BASE + 'results.json') || {}; renderDiamonds(); })();
   if (t === 'builder') (async () => { if (!RESULTS) RESULTS = await getJSON(BASE + 'results.json') || {}; renderBuilder(window.__built || null); })();
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
@@ -1008,6 +1013,42 @@ function renderParlays(P){
           <span class="num muted">${l.actual != null ? 'actual ' + l.actual : word}${l.price != null ? ' · ' + fmtOdds(l.price) : ''}</span></div>`; }).join('')}
     </div>`).join('')}
     <p class="muted small">Pushes and DNPs drop out of a parlay and it's repaid at the remaining legs' saved prices. Updated ${P.updated ? new Date(P.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}.</p>`;
+}
+
+// ---- diamonds in the rough: bets whose best price beats the market's own consensus (pipeline/diamonds.py)
+function renderDiamonds(){
+  const el = $('#diamondsView');
+  if (!DATA) { el.innerHTML = '<div class="empty">Loading…</div>'; return; }
+  const list = DATA.diamonds || [], G = (RESULTS && RESULTS.diamonds) || {}, o = G.overall || {};
+  const sideTxt = d => isBinM(d.market) ? `${d.label} — ${d.side === 'over' ? 'Yes' : 'No'}` : `${d.side === 'over' ? 'Over' : 'Under'} ${d.line} ${d.label}`;
+  el.innerHTML = `
+    <div class="panel">
+      <h3>💎 Diamonds in the rough</h3>
+      <p class="muted small">Bets where the <b>best price you can get is better than the market itself thinks the bet is worth</b>: one sportsbook (or Kalshi, after its fee) paying more than the other books' consensus odds. ${NBA ? 'NBA estimates also lean toward players whose minutes just jumped or dropped, the one trend that beat the line in testing. ' : ''}Before building this I tested the usual angles on 3,000+ graded props (hot streaks, soft defenses, career vs the opponent, the model's biggest edges, several signals agreeing). None beat the books, because they're already priced in. They're listed on each card as context, not as reasons. Each diamond is logged at its first price before the game and graded on its own record below.</p>
+      <div class="grid">
+        <div class="tile"><span class="k">Diamonds record</span><div class="v">${recTxt(o)}</div><div class="meta">${o.n ? `expected ${o.expected_w} wins at our estimates` : 'grading starts after the first slate'}</div></div>
+        <div class="tile"><span class="k">Units (1u each)</span><div class="v ${signCls(o.units)}">${o.n ? unitsTxt(o.units) : '—'}</div><div class="meta">${o.roi != null ? 'ROI ' + (o.roi > 0 ? '+' : '') + o.roi + '%' : 'at the logged price'}</div></div>
+        <div class="tile"><span class="k">Today</span><div class="v">${list.length}</div><div class="meta">${list.length ? 'best value first' : 'none clear the bar right now'}</div></div>
+      </div>
+    </div>
+    ${DATA.mode === 'sample' ? '<p class="corr">Sample lines: no real prices, so no diamonds.</p>' : !list.length ? `<div class="empty">No bet is priced 3%+ better than the market right now. This list is often short or empty, and that's the point: it only shows real price gaps. It refreshes every hourly build as books and Kalshi move.</div>` : ''}
+    ${list.map(d => `<div class="pcard">
+      <div class="phead"><span><b>${d.player}</b> ${sideTxt(d)} <span class="muted">${d.team} ${d.home ? 'vs' : '@'} ${d.opp}${KICK[d.game] ? ' · ' + kickoffText(KICK[d.game]) : ''}</span></span>
+        <span class="num">${fmtOdds(d.price)} ${BOOK[d.venue] || d.venue} · est. ${pct(d.p_est)} · EV <b class="pos">+${(d.ev * 100).toFixed(1)}%</b></span></div>
+      <div class="dwhy">${d.reasons.map(r => `<div>✅ ${r}</div>`).join('')}</div>
+      <details class="dctx"><summary class="muted small">Context (not used in the pick)</summary>${d.context.map(c => `<div class="muted small">• ${c}</div>`).join('')}</details>
+      <div class="btns" style="margin-top:8px"><button class="btn" data-gem="${d.id}" data-side="${d.side}">+ Add to slip</button><button class="btn" data-open="${d.id}">Details</button>${d.venue === 'kalshi' && props.find(p => p.id === d.id)?.kalshi?.url ? `<a class="btn" href="${props.find(p => p.id === d.id).kalshi.url}" target="_blank" rel="noopener">Open on Kalshi ↗</a>` : ''}</div>
+    </div>`).join('')}
+    ${(G.recent || []).length ? `<div class="sec">Recent graded diamonds</div><table class="log"><tr><th style="text-align:left">Pick</th><th>Price</th><th>Est.</th><th>Actual</th><th>Result</th></tr>
+      ${G.recent.map(r => `<tr><td style="text-align:left">${r.player} ${sideTxt(r)}</td><td class="num">${fmtOdds(r.price)} ${BOOK[r.venue] || r.venue}</td><td class="num">${pct(r.p_est)}</td><td class="num">${r.actual}</td><td class="num ${r.result === 'win' ? 'pos' : r.result === 'loss' ? 'neg' : ''}">${r.result}</td></tr>`).join('')}</table>` : ''}
+    <p class="muted small">Price gaps close fast: a book that's out of line usually moves within hours, so check the price before you bet. A 3–8% edge per bet is small, so expect long losing streaks. It only shows up over many bets.</p>`;
+  el.querySelectorAll('[data-gem]').forEach(b => b.onclick = () => { const p = props.find(q => q.id === b.dataset.gem); if (!p) return;
+    const side = b.dataset.side === 'over' ? 'Over' : 'Under', d = list.find(x => x.id === p.id);
+    slip = slip.filter(l => l.id !== p.id);
+    slip.push({id: p.id, player: p.player, label: p.label, market: p.market, line: p.line, side, game: p.game, team: p.team, opp: p.opp, home: p.home,
+      price: d ? d.price : quote(p, side).price, book: d ? d.venue : quote(p, side).book, prob: d ? d.p_est : (side === 'Over' ? p.p_over : 1 - p.p_over)});
+    saveSlip(); setSlipOpen(true); b.textContent = 'Added ✓'; });
+  el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const p = props.find(q => q.id === b.dataset.open); if (p) openDetail(p); });
 }
 
 // ---- parlay builder: generate conservative / balanced / hail-mary parlays from +EV legs

@@ -198,6 +198,53 @@ def attach_news(props, sport, espn_of):
     return st
 
 
+def h2h_nfl(stats: pd.DataFrame):
+    """Career vs an opponent: the last 3 seasons + this one. Context for diamonds only (it didn't beat the line in testing)."""
+    frames = [stats]
+    for y in range(SEASON - 3, SEASON):
+        try:
+            frames.append(pd.read_csv(download(f"stats_{y}", f"{NFLVERSE}/stats_player/stats_player_week_{y}.csv", 24 * 30),
+                                      low_memory=False))
+        except Exception as e:
+            log(f"h2h: no {y} stats ({e})")
+    allst = pd.concat(frames, ignore_index=True)
+    if "season_type" in allst:
+        allst = allst[allst.season_type.fillna("REG") == "REG"]
+    allst["anytime_tds"] = allst.rushing_tds.fillna(0) + allst.receiving_tds.fillna(0)
+    by_pid = {k: v for k, v in allst.groupby("player_id")}
+
+    def look(p):
+        g = by_pid.get(p["pid"])
+        col = MARKETS[p["market"]][0]
+        if g is None or col not in g:
+            return None
+        vs = g[g.opponent_team == p["opp"]][col].fillna(0)
+        if not len(vs):
+            return None
+        return {"n": int(len(vs)), "avg": round(float(vs.mean()), 1), "over": int((vs > p["line"]).sum())}
+    return look
+
+
+def attach_diamonds(props, sport, out_path, started, h2h=None):
+    """Diamonds in the rough (see diamonds.py): best price beats the market's consensus. Logged for grading."""
+    import diamonds
+    try:
+        if h2h:
+            for p in props:
+                if p.get("fair_med") is not None or p.get("under") is None:
+                    try:
+                        p["h2h"] = h2h(p)
+                    except Exception:
+                        p["h2h"] = None
+        picks = diamonds.pick(props, sport, started)
+        diamonds.log_slate(picks, out_path, dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"))
+        log(f"diamonds: {len(picks)} -> {out_path.name}")
+        return picks
+    except Exception as e:
+        log(f"diamonds: failed ({e})")
+        return []
+
+
 def american_to_prob(price: float) -> float:
     return 100 / (price + 100) if price > 0 else -price / (-price + 100)
 
@@ -451,11 +498,18 @@ def sample_odds(stats: pd.DataFrame, week: int, players_in_week: set[str]) -> di
 # ----------------------------------------------------------------------------- model
 def consensus(book_lines: list[dict]) -> dict:
     pts = [b["line"] for b in book_lines]
-    line = statistics.median(pts)
-    at_line = [b for b in book_lines if b["line"] == line] or book_lines
+    # the line most books post (ties: closest to the median, then the lower one). Taking the plain median could
+    # land between two posted lines (69.5 / 71.5 -> 70.5 nobody offers) and mix prices from different lines.
+    med = statistics.median(pts)
+    line = min(set(pts), key=lambda x: (-pts.count(x), abs(x - med), x))
+    at_line = [b for b in book_lines if b["line"] == line]
     best_over = max((b for b in at_line if b["over"] is not None), key=lambda b: b["over"], default=None)
     best_under = max((b for b in at_line if b["under"] is not None), key=lambda b: b["under"], default=None)
+    # the market's own view: median no-vig P(over) across books pricing both sides at the main line
+    fairs = [american_to_prob(b["over"]) / (american_to_prob(b["over"]) + american_to_prob(b["under"]))
+             for b in at_line if b.get("over") is not None and b.get("under") is not None and b["book"] != "sample"]
     return {
+        "fair_med": round(statistics.median(fairs), 4) if fairs else None, "n_fair": len(fairs),
         "line": line,
         "over": best_over["over"] if best_over else None,
         "over_book": best_over["book"] if best_over else None,
@@ -781,7 +835,7 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None, ro
             "line": line,
             "over": cons["over"], "over_book": cons["over_book"],
             "under": cons["under"], "under_book": cons["under_book"],
-            "books": cons["books"], "line_spread": cons["spread"],
+            "books": cons["books"], "line_spread": cons["spread"], "fair_med": cons["fair_med"], "n_fair": cons["n_fair"],
             "proj": round(proj, 2) if market == ANYTIME else r1(proj),
             "sd": r1(sd),
             "edge": round(p_over - fair_over, 3) if market == ANYTIME and fair_over is not None else
@@ -970,6 +1024,10 @@ def main() -> None:
     espn = {} if ros is None else ros.dropna(subset=["gsis_id", "espn_id"]).drop_duplicates("gsis_id", keep="last") \
         .set_index("gsis_id").espn_id.to_dict()
     news_status = attach_news(props, "nfl", lambda p: espn.get(p["pid"]))
+    kick = {g["id"]: kickoff_utc(g["kickoff"]) for g in wg if g.get("kickoff")}
+    now = dt.datetime.now(dt.timezone.utc)
+    gems = attach_diamonds(props, "nfl", OUT / "diamonds" / f"week_{week:02d}.json",
+                           lambda p: kick.get(p["game"], now) <= now, h2h_nfl(stats)) if mode != "sample" else []
     payload = {
         "season": SEASON, "week": week, "mode": mode,
         "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
@@ -981,7 +1039,7 @@ def main() -> None:
         "props": props,
         "defense": defense,
         "corrections": corr_info,
-        "kalshi": kalshi_status, "news": news_status,
+        "kalshi": kalshi_status, "news": news_status, "diamonds": gems,
     }
     (OUT / "props.json").write_text(json.dumps(payload, separators=(",", ":")))
     log(f"wrote {len(props)} props -> {OUT / 'props.json'}")

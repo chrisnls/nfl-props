@@ -425,11 +425,26 @@ def grade_parlays(out: Outcomes) -> dict:
     return {**base, "parlays": parlays, "summary": s}
 
 
+def grade_diamonds(out: Outcomes) -> dict:
+    import diamonds
+
+    def actual(d, key):
+        week = int(key.split("_")[1])
+        if not out.game_complete(d["game"]):
+            return "pending"
+        pid, _, market = d["id"].partition(":")
+        return out.actual(pid, week, market)
+    res = diamonds.grade((OUT / "diamonds").glob("week_*.json"), actual)
+    log(f"diamonds: {res['overall']}")
+    return res
+
+
 # ----------------------------------------------------------------------------- entry
 def run(frames: dict) -> None:
     out = Outcomes(frames["stats"], frames["games"])
     OUT.mkdir(parents=True, exist_ok=True)
     results = build_results(out, frames)
+    results["diamonds"] = grade_diamonds(out)
     RESULTS.write_text(json.dumps(results, separators=(",", ":")))
     log(f"results: {results['graded_weeks']} graded weeks {results['graded_week_list']}, "
         f"pending {results['pending_weeks']}, overall {results['overall']}")

@@ -6,7 +6,7 @@
  * PARLAY_WEBHOOK_URL in site/index.html. Full steps: README → "Saved parlays".
  *
  * The site POSTs one JSON body per saved slip:
- *   {created, week, legs:[{prop_id, player, market, line, side, price, model_prob}],
+ *   {created, week, legs:[{prop_id, player, team, opp, market, line, side, price, model_prob}],
  *    book_odds, model_prob}
  * and this appends one row to the "Parlays" sheet:
  *   id | created | week | legs_json | book_odds | model_prob | status
@@ -38,6 +38,8 @@ function doPost(e) {
       return {
         prop_id: String(l.prop_id || ''),
         player: String(l.player || ''),
+        team: String(l.team || ''),
+        opp: String(l.opp || ''),
         market: String(l.market || ''),
         line: Number(l.line),
         side: String(l.side || ''),

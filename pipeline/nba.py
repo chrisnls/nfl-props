@@ -158,6 +158,34 @@ def load_frames() -> dict[str, pd.DataFrame]:
     return {"box": box, "sched": sched}
 
 
+def h2h_nba(box: pd.DataFrame):
+    """Career vs an opponent (last season + this one). Context for diamonds only (it didn't beat the line in testing)."""
+    frames = [box]
+    try:
+        prev = pd.read_csv(download("box_prev", f"{SDV}/espn_nba_player_boxscores/player_box_{SEASON - 1}.csv", 24 * 30),
+                           low_memory=False)
+        prev = prev[(prev.season_type == 2) & (prev.minutes.fillna(0) > 0)].copy()
+        prev["pra"] = prev.points + prev.rebounds + prev.assists
+        prev["played"] = True
+        frames.append(prev)
+    except Exception as e:
+        log(f"nba h2h: no previous season ({e})")
+    b = pd.concat(frames, ignore_index=True)
+    b = b[b.played.astype(bool)]
+    by_pid = {str(k): v for k, v in b.groupby("athlete_id")}
+
+    def look(p):
+        g = by_pid.get(str(p["pid"]))
+        if g is None or p["market"] not in MARKETS or p["market"] in ("player_double_double", "player_triple_double"):
+            return None
+        vs = g[g.opponent_team_abbreviation == p["opp"]]
+        if not len(vs):
+            return None
+        v = stat_of(vs, p["market"]).fillna(0)
+        return {"n": int(len(v)), "avg": round(float(v.mean()), 1), "over": int((v > p["line"]).sum())}
+    return look
+
+
 def stat_of(df_or_row, market: str):
     cols = MARKETS[market][0]
     if len(cols) == 1:
@@ -646,6 +674,7 @@ def build_props(box, sched, date, lines, corrections=None, injuries=None, outs_o
             "opp": opp, "home": is_home, "game": game_id, "market": market, "label": MARKETS[market][1],
             "line": line, "over": cons["over"], "over_book": cons["over_book"], "under": cons["under"],
             "under_book": cons["under_book"], "books": cons["books"], "line_spread": cons["spread"],
+            "fair_med": cons["fair_med"], "n_fair": cons["n_fair"],
             "proj": round(p_over, 3) if market in BINARY else r1(proj), "sd": r1(sd),
             "edge": (round(p_over - fair_over, 3) if fair_over is not None else 0.0) if market in BINARY else r1(proj - line),
             "edge_sd": round(edge_sd, 2), "no_bet_side": no_bet_side or None,
@@ -936,6 +965,15 @@ def run_grade(frames):
         "corrections": corr,
         "blend": nfl_grade.fit_blend(rows),
     }
+    import diamonds
+
+    def gem_actual(d, date):
+        if not out.date_complete(date):
+            return "pending"
+        _, pid, market = d["id"].split(":", 2)
+        return out.actual(pid, date, market)
+    results["diamonds"] = diamonds.grade((OUT / "diamonds").glob("*.json"), gem_actual)
+    log(f"nba diamonds: {results['diamonds']['overall']}")
     RESULTS.write_text(json.dumps(results, separators=(",", ":")))
     log(f"nba results: {len(graded)} graded slates, pending {pending}, backtest {len(bt)} projections, "
         f"active corrections {[m for m, c in corr.items() if c.get('active')]}")
@@ -1016,6 +1054,10 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     kalshi_status = build.attach_kalshi(props, games, "nba", mode)
     news_status = build.attach_news(props, "nba", lambda p: p.get("pid"))
+    start = {g["id"]: dt.datetime.fromisoformat(g["start_utc"]) for g in games if g.get("start_utc")}
+    now = dt.datetime.now(dt.timezone.utc)
+    gems = build.attach_diamonds(props, "nba", OUT / "diamonds" / f"{date}.json", lambda p: start.get(p["game"], now) <= now,
+                                 h2h_nba(box)) if mode != "sample" else []
     x = dt.date.fromisoformat(date)
     payload = {
         "sport": "nba", "season": SEASON, "week": x.strftime("%a %b ") + str(x.day), "slate": date,
@@ -1024,7 +1066,7 @@ def main():
         "stats_through_week": label_date(str(box.date.max())), "usage": usage,
         "markets": {k: v[1] for k, v in MARKETS.items()}, "games": games, "props": props,
         "defense": defense, "corrections": corr_info, "injuries_ok": injuries.get("ok", False),
-        "kalshi": kalshi_status, "news": news_status,
+        "kalshi": kalshi_status, "news": news_status, "diamonds": gems,
     }
     (OUT / "props.json").write_text(json.dumps(payload, separators=(",", ":")))
     log(f"nba: wrote {len(props)} props -> {OUT / 'props.json'}")

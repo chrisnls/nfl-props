@@ -56,6 +56,7 @@ jobs:
           git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"
           # the board file is only committed when the lines changed (live pull); free rebuilds still deploy below
           git add site/data/results.json site/data/parlays.json site/data/history pipeline/lines_cache.json pipeline/backtest_cache.json
+          [ -d site/data/diamonds ] && git add site/data/diamonds
           if [ "$(python -c "import json;print(json.load(open('site/data/props.json'))['mode'])")" = "live" ]; then git add site/data/props.json; fi
           git diff --cached --quiet || git commit -m "data: week $(python -c "import json;print(json.load(open('site/data/props.json'))['week'])") $(date -u +%F)"
           git pull --rebase origin main || true
