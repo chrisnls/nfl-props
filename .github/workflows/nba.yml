@@ -47,7 +47,7 @@ jobs:
           for f in site/data/nba/history site/data/nba/diamonds site/data/nba/results.json site/data/nba/parlays.json pipeline/nba_lines_cache.json pipeline/nba_backtest_cache.json; do [ -e "$f" ] && git add "$f"; done
           if [ "$(python -c "import json;print(json.load(open('site/data/nba/props.json'))['mode'])")" = "live" ]; then git add site/data/nba/props.json; fi
           git diff --cached --quiet || git commit -m "data: nba $(python -c "import json;print(json.load(open('site/data/nba/props.json'))['slate'])") $(date -u +%FT%H%MZ)"
-          git pull --rebase origin main || true
+          git pull --rebase --autostash origin main || true
           git push || echo "push skipped"
       - name: Keep the other sport's live board
         # this run only rebuilt its own sport; don't roll the other board back to its last committed copy
