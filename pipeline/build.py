@@ -875,7 +875,10 @@ def build_props(stats, games, injuries, snaps, week, lines, corrections=None, ro
 # ----------------------------------------------------------------------------- history
 SNAP_FIELDS = ["id", "pid", "player", "pos", "team", "opp", "game", "market", "label", "line",
                "over", "over_book", "under", "under_book", "proj", "sd", "proj_raw", "sd_raw",
-               "p_over", "edge", "edge_sd"]
+               "p_over", "edge", "edge_sd", "fair_med", "n_fair"]
+
+
+import clv  # noqa: E402  (pipeline/clv.py: line movement from first to last pre-game pull)
 
 
 def write_snapshot(props: list[dict], wg: list[dict], week: int, fetched: str) -> Path:
@@ -897,7 +900,7 @@ def write_snapshot(props: list[dict], wg: list[dict], week: int, fetched: str) -
         row = {k: p.get(k) for k in SNAP_FIELDS}
         row["role_change"] = (p["role_change"] or {}).get("why")   # None | "line" | "usage"
         row["fetched"] = fetched
-        by_id[p["id"]] = row
+        by_id[p["id"]] = clv.with_open(row, by_id.get(p["id"]), p)   # keeps the first pull for line-movement tracking
         added += 1
     snap["props"] = sorted(by_id.values(), key=lambda r: r["id"])
     snap["updated"] = fetched

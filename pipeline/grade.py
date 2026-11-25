@@ -137,10 +137,32 @@ def record(rows: list[dict]) -> dict:
     units = w * JUICE_WIN - l
     decided = [r for r in rows if r["result"] != "push" and r.get("p_over") is not None]
     brier = statistics.fmean((r["p_over"] - (r["result"] == "over")) ** 2 for r in decided) if decided else None
+    # the honest version: each pick at the best price actually posted for its side, and how often the books'
+    # own (no-vig) odds said that side would hit. -110 flat flattered heavily-priced sides (e.g. NBA unders at -130,
+    # double-double "No" at -500).
+    real_u, real_n, book, book_w = 0.0, 0, [], 0
+    for r in rows:
+        if r["result"] == "push":
+            continue
+        price = r.get(r["pick"])
+        if price is not None:
+            real_n += 1
+            real_u += (price / 100 if price > 0 else 100 / -price) if r["pick_result"] == "win" else -1.0
+        f = r.get("fair_med")
+        if f is None and r.get("over") is not None and r.get("under") is not None:
+            io, iu = build.american_to_prob(r["over"]), build.american_to_prob(r["under"])
+            f = io / (io + iu)
+        if f is not None:
+            book.append(f if r["pick"] == "over" else 1 - f)
+            book_w += r["pick_result"] == "win"
     return {"n": len(rows), "w": w, "l": l, "p": p,
             "hit_pct": round(100 * w / (w + l), 1) if w + l else None,
             "units": round(units, 2),
             "roi": round(100 * units / len(rows), 1) if rows else None,
+            "units_real": round(real_u, 2), "roi_real": round(100 * real_u / real_n, 1) if real_n else None,
+            "book_hit": round(100 * statistics.fmean(book), 1) if book else None, "n_priced": len(book),
+            "hit_priced": round(100 * book_w / len(book), 1) if book else None,
+            "vs_book": round(100 * (book_w / len(book) - statistics.fmean(book)), 1) if book else None,
             "brier": round(brier, 4) if brier is not None else None}
 
 
@@ -445,6 +467,7 @@ def run(frames: dict) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     results = build_results(out, frames)
     results["diamonds"] = grade_diamonds(out)
+    results["clv"] = build.clv.summarize(HISTORY.glob("week_*.json"))
     RESULTS.write_text(json.dumps(results, separators=(",", ":")))
     log(f"results: {results['graded_weeks']} graded weeks {results['graded_week_list']}, "
         f"pending {results['pending_weeks']}, overall {results['overall']}")

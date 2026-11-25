@@ -216,7 +216,7 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
       <div class="meta" id="meta">loading…</div>
     </div>
     <div id="banner"></div>
-    <nav class="tabs" role="tablist"><button class="tab on" data-tab="board">Board</button><button class="tab" data-tab="results">Results</button><button class="tab" data-tab="parlays">Parlays</button><button class="tab" data-tab="builder">Builder</button><button class="tab" data-tab="diamonds">💎 Diamonds</button></nav>
+    <nav class="tabs" role="tablist"><button class="tab on" data-tab="board">Board</button><button class="tab" data-tab="results">Results</button><button class="tab" data-tab="parlays">Parlays</button><button class="tab" data-tab="builder">Builder</button><button class="tab" data-tab="diamonds">💎 Diamonds (paused)</button></nav>
     <div class="filters" data-view="board">
       <div class="chips" id="marketChips"></div>
       <div class="gpick" id="gpick">
@@ -227,7 +227,7 @@ code{font-family:var(--mono);font-size:12px;color:var(--gold2)}
         </div>
       </div>
       <select id="sortSel">
-        <option value="value">Sort: best value (price vs market)</option>
+        <option value="game">Sort: game time</option>
         <option value="edge">Sort: biggest model lean</option>
         <option value="ev">Sort: best EV</option>
         <option value="hit">Sort: hit rate L5</option>
@@ -306,7 +306,7 @@ let KICK = {};
 
 let DATA, props = [], state = {markets:new Set(), games:new Set(), sort:'edge', min:5, q:'', sel:null, side:'', str:'', venue:''};
 // remember the over/under choice between visits
-try { state.side = localStorage.getItem('side') || ''; state.str = localStorage.getItem('strength') || ''; state.sort = localStorage.getItem('sortv2') ? (localStorage.getItem('sort') || 'value') : 'value'; state.venue = localStorage.getItem('venue') || ''; } catch (e) {}
+try { state.side = localStorage.getItem('side') || ''; state.str = localStorage.getItem('strength') || ''; state.sort = localStorage.getItem('sort') || 'game'; if (state.sort === 'value') state.sort = 'game'; state.venue = localStorage.getItem('venue') || ''; } catch (e) {}
 let slip = JSON.parse(localStorage.getItem(SK('slip')) || '[]');
 
 async function load(){
@@ -434,8 +434,8 @@ const roleTag = p => (!p.role_change ? '' : p.role_change.why === 'injury' ? ''
   : `<span class="tag role" title="${roleWhy(p.role_change)}">Role ${p.role_change.dir === 'up' ? '↑' : '↓'}</span>`)
   + (p.vacated && !(p.role_change && p.role_change.why === 'vacated') ? ` <span class="tag tmout" title="Gone since the team's last games: ${vacWho(p.vacated)}">${p.vacated.share}% ${p.vacated.kind} open</span>` : '')
   + (minutesTrend(p) ? ((t) => ` <span class="tag ${t.dir === 'up' ? 'tmout' : 'q'}" title="Minutes ${t.dir}: ${t.l3.toFixed(0)} a game over his last 3 vs ${t.szn.toFixed(0)} this season. In testing, books were slow to price rotation changes: ${t.dir === 'up' ? 'overs hit 54% vs 50% implied' : 'unders hit 59% vs 50% implied'}.">Min ${t.dir === 'up' ? '↑' : '↓'} ${t.l3.toFixed(0)} vs ${t.szn.toFixed(0)}</span>`)(minutesTrend(p)) : '')
-  + (valueOf(p).ev >= 0.02 && !p.diamond ? ` <span class="tag kal" title="${valueOf(p).side} at ${fmtOdds(valueOf(p).price)} (${BOOK[valueOf(p).book] || valueOf(p).book}) is ${(valueOf(p).ev * 100).toFixed(1)}% better than the market's consensus odds (${pct(valueOf(p).prob)})">Value ${valueOf(p).side.toLowerCase()} +${(valueOf(p).ev * 100).toFixed(1)}%</span>` : '')
-  + (p.diamond ? ` <span class="tag diam" title="Diamond: ${p.diamond.side} at ${fmtOdds(p.diamond.price)} (${BOOK[p.diamond.venue] || p.diamond.venue}) beats the market's consensus · EV +${(p.diamond.ev * 100).toFixed(1)}%">💎 ${p.diamond.side}</span>` : '')
+  + (false && valueOf(p).ev >= 0.02 && !p.diamond ? ` <span class="tag kal" title="${valueOf(p).side} at ${fmtOdds(valueOf(p).price)} (${BOOK[valueOf(p).book] || valueOf(p).book}) is ${(valueOf(p).ev * 100).toFixed(1)}% better than the market's consensus odds (${pct(valueOf(p).prob)})">Value ${valueOf(p).side.toLowerCase()} +${(valueOf(p).ev * 100).toFixed(1)}%</span>` : '')
+  + (false && p.diamond ? ` <span class="tag diam" title="Diamond: ${p.diamond.side} at ${fmtOdds(p.diamond.price)} (${BOOK[p.diamond.venue] || p.diamond.venue}) beats the market's consensus · EV +${(p.diamond.ev * 100).toFixed(1)}%">💎 ${p.diamond.side}</span>` : '')
   + (p.news && p.news.length && (Date.now() - new Date(p.news[0].when)) < 48 * 3600e3 ? ` <span class="tag q" title="${p.news[0].headline.replace(/"/g, '&quot;')}">News</span>` : '');
 
 const KAL = () => state.venue === 'kalshi';
@@ -489,7 +489,9 @@ const kalName = (l) => isBinM(l.market) ? `${l.player}: ${l.label} — ${l.side 
 function bestSide(p){
   // the side to show and add: a diamond's side, else a value side (price beats the market by 2%+), else the model's lean
   const v = valueOf(p);
-  const side = p.diamond ? (p.diamond.side === 'over' ? 'Over' : 'Under') : v.ev != null && v.ev >= 0.02 ? v.side : p.edge > 0 ? 'Over' : 'Under';
+  // diamonds and value sides are paused (prices that looked generous were stale; the market moved against them),
+  // so the shown side is the model's lean again
+  const side = p.edge > 0 ? 'Over' : 'Under';
   const over = side === 'Over', q = quote(p, side);
   return {side, ev: q.ev, price: q.price, book: q.book, cents: q.cents, p: over ? p.p_over : 1 - p.p_over};
 }
@@ -499,7 +501,7 @@ function render(){
     (!state.q || (p.player + ' ' + p.team + ' ' + p.opp).toLowerCase().includes(state.q)));
   const key = {
     edge: p => -Math.abs(esd(p)), ev: p => -(bestSide(p).ev ?? -9), hit: p => -(p.hit_l5 ?? 0),
-    value: p => (p.diamond ? -100 : 0) - (valueOf(p).ev ?? -1),
+    value: p => 0, game: p => (KICK[p.game] ? new Date(KICK[p.game]).getTime() / 6e4 : 9e9),
     over: p => -esd(p), under: p => esd(p), player: p => 0,
     // strength buckets in order, strongest edge first within each bucket
     str_over: p => RANK[rating(p)] * 100 - (RANK[rating(p)] <= 3 ? esd(p) : -esd(p)),
@@ -881,10 +883,14 @@ window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
 const recTxt = r => r && r.n ? `${r.w}–${r.l}${r.p ? '–' + r.p : ''}` : '—';
 const unitsTxt = u => u == null ? '—' : (u > 0 ? '+' : '') + (+u).toFixed(2) + 'u';
 const signCls = x => x > 0 ? 'pos' : x < 0 ? 'neg' : '';
+// units/ROI at the real best price for the picked side (older results files only have the -110 version)
+const uReal = r => r && (r.units_real ?? r.units), roiReal = r => r && (r.roi_real ?? r.roi);
+const vsBook = r => r && r.vs_book != null ? `<span class="${r.vs_book > 0 ? 'pos' : r.vs_book < 0 ? 'neg' : ''}">${r.vs_book > 0 ? '+' : ''}${r.vs_book}</span>` : '—';
 const recRow = (name, r) => `<tr><td>${name}</td><td class="num">${recTxt(r)}</td><td class="num">${r && r.hit_pct != null ? r.hit_pct + '%' : '—'}</td>
-  <td class="num ${signCls(r && r.units)}">${r && r.n ? unitsTxt(r.units) : '—'}</td><td class="num ${signCls(r && r.roi)}">${r && r.roi != null ? (r.roi > 0 ? '+' : '') + r.roi + '%' : '—'}</td>
+  <td class="num" title="${r && r.hit_priced != null ? `These props (both sides priced) hit ${r.hit_priced}%` : ''}">${r && r.book_hit != null ? r.book_hit + '%' : '—'}</td><td class="num">${vsBook(r)}</td>
+  <td class="num ${signCls(uReal(r))}">${r && r.n ? unitsTxt(uReal(r)) : '—'}</td><td class="num ${signCls(roiReal(r))}">${r && roiReal(r) != null ? (roiReal(r) > 0 ? '+' : '') + roiReal(r) + '%' : '—'}</td>
   <td class="num">${r && r.brier != null ? r.brier.toFixed(3) : '—'}</td><td class="num">${r ? r.n : 0}</td></tr>`;
-const recHead = first => `<tr><th>${first}</th><th>Record</th><th>Hit</th><th>Units</th><th>ROI</th><th title="Mean squared error of P(over). 0 = perfect, 0.25 = coin flip. Lower is better.">Brier</th><th>Props</th></tr>`;
+const recHead = first => `<tr><th>${first}</th><th>Record</th><th>Hit</th><th title="How often the books' own (no-vig) odds said these picks would hit">Books said</th><th title="Hit rate minus what the books' odds implied, in points. Positive = beat the books.">vs books</th><th title="1 unit per pick at the best price actually posted">Units</th><th>ROI</th><th title="Mean squared error of P(over). 0 = perfect, 0.25 = coin flip. Lower is better.">Brier</th><th>Props</th></tr>`;
 
 async function loadResults(){
   const el = $('#resultsView');
@@ -901,8 +907,9 @@ function strengthGrid(title, rows){
   const cell = r => {
     if (!r || !r.n) return '<td class="num muted">—</td>';
     const dec = r.w + r.l, small = dec < 5;
-    const cls = small ? 'muted' : r.hit_pct >= 55 ? 'pos' : r.hit_pct <= 48 ? 'neg' : '';
-    return `<td class="num ${cls}" title="${r.n} props · ${unitsTxt(r.units)} at -110${small ? ' · small sample' : ''}">${r.w}–${r.l}${r.p ? '–' + r.p : ''}${dec ? ` <span class="small">(${Math.round(r.hit_pct)}%)</span>` : ''}</td>`;
+    // colour by the gap vs the books' own odds (hit rate alone flatters heavily priced sides)
+    const cls = small ? 'muted' : r.vs_book != null ? (r.vs_book >= 3 ? 'pos' : r.vs_book <= -3 ? 'neg' : '') : r.hit_pct >= 55 ? 'pos' : r.hit_pct <= 48 ? 'neg' : '';
+    return `<td class="num ${cls}" title="${r.n} props · ${unitsTxt(uReal(r))} at real prices${r.vs_book != null ? ` · ${r.vs_book > 0 ? '+' : ''}${r.vs_book} pts vs books` : ''}${small ? ' · small sample' : ''}">${r.w}–${r.l}${r.p ? '–' + r.p : ''}${dec ? ` <span class="small">(${Math.round(r.hit_pct)}%)</span>` : ''}</td>`;
   };
   // totals row per column
   const tot = {};
@@ -913,7 +920,7 @@ function strengthGrid(title, rows){
     <table class="log sgrid"><tr><th style="text-align:left"></th>${cols.map(c => `<th title="${c}">${short(c)}</th>`).join('')}</tr>
       ${Object.entries(rows).map(([name, r]) => `<tr><td>${name}</td>${cols.map(c => cell(r[c])).join('')}</tr>`).join('')}
       <tr class="tot"><td>All</td>${cols.map(c => cell(tot[c])).join('')}</tr></table>
-    <p class="muted small">Green = 55%+ hit, red = 48% or lower (52.4% breaks even at -110). Grey cells have fewer than 5 decided picks — too few to read. Hover a cell for units.</p>`;
+    <p class="muted small">Green = beat the books' own odds by 3+ points, red = trailed them by 3+. Hit rate alone can mislead: an under at -150 needs 60% just to break even. Hover a cell for units at real prices. Grey cells have fewer than 5 decided picks — too few to read. Hover a cell for units.</p>`;
 }
 
 function correctionsHTML(R){
@@ -945,19 +952,20 @@ function renderResults(R){
   const fv = R.flagged_vs_unflagged || {};
   return `
     <div class="grid">
-      <div class="tile"><span class="k">Record (model's side)</span><div class="v">${recTxt(o)}</div><div class="meta">${o.hit_pct != null ? o.hit_pct + '% hit · 52.4% breaks even at -110' : ''}</div></div>
-      <div class="tile"><span class="k">Units at -110</span><div class="v ${signCls(o.units)}">${unitsTxt(o.units)}</div><div class="meta">ROI ${o.roi != null ? (o.roi > 0 ? '+' : '') + o.roi + '%' : '—'} · 1u per prop</div></div>
+      <div class="tile"><span class="k">Record (model's side)</span><div class="v">${recTxt(o)}</div><div class="meta">${o.hit_pct != null ? `${o.hit_pct}% hit${o.book_hit != null ? ` · on the ${o.n_priced ?? ''} with both sides priced: ${o.hit_priced ?? ''}% vs books' ${o.book_hit}% (${o.vs_book > 0 ? '+' : ''}${o.vs_book} pts)` : ''}` : ''}</div></div>
+      <div class="tile"><span class="k">Units at real prices</span><div class="v ${signCls(uReal(o))}">${unitsTxt(uReal(o))}</div><div class="meta">ROI ${roiReal(o) != null ? (roiReal(o) > 0 ? '+' : '') + roiReal(o) + '%' : '—'} · 1u per prop at the best posted price</div></div>
       <div class="tile"><span class="k">Brier score</span><div class="v">${o.brier != null ? o.brier.toFixed(3) : '—'}</div><div class="meta">0.250 = coin flip · lower is better</div></div>
       <div class="tile"><span class="k">Graded</span><div class="v">${R.graded_weeks} ${R.period === 'day' ? 'day' : 'wk'}${R.graded_weeks === 1 ? '' : 's'}</div><div class="meta">${o.n} props${Object.keys(R.partial_weeks || {}).length ? ' · ' + Object.entries(R.partial_weeks).map(([w, t]) => `wk ${w}: ${t} so far`).join(', ') : pend ? ' · pending ' + pend : ''}</div></div>
     </div>
-    <p class="muted small">${R.note || ''}</p>
+    <p class="muted small">Record = the side the model leans, unflagged props only. Units and ROI use the best price actually posted for that side (not a flat -110, which flattered heavily priced sides). "Books said" is how often the books' own no-vig odds expected those picks to hit; "vs books" is the gap. That gap is the real scoreboard: a model with an edge shows up positive there.</p>
+    ${clvHTML(R.clv)}
 
     <div class="sec">By market</div>
     <table class="log">${recHead('Market')}${Object.entries(R.by_market || {}).map(([m, r]) => recRow(m, r)).join('')}</table>
 
     <div class="sec">By strength rating <span class="nc">(the board's Thin / Lean / Solid / Strong)</span></div>
     <table class="log">${recHead('Edge')}${(R.by_edge || []).map(b => recRow(leanBucket(b.bucket), b)).join('')}</table>
-    <p class="muted small">If the model were adding anything beyond the books, the bigger leans would hit more often. So far they hit <i>less</i> often, which is why the board shows them as the model's leans rather than picks and sorts by value (price vs the market) instead.</p>
+    <p class="muted small">If the model were adding anything beyond the books, the bigger leans would hit more often and beat the books' odds. So far they don't, which is why the board shows them as the model's leans rather than picks.</p>
     ${strengthGrid('By market and rating', R.by_market_strength)}
     ${strengthGrid('Overs vs unders by rating', R.by_side_strength && {Overs: R.by_side_strength.over, Unders: R.by_side_strength.under})}
 
@@ -978,6 +986,19 @@ function renderResults(R){
 
     ${(R.by_week || []).length ? `<div class="sec">By ${R.period === 'day' ? 'day' : 'week'}</div><table class="log">${recHead(R.period === 'day' ? 'Date' : 'Week')}${R.by_week.map(w => recRow(w.label || 'Week ' + w.week, w)).join('')}</table>` : ''}
     <p class="muted small">Updated ${R.updated ? new Date(R.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}</p>`;
+}
+
+// line movement: did the market move toward what each signal liked at the first pull? (pipeline/clv.py)
+function clvHTML(C){
+  if (!C) return '';
+  const rows = Object.entries(C).filter(([k, c]) => c.n || k !== 'diamond');
+  const verdict = c => !c.n ? 'collecting' : c.n < 150 ? `collecting (${c.n} of ~150)` : c.toward_pct >= 55 ? '✅ market follows it' : c.toward_pct <= 45 ? '❌ market moves against it' : 'no signal';
+  return `<div class="sec">Line movement — does the market move toward what a signal liked?</div>
+    <table class="log"><tr><th style="text-align:left">Signal at the first line pull</th><th>Props</th><th>Moved toward</th><th>Moved against</th><th>Toward %</th><th>Avg move</th><th style="text-align:left">Verdict</th></tr>
+    ${rows.map(([k, c]) => `<tr><td style="text-align:left">${c.label}</td><td class="num">${c.n}</td><td class="num">${c.toward}</td><td class="num">${c.against}</td>
+      <td class="num ${c.toward_pct >= 55 ? 'pos' : c.toward_pct != null && c.toward_pct <= 45 ? 'neg' : ''}">${c.toward_pct != null ? c.toward_pct + '%' : '—'}</td>
+      <td class="num">${c.avg_move_pts != null ? (c.avg_move_pts > 0 ? '+' : '') + c.avg_move_pts + ' pts' : '—'}</td><td style="text-align:left" class="small">${verdict(c)}</td></tr>`).join('')}</table>
+    <p class="muted small">The fastest honest test of an edge. Each prop's first line pull is saved with what every signal liked then; the last pull before the game shows where the market went. If the market keeps moving toward a signal's side, that signal knows something early, and the edge is betting early. If it keeps moving away, the signal is picking stale prices. That's what happened to the diamonds: about 3 of 4 moved against them. A few hundred props settle this; win-loss records need thousands. Tracking started Nov 25, and props with only one pull before their game aren't counted. The Over baseline shows the general drift.</p>`;
 }
 
 // predicted vs actual, one dot per P(over) decile, with the perfect-calibration diagonal
@@ -1060,6 +1081,9 @@ function renderDiamonds(){
   const list = DATA.diamonds || [], G = (RESULTS && RESULTS.diamonds) || {}, o = G.overall || {};
   const sideTxt = d => isBinM(d.market) ? `${d.label} — ${d.side === 'over' ? 'Yes' : 'No'}` : `${d.side === 'over' ? 'Over' : 'Under'} ${d.line} ${d.label}`;
   el.innerHTML = `
+    <div class="panel"><h3>⏸ Paused</h3>
+      <p>Diamonds went <b>${recTxt(o)}</b>${o.n ? ` (${o.units > 0 ? '+' : ''}${o.units}u)` : ''}, when the market's own odds expected about <b>${o.expected_w}</b> wins. After each one was logged, the price moved <i>against</i> it about 3 times out of 4. A price that looked better than the market was usually an old quote about to be corrected, not a gift. So the list kept finding the wrong side.</p>
+      <p class="muted small">They're hidden from the Board and still logged in the background, so the record below keeps updating. They'd only come back if the line-movement test (Results tab) turned positive.</p></div>
     <div class="panel">
       <h3>💎 Diamonds in the rough</h3>
       <p class="muted small">Bets where the <b>best price you can get is better than the market itself thinks the bet is worth</b>: one sportsbook (or Kalshi, after its fee) paying more than the other books' consensus odds. ${NBA ? 'NBA estimates also lean toward players whose minutes just jumped or dropped, the one trend that beat the line in testing. ' : ''}Before building this I tested the usual angles on 3,000+ graded props (hot streaks, soft defenses, career vs the opponent, the model's biggest edges, several signals agreeing). None beat the books, because they're already priced in. They're listed on each card as context, not as reasons. Each diamond is logged at its first price before the game and graded on its own record below.</p>
@@ -1189,6 +1213,7 @@ function renderBuilder(results){
   el.innerHTML = `
     <div class="panel">
       <h3>Parlay builder</h3>
+      <p class="corr">Heads up: the model's weight is currently 0%, so these legs are chosen purely on prices beating the books' consensus. The same idea behind the diamonds, which are paused because those prices tended to move against us. Treat built parlays as examples, not picks, until the line-movement test on the Results tab says otherwise.</p>
       <p class="muted small">Leg probabilities are <b>estimates that blend the book's no-vig price with the model</b> — ${Math.round(blendW() * 100)}% model, ${100 - Math.round(blendW() * 100)}% market${RESULTS && RESULTS.blend && RESULTS.blend.fitted ? `, the mix that best predicted ${RESULTS.blend.n} graded props` : ' until enough props are graded'}. The raw model is overconfident, so its own numbers would wildly overstate parlay EV. Builds only from legs that are <b>+EV at the best available price</b> on that estimate, skips flagged props, and rejects any combo the conflict checker flags (no two overs sharing one job, no inflated roles; no backup overs in Conservative). Uses the markets, games and <b>Prices</b> setting selected on the Board${KAL() ? ' — <b>pricing every leg at Kalshi</b> (fee included), using only props Kalshi lists' : ''}. Different every time you press Generate.</p>
       <table class="log btable"><tr><th style="text-align:left">Style</th><th>Variations</th><th>Min legs</th><th>Max legs</th></tr>
         ${Object.keys(STYLES).map(row).join('')}</table>

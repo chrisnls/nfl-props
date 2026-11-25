@@ -785,7 +785,7 @@ def write_snapshot(props, games, date, fetched):
         row["role_change"] = (p["role_change"] or {}).get("why")
         row["tm_out"] = bool(p.get("tm_out"))
         row["fetched"] = fetched
-        by_id[p["id"]] = row
+        by_id[p["id"]] = build.clv.with_open(row, by_id.get(p["id"]), p)
         added += 1
     snap["props"] = sorted(by_id.values(), key=lambda r: r["id"])
     snap["updated"] = fetched
@@ -973,6 +973,7 @@ def run_grade(frames):
         _, pid, market = d["id"].split(":", 2)
         return out.actual(pid, date, market)
     results["diamonds"] = diamonds.grade((OUT / "diamonds").glob("*.json"), gem_actual)
+    results["clv"] = build.clv.summarize(HISTORY.glob("*.json"))
     log(f"nba diamonds: {results['diamonds']['overall']}")
     RESULTS.write_text(json.dumps(results, separators=(",", ":")))
     log(f"nba results: {len(graded)} graded slates, pending {pending}, backtest {len(bt)} projections, "

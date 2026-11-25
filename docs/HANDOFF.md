@@ -165,6 +165,12 @@ Prompted by Anthony Gould (IND): his line jumped from his backup history to 1.5 
 - Row side and add button: a diamond's side, else a value side (EV ≥ 2%), else the model's lean (`bestSide`). The Builder pool follows the same side.
 - New tags: NBA minutes trend "Min ↑/↓ L3 vs season" (±15%, the one signal that beat the line); "Value over/under +x%" (best price ≥ 2% over the market, non-diamond).
 
+### Honest scoreboard + line-movement tracking; diamonds paused (11/25)
+- Real-price check (graded, unflagged, the model's side at the best posted price vs the books' no-vig): NFL n=1,282 hit 50.8% vs books 51.2%, ROI −4.8%. NBA n=4,898 hit 49.8% vs 51.1%, ROI −8.0%. No market/side/strength split beat the books reliably. The −110 grading had flattered things: NBA "52%" came from unders priced around −130, and double-double "+140u" is −23% at real prices.
+- **Diamonds paused**: 68–123 vs ~94 expected at the market's own odds (NBA). Adverse selection: after logging, the market moved against the diamond side ~75% of the time (Kalshi 65 of 74 moves; books 66 of 77). Hidden from the board, with no 💎 or Value tags. Still logged and graded (tab says paused). `bestSide` is back to the model lean; the default sort is "game time" (`valueOf` kept for CLV). The Builder carries a caveat, since with w=0 it's the same price-gap logic.
+- **Results at real prices**: `grade.record()` adds `units_real`, `roi_real`, `book_hit` (the books' no-vig expectation for the picked side), `hit_priced`, `n_priced` and `vs_book`. The UI shows Units/ROI at real prices plus "Books said" and "vs books" columns; grids are colored by vs_book ±3.
+- **Line movement (CLV)**: `pipeline/clv.py`. History snapshots now store `fair_med`/`n_fair` and keep the FIRST pre-game pull as `open_*` (line, prices, fair, and `open_signals`: model lean ≥0.3σ, NBA minutes trend, value ≥2%, diamond, plus a baseline Over). `summarize()` compares against the last pre-game pull (line moves count toward/against; same line uses the change in no-vig fair). Results → "Line movement": ✅ at ≥55% toward with 150+ props, ❌ at ≤45%. Started 11/25; it only counts props with 2+ pulls before their game.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.
