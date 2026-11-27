@@ -15,10 +15,7 @@ jobs:
       - run: pip install requests
       - run: |
           mkdir -p pipeline/kalshi_probe
-          python pipeline/kalshi.py --probe nba > pipeline/kalshi_probe/match_nba.txt 2>&1 || true
-          python pipeline/kalshi.py --probe nfl > pipeline/kalshi_probe/match_nfl.txt 2>&1 || true
-          python pipeline/kalshi_links_probe.py || true
-          python pipeline/news_probe.py || true
+          python pipeline/kalshi_history_probe.py 2>&1 | tee pipeline/kalshi_probe/hist_log.txt
       - name: Commit probe output
         run: |
           git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"
