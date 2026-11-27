@@ -1,0 +1,21 @@
+KXNBAPTS settled so far: 6358
+KXNBAREB settled so far: 13139
+KXNBAAST settled so far: 18234
+KXNBA3PT settled so far: 25149
+KXNBAPRA settled so far: 29522
+market fields: ['can_close_early', 'close_time', 'created_time', 'custom_strike', 'early_close_condition', 'event_ticker', 'exchange_index', 'expected_expiration_time', 'expiration_value', 'floor_strike', 'last_price_dollars', 'latest_expiration_time', 'market_type', 'no_ask_dollars', 'no_bid_dollars', 'no_sub_title', 'notional_value_dollars', 'occurrence_datetime', 'open_interest_fp', 'open_time', 'previous_price_dollars', 'previous_yes_ask_dollars', 'previous_yes_bid_dollars', 'price_level_structure', 'price_ranges', 'primary_participant_key', 'result', 'rules_primary', 'rules_secondary', 'settlement_bounds_type', 'settlement_timer_seconds', 'settlement_ts', 'settlement_value_dollars', 'status', 'strike_type', 'ticker', 'title', 'updated_time', 'volume_24h_fp', 'volume_fp', 'yes_ask_dollars', 'yes_ask_size_fp', 'yes_bid_dollars', 'yes_bid_size_fp', 'yes_sub_title']
+candles 0
+candles 250
+candles 500
+candles 750
+candles 1000
+candles 1250
+candles 1500
+candles 1750
+candles 2000
+candles 2250
+candles 2500
+candles 2750
+candles 3000
+candle sample: {"end_period_ts": 1795492800, "open_interest_fp": "3109.01", "price": {"close_dollars": "0.9900", "high_dollars": "0.9900", "low_dollars": "0.8600", "mean_dollars": "0.9554", "open_dollars": "0.8600", "previous_dollars": "0.6000"}, "volume_fp": "938.00", "yes_ask": {"close_dollars": "1.0000", "high_dollars": "1.0000", "low_dollars": "0.5200", "open_dollars": "0.6200"}, "yes_bid": {"close_dollars": "0.9900", "high_dollars": "0.9900", "low_dollars": "0.1400", "open_dollars": "0.5200"}}
+wrote 3200 rows 13151 KB
