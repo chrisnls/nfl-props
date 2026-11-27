@@ -169,15 +169,21 @@ def index_markets(sport: str, session=None) -> tuple[dict, dict]:
                 if not key:
                     continue
                 yes_ask, yes_bid = _num(m.get("yes_ask_dollars")), _num(m.get("yes_bid_dollars"))
-                no_ask = _num(m.get("no_ask_dollars"))
+                no_ask, no_bid = _num(m.get("no_ask_dollars")), _num(m.get("no_bid_dollars"))
                 if no_ask is None and yes_bid is not None:
                     no_ask = round(1 - yes_bid, 4)
+                if no_bid is None and yes_ask is not None:
+                    no_bid = round(1 - yes_ask, 4)
                 q = {"ticker": m.get("ticker"), "event": ev.get("event_ticker"), "yes": yes_ask, "no": no_ask,
+                     "yes_bid": yes_bid, "no_bid": no_bid, "player": key[0], "line": key[1], "market": market,
                      "vol": _num(m.get("volume_fp")) or _num(m.get("volume")), "oi": _num(m.get("open_interest_fp"))}
                 idx[(market, key[0], key[1], day)] = q
                 n_mk += 1
         n_series += 1
     return idx, {"ok": True, "series": n_series, "markets": n_mk}
+
+
+LAST_INDEX: dict = {}
 
 
 def quote_for(p: dict, idx: dict, day: str | None):
@@ -191,8 +197,10 @@ def quote_for(p: dict, idx: dict, day: str | None):
 
 def attach(props: list[dict], games: list[dict], sport: str) -> dict:
     """Adds p['kalshi'] to props with a matching open Kalshi market. Never raises."""
+    global LAST_INDEX
     try:
         idx, status = index_markets(sport)
+        LAST_INDEX = idx                              # reused by paper.py (limit-order paper trade)
     except Exception as e:                           # network / API change: the board just has no Kalshi prices
         return {"ok": False, "error": str(e)[:200]}
     day_of = {g["id"]: str(g.get("kickoff") or "")[:10] or None for g in games or []}

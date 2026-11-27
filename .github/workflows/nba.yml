@@ -44,7 +44,7 @@ jobs:
         run: |
           git config user.name "props-bot"; git config user.email "bot@users.noreply.github.com"
           # the board file is only committed when the lines changed (live pull); free rebuilds still deploy below
-          for f in site/data/nba/history site/data/nba/diamonds site/data/nba/results.json site/data/nba/parlays.json pipeline/nba_lines_cache.json pipeline/nba_backtest_cache.json; do [ -e "$f" ] && git add "$f"; done
+          for f in site/data/nba/history site/data/nba/diamonds site/data/nba/paper.json site/data/nba/results.json site/data/nba/parlays.json pipeline/nba_lines_cache.json pipeline/nba_backtest_cache.json; do [ -e "$f" ] && git add "$f"; done
           if [ "$(python -c "import json;print(json.load(open('site/data/nba/props.json'))['mode'])")" = "live" ]; then git add site/data/nba/props.json; fi
           git diff --cached --quiet || git commit -m "data: nba $(python -c "import json;print(json.load(open('site/data/nba/props.json'))['slate'])") $(date -u +%FT%H%MZ)"
           git pull --rebase --autostash origin main || true

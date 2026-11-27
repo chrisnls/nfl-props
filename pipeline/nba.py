@@ -1055,6 +1055,17 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     kalshi_status = build.attach_kalshi(props, games, "nba", mode)
     news_status = build.attach_news(props, "nba", lambda p: p.get("pid"))
+    paper_status = None
+    if mode != "sample" and os.environ.get("PAPER", "1") != "0":
+        try:   # limit-order paper trade on 80-95c Kalshi rungs (pipeline/paper.py); never affects the build
+            import kalshi as _k
+            import paper
+            pp = OUT / "paper.json"
+            paper_status = paper.settle(pp)
+            paper_status["posted_now"] = paper.post(_k.LAST_INDEX, games, pp)
+            log(f"paper: {paper_status}")
+        except Exception as e:
+            log(f"paper: failed ({e})")
     start = {g["id"]: dt.datetime.fromisoformat(g["start_utc"]) for g in games if g.get("start_utc")}
     now = dt.datetime.now(dt.timezone.utc)
     gems = build.attach_diamonds(props, "nba", OUT / "diamonds" / f"{date}.json", lambda p: start.get(p["game"], now) <= now,

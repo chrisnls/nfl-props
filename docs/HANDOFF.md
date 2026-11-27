@@ -177,6 +177,7 @@ Prompted by Anthony Gould (IND): his line jumped from his backup history to 1.5 
 - Our projection on the same rungs added nothing. At 75–90¢ with model ≥ price + 5 pts: +0.2% (n=92). At 60–75¢ with model ≥ price + 5: 57.8% vs 66.6% (−16%).
 - Parlays compound the leg ROI: 6 legs at 75–90¢ ≈ −12%; at 90–99¢ ≈ −23%.
 - Only opening: as a maker (limit order at the bid; maker fee assumed 0.0175·p(1−p)), 75–99¢ single legs were +0.1% to +2.9%. That's an upper bound: fills are adversely selected and it doesn't apply to combos. A next step would be a paper-trade fill simulation against `/markets/trades`.
+- **Paper trade set up** (`pipeline/paper.py`, NBA only, nothing is placed). Each build calls `settle()` and then `post()`, using the Kalshi index from that build (`kalshi.LAST_INDEX`, which now carries bids). It posts 1-contract bids at the current bid on every rung with a side bid of 0.80–0.95, spread ≤ 6¢, and tip 0.5–12 h away. Settle reads `/markets/trades` from post to tip: a fill is "strict" if a trade printed better than our bid, "loose" if at it. Results come from `/markets/{ticker}` 3 h+ after tip, including unfilled orders (to show adverse selection). Grading assumes a 0.0175·p(1−p) maker fee. Data: `site/data/nba/paper.json` (45-day window, committed). Shown on the Results tab. `PAPER=0` skips it.
 
 ## Open ideas
 

@@ -895,6 +895,7 @@ const recHead = first => `<tr><th>${first}</th><th>Record</th><th>Hit</th><th ti
 async function loadResults(){
   const el = $('#resultsView');
   if (!RESULTS) { el.innerHTML = '<div class="empty">Loading results…</div>'; RESULTS = await getJSON(BASE + 'results.json') || {}; }
+  if (NBA && RESULTS.paper === undefined) { const pp = await getJSON(BASE + 'paper.json'); RESULTS.paper = pp ? {...(pp.summary || {}), updated: pp.updated} : null; }
   el.innerHTML = renderResults(RESULTS);
   wireCalibration();
 }
@@ -959,6 +960,7 @@ function renderResults(R){
     </div>
     <p class="muted small">Record = the side the model leans, unflagged props only. Units and ROI use the best price actually posted for that side (not a flat -110, which flattered heavily priced sides). "Books said" is how often the books' own no-vig odds expected those picks to hit; "vs books" is the gap. That gap is the real scoreboard: a model with an edge shows up positive there.</p>
     ${clvHTML(R.clv)}
+    ${paperHTML(R.paper)}
 
     <div class="sec">By market</div>
     <table class="log">${recHead('Market')}${Object.entries(R.by_market || {}).map(([m, r]) => recRow(m, r)).join('')}</table>
@@ -986,6 +988,20 @@ function renderResults(R){
 
     ${(R.by_week || []).length ? `<div class="sec">By ${R.period === 'day' ? 'day' : 'week'}</div><table class="log">${recHead(R.period === 'day' ? 'Date' : 'Week')}${R.by_week.map(w => recRow(w.label || 'Week ' + w.week, w)).join('')}</table>` : ''}
     <p class="muted small">Updated ${R.updated ? new Date(R.updated).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '—'}</p>`;
+}
+
+// Kalshi limit-order paper trade on 80-95c rungs (pipeline/paper.py); nothing is ever placed
+function paperHTML(P){
+  if (!P) return '';
+  const row = (name, g, note) => `<tr><td style="text-align:left">${name}</td><td class="num">${g && g.n ? `${g.w}–${g.l}` : '—'}</td>
+    <td class="num">${g && g.n ? g.hit_pct + '%' : '—'}</td><td class="num">${g && g.n ? g.price_pct + '¢' : '—'}</td>
+    <td class="num ${g && g.n ? signCls(g.roi) : ''}">${g && g.n ? (g.roi > 0 ? '+' : '') + g.roi + '%' : '—'}</td><td style="text-align:left" class="small muted">${note}</td></tr>`;
+  return `<div class="sec">Kalshi limit-order paper trade — 80–95¢ legs, bought patiently</div>
+    <table class="log"><tr><th style="text-align:left">Orders</th><th>Record</th><th>Hit</th><th>Avg price</th><th>ROI after fee</th><th style="text-align:left"></th></tr>
+      ${row(`Filled for sure (${P.filled_strict ?? 0})`, P.strict, 'someone traded at a better price than our bid')}
+      ${row(`Filled, incl. maybe (${P.filled_loose ?? 0})`, P.loose, 'also counts trades exactly at our price')}
+      ${row('Never filled', P.unfilled_would_have, 'how they would have done; if these win more, fills are biased against us')}</table>
+    <p class="muted small">Nothing is placed. Each hourly build "posts" a pretend 1-contract limit buy at the current bid on every Kalshi NBA prop rung priced ${Math.round((P.band || [.8])[0] * 100)}–${Math.round((P.band || [, .95])[1] * 100)}¢ (either side) for games 30 min–12 h away. After tip-off, Kalshi's public trade history shows whether it would have filled; after settlement it's graded at our price, after an assumed ${((P.maker_fee || 0.0175) * 100).toFixed(2)}% × P × (1−P) resting-order fee. The history test suggested +1–3% for these if every bid filled. This shows what's left once real fill odds count. ${P.posted ?? 0} posted, ${P.checked ?? 0} past tip-off so far${P.updated ? ` · updated ${new Date(P.updated).toLocaleString([], {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'})}` : ''}.</p>`;
 }
 
 // line movement: did the market move toward what each signal liked at the first pull? (pipeline/clv.py)
