@@ -171,6 +171,13 @@ Prompted by Anthony Gould (IND): his line jumped from his backup history to 1.5 
 - **Results at real prices**: `grade.record()` adds `units_real`, `roi_real`, `book_hit` (the books' no-vig expectation for the picked side), `hit_priced`, `n_priced` and `vs_book`. The UI shows Units/ROI at real prices plus "Books said" and "vs books" columns; grids are colored by vs_book ±3.
 - **Line movement (CLV)**: `pipeline/clv.py`. History snapshots now store `fair_med`/`n_fair` and keep the FIRST pre-game pull as `open_*` (line, prices, fair, and `open_signals`: model lean ≥0.3σ, NBA minutes trend, value ≥2%, diamond, plus a baseline Over). `summarize()` compares against the last pre-game pull (line moves count toward/against; same line uses the change in no-vig fair). Results → "Line movement": ✅ at ≥55% toward with 150+ props, ❌ at ≤45%. Started 11/25; it only counts props with 2+ pulls before their game.
 
+### Kalshi high-probability legs / projection-only parlays (11/27)
+- Probe `pipeline/kalshi_history_probe.py` (via kalshi-probe.yml; the raw JSON is gitignored): 3,200 settled NBA prop rungs (PTS/REB/AST/3PT/PRA, 16 days), with the last hourly candle before tip from the schedule. That's 5,006 bets (both sides) at the ask, after the taker fee.
+- No favorite-longshot edge for favorites. 85–90¢: 87.6% won vs 87.0% (−0.5% ROI). 90–95¢: 89.4 vs 92.1 (−4%). 95–99¢: 93.2 vs 96.5 (−4.4%). Longshots 5–20¢: 9.5 vs 12.0 (−30%).
+- Our projection on the same rungs added nothing. At 75–90¢ with model ≥ price + 5 pts: +0.2% (n=92). At 60–75¢ with model ≥ price + 5: 57.8% vs 66.6% (−16%).
+- Parlays compound the leg ROI: 6 legs at 75–90¢ ≈ −12%; at 90–99¢ ≈ −23%.
+- Only opening: as a maker (limit order at the bid; maker fee assumed 0.0175·p(1−p)), 75–99¢ single legs were +0.1% to +2.9%. That's an upper bound: fills are adversely selected and it doesn't apply to combos. A next step would be a paper-trade fill simulation against `/markets/trades`.
+
 ## Open ideas
 
 - **Closing-line value.** Grading is in place (above). Next: snapshot the last pre-kickoff line separately from the first pull, to measure whether the model beats the closing line, the best early signal of a real edge.
